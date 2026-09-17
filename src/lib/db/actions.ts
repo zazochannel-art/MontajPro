@@ -9,6 +9,7 @@
  */
 import { store } from "./store";
 import { syncNow } from "./sync";
+import { deleteAsset } from "../storage";
 import type {
   ExpenseCategory,
   Job,
@@ -58,7 +59,8 @@ export async function saveClient(input: {
 export async function deleteClient(id: string) {
   // Lucrările rămân, dar pierd legătura — istoricul financiar nu se pierde.
   const jobs = store.getTable("jobs").filter((job) => job.client_id === id);
-  for (const job of jobs) await store.update("jobs", job.id, { client_id: null });
+  for (const job of jobs)
+    await store.update("jobs", job.id, { client_id: null });
   await store.remove("clients", id);
   kick();
 }
@@ -144,22 +146,38 @@ export async function updateJob(id: string, patch: Partial<Job>) {
 /** Șterge lucrarea și tot ce atârnă de ea. */
 export async function deleteJob(id: string) {
   const children: { table: TableName; id: string }[] = [];
-  const collect = <K extends TableName>(table: K, match: (row: { job_id?: string | null }) => boolean) => {
-    for (const row of store.getTable(table) as unknown as { id: string; job_id?: string | null }[]) {
+  const collect = <K extends TableName>(
+    table: K,
+    match: (row: { job_id?: string | null }) => boolean,
+  ) => {
+    for (const row of store.getTable(table) as unknown as {
+      id: string;
+      job_id?: string | null;
+    }[]) {
       if (match(row)) children.push({ table, id: row.id });
     }
   };
   collect("job_measurements", (row) => row.job_id === id);
   collect("job_photos", (row) => row.job_id === id);
+  // Pozele lucrării pleacă și din Storage, nu doar din listă.
+  for (const photo of store
+    .getTable("job_photos")
+    .filter((row) => row.job_id === id)) {
+    await deleteAsset(photo.storage_path, photo.local_key);
+  }
   collect("job_materials", (row) => row.job_id === id);
   collect("payments", (row) => row.job_id === id);
   collect("work_sessions", (row) => row.job_id === id);
   collect("notifications", (row) => row.job_id === id);
   // Cheltuielile rămân în evidența financiară, doar pierd legătura.
-  for (const expense of store.getTable("expenses").filter((row) => row.job_id === id)) {
+  for (const expense of store
+    .getTable("expenses")
+    .filter((row) => row.job_id === id)) {
     await store.update("expenses", expense.id, { job_id: null });
   }
-  for (const quote of store.getTable("quotes").filter((row) => row.job_id === id)) {
+  for (const quote of store
+    .getTable("quotes")
+    .filter((row) => row.job_id === id)) {
     await store.update("quotes", quote.id, { job_id: null });
   }
   await store.removeMany(children);
@@ -183,18 +201,24 @@ export async function startWork(jobId: string) {
     note: null,
   });
   const job = store.getTable("jobs").find((row) => row.id === jobId);
-  if (job && job.status !== "in_progress") await setJobStatus(jobId, "in_progress");
+  if (job && job.status !== "in_progress")
+    await setJobStatus(jobId, "in_progress");
   kick();
   return session;
 }
 
 export async function stopWork(sessionId: string, note?: string) {
-  const session = store.getTable("work_sessions").find((row) => row.id === sessionId);
+  const session = store
+    .getTable("work_sessions")
+    .find((row) => row.id === sessionId);
   if (!session || session.ended_at) return null;
   const endedAt = nowISO();
   const minutes = Math.max(
     1,
-    Math.round((new Date(endedAt).getTime() - new Date(session.started_at).getTime()) / 60_000),
+    Math.round(
+      (new Date(endedAt).getTime() - new Date(session.started_at).getTime()) /
+        60_000,
+    ),
   );
   const row = await store.update("work_sessions", sessionId, {
     ended_at: endedAt,
@@ -264,6 +288,8 @@ export async function addPhoto(input: {
 }
 
 export async function deletePhoto(id: string) {
+  const photo = store.getTable("job_photos").find((row) => row.id === id);
+  if (photo) await deleteAsset(photo.storage_path, photo.local_key);
   await store.remove("job_photos", id);
   kick();
 }
@@ -399,6 +425,9 @@ export async function saveExpense(input: {
 }
 
 export async function deleteExpense(id: string) {
+  const expense = store.getTable("expenses").find((row) => row.id === id);
+  if (expense)
+    await deleteAsset(expense.receipt_path, expense.receipt_local_key);
   await store.remove("expenses", id);
   kick();
 }
@@ -436,6 +465,8 @@ export async function saveTool(input: {
 }
 
 export async function deleteTool(id: string) {
+  const tool = store.getTable("tools").find((row) => row.id === id);
+  if (tool) await deleteAsset(tool.photo_path, tool.photo_local_key);
   await store.remove("tools", id);
   kick();
 }
@@ -493,7 +524,9 @@ export async function saveQuote(
   const existing = store
     .getTable("quote_items")
     .filter((item) => item.quote_id === quote.id && !item.deleted_at);
-  const keptIds = new Set(items.map((item) => item.id).filter(Boolean) as string[]);
+  const keptIds = new Set(
+    items.map((item) => item.id).filter(Boolean) as string[],
+  );
 
   for (const item of existing) {
     if (!keptIds.has(item.id)) await store.remove("quote_items", item.id);
@@ -529,13 +562,20 @@ export async function setQuoteStatus(id: string, status: Quote["status"]) {
 }
 
 export async function deleteQuote(id: string) {
-  const items = store.getTable("quote_items").filter((item) => item.quote_id === id);
-  await store.removeMany(items.map((item) => ({ table: "quote_items" as const, id: item.id })));
+  const items = store
+    .getTable("quote_items")
+    .filter((item) => item.quote_id === id);
+  await store.removeMany(
+    items.map((item) => ({ table: "quote_items" as const, id: item.id })),
+  );
   await store.remove("quotes", id);
   kick();
 }
 
-export function quoteTotal(items: Pick<QuoteItem, "quantity" | "unit_price">[], discount = 0) {
+export function quoteTotal(
+  items: Pick<QuoteItem, "quantity" | "unit_price">[],
+  discount = 0,
+) {
   const subtotal = items.reduce(
     (acc, item) => acc + num(item.quantity) * num(item.unit_price),
     0,
@@ -544,33 +584,38 @@ export function quoteTotal(items: Pick<QuoteItem, "quantity" | "unit_price">[], 
 }
 
 /** Transformă o ofertă acceptată în lucrare (cu avansul deja înregistrat). */
-export async function convertQuoteToJob(quoteId: string, type: JobType = "other") {
+export async function convertQuoteToJob(
+  quoteId: string,
+  type: JobType = "other",
+) {
   const quote = store.getTable("quotes").find((row) => row.id === quoteId);
   if (!quote) return null;
-  const items = store.getTable("quote_items").filter((item) => item.quote_id === quoteId);
+  const items = store
+    .getTable("quote_items")
+    .filter((item) => item.quote_id === quoteId);
   const { total } = quoteTotal(items, quote.discount);
 
+  // Avansul din ofertă este o cerere, nu bani încasați: nu creăm o plată
+  // pentru el. Se înregistrează când ajunge efectiv la montator.
   const job = await saveJob({
     client_id: quote.client_id,
     title: quote.title,
     type,
     status: "confirmed",
     price_total: total,
-    advance: quote.advance,
+    notes: items
+      .map(
+        (item) =>
+          `${item.description}: ${item.quantity} ${item.unit} × ${item.unit_price}`,
+      )
+      .join("\n"),
   });
   if (job) {
-    await store.update("quotes", quoteId, { job_id: job.id, status: "accepted", accepted_at: nowISO() });
-    for (const item of items) {
-      await store.insert("job_materials", {
-        job_id: job.id,
-        material_id: null,
-        name: item.description,
-        quantity: item.quantity,
-        unit: item.unit,
-        unit_price: 0,
-        purchased: false,
-      });
-    }
+    await store.update("quotes", quoteId, {
+      job_id: job.id,
+      status: "accepted",
+      accepted_at: nowISO(),
+    });
   }
   kick();
   return job;
@@ -610,7 +655,9 @@ export function exportData() {
 }
 
 /** Import dintr-un backup — rândurile existente se păstrează, restul se adaugă. */
-export async function importData(payload: { data?: Record<string, unknown[]> }) {
+export async function importData(payload: {
+  data?: Record<string, unknown[]>;
+}) {
   const data = payload?.data;
   if (!data) throw new Error("Fișier de backup invalid");
   let imported = 0;
@@ -618,10 +665,13 @@ export async function importData(payload: { data?: Record<string, unknown[]> }) 
     if (!Array.isArray(rows)) continue;
     for (const row of rows as Record<string, unknown>[]) {
       if (!row || typeof row !== "object") continue;
-      await store.insert(table as TableName, {
-        ...row,
-        id: (row.id as string) || uid(),
-      } as never);
+      await store.insert(
+        table as TableName,
+        {
+          ...row,
+          id: (row.id as string) || uid(),
+        } as never,
+      );
       imported++;
     }
   }

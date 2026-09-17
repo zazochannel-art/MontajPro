@@ -244,10 +244,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [state.settings],
   );
 
+  // În modul cloud așteptăm prima sincronizare înainte de a crea setările
+  // implicite. Altfel, pe al doilea telefon am scrie un al doilea rând înainte
+  // să-l vedem pe cel de pe server, iar indexul unic ar respinge scrierea.
+  // Dacă sincronizarea nu reușește (offline, eroare), mergem înainte: rândul
+  // în plus este curățat de `dedupeSettings` la prima sincronizare reușită.
+  const syncSettled =
+    syncState.lastSyncAt !== null ||
+    syncState.status === "error" ||
+    syncState.status === "offline";
+
   useEffect(() => {
     if (!booted || !auth.userId || settings) return;
+    if (auth.mode === "cloud" && !syncSettled) return;
     void store.insert("settings", defaultSettings(auth.userId));
-  }, [booted, auth.userId, settings]);
+  }, [booted, auth.userId, auth.mode, settings, syncSettled]);
 
   /* ----------------------- sincronizare periodică ------------------- */
 
