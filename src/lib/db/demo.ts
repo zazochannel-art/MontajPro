@@ -99,7 +99,14 @@ export async function seedDemoData() {
     client_id: client.id,
     kind: "stairs",
     label: "Scara principală",
-    data: { steps: 15, width: 100, depth: 30, height: 18, thickness: 4, landings: 1 },
+    data: {
+      steps: 15,
+      width: 100,
+      depth: 30,
+      height: 18,
+      thickness: 4,
+      landings: 1,
+    },
     notes: "Perete drept, fără rază.",
   });
 
@@ -108,7 +115,12 @@ export async function seedDemoData() {
     client_id: secondClient.id,
     kind: "parquet",
     label: "Living + dormitoare",
-    data: { area: 85, waste_percent: 10, parquet_type: "Stejar 14 mm", rooms: 3 },
+    data: {
+      area: 85,
+      waste_percent: 10,
+      parquet_type: "Stejar 14 mm",
+      rooms: 3,
+    },
     notes: null,
   });
 
@@ -152,12 +164,14 @@ export async function seedDemoData() {
     note: null,
   });
 
+  // Atenție la dublarea costurilor: lacul e deja trecut ca material pe
+  // lucrare, așa că aici punem o cheltuială de altă natură.
   await store.insert("expenses", {
     job_id: stairs.id,
-    category: "materials",
-    amount: 1350,
+    category: "consumables",
+    amount: 320,
     spent_at: dayFromNow(-4),
-    note: `Lac + accesorii ${DEMO_TAG}`,
+    note: `Discuri, șmirghel, silicon ${DEMO_TAG}`,
     receipt_path: null,
     receipt_local_key: null,
   });
@@ -220,7 +234,9 @@ export async function seedDemoData() {
   await store.insert("work_sessions", {
     job_id: stairs.id,
     started_at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
-    ended_at: new Date(Date.now() - 3 * 86_400_000 + 7.5 * 3_600_000).toISOString(),
+    ended_at: new Date(
+      Date.now() - 3 * 86_400_000 + 7.5 * 3_600_000,
+    ).toISOString(),
     duration_minutes: 450,
     note: null,
   });
@@ -240,7 +256,9 @@ export async function removeDemoData() {
     .filter((quote) => !quote.deleted_at && quote.title.includes(DEMO_TAG));
 
   for (const quote of demoQuotes) {
-    for (const item of store.getTable("quote_items").filter((i) => i.quote_id === quote.id)) {
+    for (const item of store
+      .getTable("quote_items")
+      .filter((i) => i.quote_id === quote.id)) {
       await store.remove("quote_items", item.id);
     }
     await store.remove("quotes", quote.id);
@@ -262,17 +280,20 @@ export async function removeDemoData() {
 
   for (const expense of store.getTable("expenses")) {
     const isDemo =
-      (expense.job_id && jobIds.has(expense.job_id)) || expense.note?.includes(DEMO_TAG);
+      (expense.job_id && jobIds.has(expense.job_id)) ||
+      expense.note?.includes(DEMO_TAG);
     if (isDemo) await store.remove("expenses", expense.id);
   }
 
   for (const job of demoJobs) await store.remove("jobs", job.id);
 
   for (const client of store.getTable("clients")) {
-    if (client.name.includes(DEMO_TAG)) await store.remove("clients", client.id);
+    if (client.name.includes(DEMO_TAG))
+      await store.remove("clients", client.id);
   }
   for (const material of store.getTable("materials")) {
-    if (material.name.includes(DEMO_TAG)) await store.remove("materials", material.id);
+    if (material.name.includes(DEMO_TAG))
+      await store.remove("materials", material.id);
   }
   for (const tool of store.getTable("tools")) {
     if (tool.name.includes(DEMO_TAG)) await store.remove("tools", tool.id);

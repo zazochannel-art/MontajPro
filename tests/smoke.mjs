@@ -185,6 +185,33 @@ try {
   check("oferta are număr", (await page.getByText(/OFERTĂ #00001/).count()) > 0);
   check("oferta are total", (await page.getByText(/7\.500 MDL/).count()) > 0);
 
+  /* --------------- ofertă → lucrare: fără încasare fantomă ---------- */
+  section("Ofertă transformată în lucrare");
+  // Avansul cerut în ofertă este o cerere, nu bani primiți: lucrarea creată
+  // din ofertă trebuie să pornească de la zero încasat.
+  await page.getByRole("link", { name: /Editează/i }).click();
+  await page.waitForURL(/\/oferte\/[0-9a-f-]{36}\/editare/, { timeout: 15000 });
+  await page.locator('input[inputmode="decimal"]').last().fill("2000"); // avans cerut
+  await page.getByRole("button", { name: /^Salvează$/ }).click();
+  await page.waitForURL(/\/oferte\/[0-9a-f-]{36}$/, { timeout: 15000 });
+  check("avansul cerut apare pe ofertă", (await page.getByText(/2\.000 MDL/).count()) > 0);
+
+  await page.getByRole("button", { name: /Fă lucrare/i }).click();
+  await page.waitForURL(/\/lucrari\/[0-9a-f-]{36}/, { timeout: 15000 });
+  await page.getByRole("tab", { name: /Finanțe/i }).click();
+  await page.waitForTimeout(600);
+  const financeText = await page.locator("body").innerText();
+  const paidLine = financeText.match(/Total încasat\s*\n?\s*([^\n]+)/);
+  check(
+    "lucrarea din ofertă pornește cu 0 încasat",
+    !!paidLine && /^0\s/.test(paidLine[1].trim()),
+    paidLine ? paidLine[1].trim() : "linia „Total încasat” nu a fost găsită",
+  );
+  check(
+    "restul de plată este tot prețul lucrării",
+    (await page.getByText(/7\.500 MDL/).count()) > 0,
+  );
+
   /* ----------------------------- navigare -------------------------- */
   section("Navigare în toate paginile");
   for (const [path, heading] of [

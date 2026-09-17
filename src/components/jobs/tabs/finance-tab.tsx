@@ -78,6 +78,10 @@ export function FinanceTab({
             <p className="text-xs text-muted-foreground">
               marjă {formatPercent(money.margin)}
             </p>
+            <p className="text-[11px] text-muted-foreground/70">
+              lista de materiale și bonurile se adună; nu trece același cost în
+              ambele
+            </p>
           </div>
           <p
             className={cn(
