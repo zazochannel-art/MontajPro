@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    name: Tipuri, lint, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+  # Fluxul real în browser, pe viewport de telefon. Nu blochează PR-ul dacă
+  # descărcarea browserului eșuează, dar rezultatul este raportat.
+  smoke:
+    name: Smoke (Playwright)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Build
+        run: npm run build
+
+      - name: Run smoke tests
+        run: |
+          npx next start -p 3100 &
+          for i in $(seq 1 30); do
+            curl -sf -o /dev/null http://localhost:3100/ && break
+            sleep 2
+          done
+          BASE_URL=http://localhost:3100 node tests/smoke.mjs
