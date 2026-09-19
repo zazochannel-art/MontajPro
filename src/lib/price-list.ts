@@ -87,6 +87,34 @@ export function groupedPositions(list: Position[], kind: JobType) {
   return { matching, rest };
 }
 
+/**
+ * Pozițiile grupate pe tip de lucrare, în ordinea în care se caută.
+ *
+ * Calculatorul are tab-uri, deci știe ce tip e deschis; oferta nu — acolo
+ * grupurile țin loc de tab-uri.
+ */
+export function positionGroups(
+  list: Position[],
+): { kind: JobType | "any"; items: Position[] }[] {
+  const order: (JobType | "any")[] = ["stairs", "parquet", "plinth", "other", "any"];
+  return order
+    .map((kind) => ({ kind, items: list.filter((item) => item.kind === kind) }))
+    .filter((group) => group.items.length > 0);
+}
+
+/**
+ * Poziția cu numele dat, dacă există.
+ *
+ * Liniile salvate înainte de lista de poziții — sau venite din calculator —
+ * țin doar denumirea. Dacă aceasta se potrivește cu o poziție, selectorul o
+ * arată aleasă în loc să pară scrisă de mână.
+ */
+export function matchPosition(list: Position[], name: string): Position | undefined {
+  const needle = name.trim().toLowerCase();
+  if (!needle) return undefined;
+  return list.find((item) => item.name.trim().toLowerCase() === needle);
+}
+
 /** Adevărat cât timp niciun tarif nu e pus: atunci merită îndrumat spre setări. */
 export function everyPriceUnset(list: Position[]): boolean {
   return list.every((item) => item.price <= 0);

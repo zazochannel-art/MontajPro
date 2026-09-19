@@ -19,7 +19,7 @@ schimba din Setări (MDL, RON, EUR, USD, UAH, GBP).
 | **Clienți** | CRUD complet, istoric lucrări și plăți, fotografii, acțiuni rapide (sună, WhatsApp, hartă) |
 | **Măsurători** | Scară / parchet / plintă / altceva, cu **calcule automate** (suprafețe, unghi, bucăți necesare, pierdere %) |
 | **Calculator preț** | Alegi poziția, prețul și unitatea vin din tarifele din Setări; poziții proprii peste cele implicite; salvează direct în lucrare sau ofertă |
-| **Oferte** | Numerotate automat, cu subtotal/reducere/avans/rest, format printabil și partajare prin WhatsApp/share nativ; se transformă într-o lucrare dintr-o apăsare |
+| **Oferte** | Linii alese din aceleași poziții ca în calculator, cu prețul din Setări; numerotate automat, cu subtotal/reducere/avans/rest, format printabil și partajare prin WhatsApp/share nativ; se transformă într-o lucrare dintr-o apăsare |
 | **Calendar** | Lunar și săptămânal, mutarea lucrării pe altă zi (drag pe desktop, buton pe telefon) |
 | **Finanțe** | Încasări, cheltuieli pe categorii, profit, bani de primit, avansuri — pe lună |
 | **Materiale** | Inventar + listă de cumpărături generată din lucrările active |

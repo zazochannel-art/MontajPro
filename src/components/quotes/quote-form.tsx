@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Plus, X } from "lucide-react";
 import { toast } from "sonner";
@@ -12,7 +12,9 @@ import { MoneyInput, NumberInput } from "@/components/ui/number-input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -24,57 +26,88 @@ import { useClients, useTable } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
 import { clearCalcDraft, peekCalcDraft } from "@/lib/calc-draft";
 import { formatMoney } from "@/lib/format";
-import { UNITS } from "@/lib/constants";
-import type { Quote } from "@/lib/types";
+import { JOB_TYPE_LABELS, UNITS } from "@/lib/constants";
+import {
+  allPositions,
+  CUSTOM_POSITION,
+  findPosition,
+  matchPosition,
+  positionGroups,
+  type Position,
+} from "@/lib/price-list";
+import type { JobType, Quote } from "@/lib/types";
 import { uid } from "@/lib/utils";
+
+const GROUP_LABELS: Record<JobType | "any", string> = {
+  ...JOB_TYPE_LABELS,
+  any: "Oriunde",
+};
+
+/** Linia din formular ține minte poziția aleasă; în bază nu pleacă. */
+type ItemRow = QuoteItemInput & { key: string; item_id: string | null };
 
 /** Formularul ofertei — aceleași câmpuri la creare și la editare. */
 export function QuoteForm({ quote }: { quote?: Quote | null }) {
   const router = useRouter();
-  const { currency } = useApp();
+  const { currency, settings } = useApp();
   const clients = useClients();
   const allItems = useTable("quote_items");
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
 
+  const positions = useMemo(() => allPositions(settings), [settings]);
+  const groups = useMemo(() => positionGroups(positions), [positions]);
+
   // Ciorna din calculator, dacă există; e citită o singură dată, la montare.
   const [draft] = useState(() => (quote ? null : peekCalcDraft()));
 
-  const [items, setItems] = useState<(QuoteItemInput & { key: string })[]>(
-    () => {
-      if (quote) {
-        return allItems
-          .filter((item) => item.quote_id === quote.id)
-          .sort((a, b) => a.position - b.position)
-          .map((item) => ({
-            key: item.id,
-            id: item.id,
-            description: item.description,
-            quantity: item.quantity,
-            unit: item.unit,
-            unit_price: item.unit_price,
-          }));
-      }
-      const fromCalculator = peekCalcDraft();
-      if (fromCalculator) {
-        return fromCalculator.lines.map((line) => ({
-          key: uid(),
-          description: line.description,
-          quantity: line.quantity,
-          unit: line.unit,
-          unit_price: line.unit_price,
+  const [items, setItems] = useState<ItemRow[]>(() => {
+    /**
+     * O linie veche ține doar denumirea. Dacă aceasta e a unei poziții, o
+     * arătăm aleasă; altfel linia e scrisă de mână, iar gol înseamnă nimic ales.
+     */
+    const resolve = (description: string, known?: string | null): string | null => {
+      if (known) return known;
+      const matched = matchPosition(positions, description);
+      if (matched) return matched.id;
+      return description.trim() ? CUSTOM_POSITION : null;
+    };
+
+    if (quote) {
+      return allItems
+        .filter((item) => item.quote_id === quote.id)
+        .sort((a, b) => a.position - b.position)
+        .map((item) => ({
+          key: item.id,
+          id: item.id,
+          item_id: resolve(item.description),
+          description: item.description,
+          quantity: item.quantity,
+          unit: item.unit,
+          unit_price: item.unit_price,
         }));
-      }
-      return [
-        {
-          key: uid(),
-          description: "",
-          quantity: 1,
-          unit: "buc",
-          unit_price: 0,
-        },
-      ];
-    },
-  );
+    }
+    const fromCalculator = peekCalcDraft();
+    if (fromCalculator) {
+      return fromCalculator.lines.map((line) => ({
+        key: uid(),
+        item_id: resolve(line.description, line.item_id),
+        description: line.description,
+        quantity: line.quantity,
+        unit: line.unit,
+        unit_price: line.unit_price,
+      }));
+    }
+    return [
+      {
+        key: uid(),
+        item_id: null,
+        description: "",
+        quantity: 1,
+        unit: "buc",
+        unit_price: 0,
+      },
+    ];
+  });
 
   const form = useZodForm(quoteSchema, {
     title: quote?.title ?? (draft ? "Ofertă lucrare" : ""),
@@ -93,10 +126,38 @@ export function QuoteForm({ quote }: { quote?: Quote | null }) {
 
   const { subtotal, total } = quoteTotal(items, form.values.discount ?? 0);
 
-  const update = (key: string, patch: Partial<QuoteItemInput>) =>
+  const update = (key: string, patch: Partial<ItemRow>) =>
     setItems((current) =>
       current.map((item) => (item.key === key ? { ...item, ...patch } : item)),
     );
+
+  /** Alegerea poziției aduce cu ea denumirea, unitatea și prețul din setări. */
+  const choosePosition = (key: string, value: string) => {
+    if (value === CUSTOM_POSITION) {
+      update(key, { item_id: CUSTOM_POSITION });
+      return;
+    }
+    const position = findPosition(positions, value);
+    if (!position) return;
+    update(key, {
+      item_id: position.id,
+      description: position.name,
+      unit: position.unit,
+      unit_price: position.price,
+    });
+  };
+
+  const option = (position: Position) => (
+    <SelectItem key={position.id} value={position.id}>
+      {position.name}
+      <span className="text-muted-foreground">
+        {" · "}
+        {position.price > 0
+          ? `${formatMoney(position.price, currency)}/${position.unit}`
+          : "fără preț"}
+      </span>
+    </SelectItem>
+  );
 
   const onSubmit = form.handleSubmit(async (data) => {
     const valid = items.filter((item) => item.description.trim());
@@ -177,14 +238,33 @@ export function QuoteForm({ quote }: { quote?: Quote | null }) {
               className="rounded-2xl border border-border bg-card p-3.5"
             >
               <div className="flex items-center gap-2">
-                <Input
-                  value={item.description}
-                  onChange={(event) =>
-                    update(item.key, { description: event.target.value })
-                  }
-                  placeholder="Descriere linie"
-                  className="h-10 flex-1"
-                />
+                <div className="flex-1">
+                  <Select
+                    value={item.item_id ?? ""}
+                    onValueChange={(value) => choosePosition(item.key, value)}
+                  >
+                    <SelectTrigger className="h-10" aria-label="Poziție">
+                      <SelectValue placeholder="Alege poziția">
+                        {item.item_id === CUSTOM_POSITION
+                          ? item.description || "Altceva"
+                          : findPosition(positions, item.item_id ?? "")?.name}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {groups.map((group) => (
+                        <SelectGroup key={group.kind}>
+                          <SelectLabel>{GROUP_LABELS[group.kind]}</SelectLabel>
+                          {group.items.map(option)}
+                        </SelectGroup>
+                      ))}
+                      <SelectGroup>
+                        <SelectItem value={CUSTOM_POSITION}>
+                          Altceva — scriu eu
+                        </SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Button
                   type="button"
                   variant="ghost"
@@ -199,6 +279,17 @@ export function QuoteForm({ quote }: { quote?: Quote | null }) {
                   <X className="text-muted-foreground" />
                 </Button>
               </div>
+
+              {item.item_id === CUSTOM_POSITION && (
+                <Input
+                  value={item.description}
+                  onChange={(event) =>
+                    update(item.key, { description: event.target.value })
+                  }
+                  placeholder="Descriere linie"
+                  className="mt-2.5 h-10"
+                />
+              )}
 
               <div className="mt-2.5 grid grid-cols-3 gap-2">
                 <Field label="Cant.">
@@ -217,7 +308,12 @@ export function QuoteForm({ quote }: { quote?: Quote | null }) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {UNITS.map((unit) => (
+                      {/* O poziție proprie poate avea orice unitate; dacă nu e
+                          în listă, o adăugăm ca să nu rămână selectorul gol. */}
+                      {(UNITS.includes(item.unit) || !item.unit
+                        ? UNITS
+                        : [...UNITS, item.unit]
+                      ).map((unit) => (
                         <SelectItem key={unit} value={unit}>
                           {unit}
                         </SelectItem>
@@ -252,6 +348,7 @@ export function QuoteForm({ quote }: { quote?: Quote | null }) {
                 ...current,
                 {
                   key: uid(),
+                  item_id: null,
                   description: "",
                   quantity: 1,
                   unit: "buc",
