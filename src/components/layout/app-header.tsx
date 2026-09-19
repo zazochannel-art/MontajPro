@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, Bell, Menu } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, Bell, Menu, Search } from "lucide-react";
+import { useEffect, useState } from "react";
 import { NAV_SECTIONS, isActivePath } from "@/lib/nav";
 import { useTable } from "@/hooks/use-data";
 import { cn } from "@/lib/utils";
@@ -15,12 +15,26 @@ import {
 } from "@/components/ui/dialog";
 import { Logo } from "./logo";
 import { SyncBadge } from "./sync-badge";
+import { GlobalSearch } from "./global-search";
 
 /** Antetul mobil: înapoi / titlu / notificări + meniu complet. */
 export function AppHeader({ title }: { title?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Ctrl/Cmd+K, tiparul cu care toată lumea e obișnuită pe desktop.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSearchOpen((open) => !open);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const notifications = useTable("notifications");
   const unread = notifications.filter((item) => !item.read_at).length;
 
@@ -52,6 +66,15 @@ export function AppHeader({ title }: { title?: string }) {
           )}
           {!title && <div className="flex-1" />}
 
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            aria-label="Caută"
+            className="flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Search className="size-5" />
+          </button>
+
           <SyncBadge />
 
           <Link
@@ -77,6 +100,8 @@ export function AppHeader({ title }: { title?: string }) {
           </button>
         </div>
       </header>
+
+      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
 
       <Dialog open={menuOpen} onOpenChange={setMenuOpen}>
         <DialogContent className="sm:max-w-md">

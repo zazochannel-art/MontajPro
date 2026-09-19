@@ -21,8 +21,18 @@ export const isSupabaseConfigured = Boolean(
 export const PHOTO_BUCKET = "job-photos";
 
 let client: SupabaseClient | null = null;
+let injected: SupabaseClient | null = null;
+
+/**
+ * Înlocuiește clientul — folosit de teste, care pornesc un PostgREST fals și
+ * verifică sincronizarea cu clientul adevărat, nu cu unul simulat.
+ */
+export function setSupabaseClient(next: SupabaseClient | null) {
+  injected = next;
+}
 
 export function getSupabase(): SupabaseClient | null {
+  if (injected) return injected;
   if (!isSupabaseConfigured) return null;
   if (typeof window === "undefined") return null;
   if (!client) {

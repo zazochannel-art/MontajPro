@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Clock,
   MapPin,
+  Copy,
   MessageCircle,
   Navigation,
   Pencil,
@@ -27,7 +28,7 @@ import { JOB_STATUS_LABELS, JOB_TYPE_LABELS } from "@/lib/constants";
 import { JOB_STATUSES } from "@/lib/types";
 import type { Client, Job, JobStatus } from "@/lib/types";
 import type { JobMoney } from "@/lib/calc";
-import { deleteJob, setJobStatus } from "@/lib/db/actions";
+import { deleteJob, duplicateJob, setJobStatus } from "@/lib/db/actions";
 import { formatDate, formatDuration, formatMoney } from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
 import { mapsHref, telHref } from "@/lib/utils";
@@ -236,6 +237,18 @@ export function OverviewTab({
           <Link href={`/lucrari/${job.id}/editare`}>
             <Pencil /> Editează
           </Link>
+        </Button>
+        <Button
+          variant="outline"
+          onClick={async () => {
+            const copy = await duplicateJob(job.id);
+            if (copy) {
+              toast.success("Lucrare duplicată");
+              router.push(`/lucrari/${copy.id}`);
+            }
+          }}
+        >
+          <Copy /> Duplică
         </Button>
         <Confirm
           title="Ștergi lucrarea?"

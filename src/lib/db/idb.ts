@@ -12,7 +12,10 @@
 import { TABLE_NAMES } from "../types";
 
 const DB_NAME = "montajpro";
-const DB_VERSION = 1;
+// Versiunea crește la fiecare tabel nou: altfel, pe telefoanele care au deja
+// baza deschisă, magazinul nou nu s-ar mai crea niciodată.
+// v2: facturi.
+const DB_VERSION = 2;
 
 export const OUTBOX_STORE = "__outbox";
 export const META_STORE = "__meta";

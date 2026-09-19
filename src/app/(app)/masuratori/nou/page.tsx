@@ -16,8 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DerivedPanel, MeasurementFields } from "@/components/measurements/measurement-fields";
+import {
+  DerivedPanel,
+  MeasurementFields,
+} from "@/components/measurements/measurement-fields";
 import { PhotoInput } from "@/components/photo/photo-input";
+import { DictateButton } from "@/components/ui/dictate-button";
 import { AssetImage } from "@/components/photo/asset-image";
 import { useClients, useJobs } from "@/hooks/use-data";
 import { addPhoto, saveMeasurement } from "@/lib/db/actions";
@@ -38,7 +42,9 @@ export default function NewMeasurementPage() {
   const [notes, setNotes] = useState("");
   const [jobId, setJobId] = useState<string | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
-  const [photos, setPhotos] = useState<{ path: string | null; localKey: string }[]>([]);
+  const [photos, setPhotos] = useState<
+    { path: string | null; localKey: string }[]
+  >([]);
   const [saving, setSaving] = useState(false);
 
   const submit = async (event: React.FormEvent) => {
@@ -65,7 +71,9 @@ export default function NewMeasurementPage() {
         }
       }
       toast.success("Măsurătoare salvată");
-      router.replace(jobId ? `/lucrari/${jobId}?tab=masuratori` : "/masuratori");
+      router.replace(
+        jobId ? `/lucrari/${jobId}?tab=masuratori` : "/masuratori",
+      );
     } finally {
       setSaving(false);
     }
@@ -73,7 +81,10 @@ export default function NewMeasurementPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
-      <PageHeader title="Măsurătoare nouă" description="Completează doar ce ai măsurat" />
+      <PageHeader
+        title="Măsurătoare nouă"
+        description="Completează doar ce ai măsurat"
+      />
 
       <form onSubmit={submit} className="space-y-4 pb-4">
         <div className="grid grid-cols-4 gap-2">
@@ -97,7 +108,10 @@ export default function NewMeasurementPage() {
 
         <div className="space-y-3.5 rounded-2xl border border-border bg-card p-4">
           <Field label="Etichetă" hint="ex. scara din hol, dormitor 1">
-            <Input value={label} onChange={(event) => setLabel(event.target.value)} />
+            <Input
+              value={label}
+              onChange={(event) => setLabel(event.target.value)}
+            />
           </Field>
           <MeasurementFields kind={kind} data={data} onChange={setData} />
         </div>
@@ -108,7 +122,9 @@ export default function NewMeasurementPage() {
           <Field label="Leagă de lucrare" hint="Opțional">
             <Select
               value={jobId ?? "none"}
-              onValueChange={(value) => setJobId(value === "none" ? null : value)}
+              onValueChange={(value) =>
+                setJobId(value === "none" ? null : value)
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Fără lucrare" />
@@ -127,7 +143,9 @@ export default function NewMeasurementPage() {
           <Field label="Client" hint="Opțional">
             <Select
               value={clientId ?? "none"}
-              onValueChange={(value) => setClientId(value === "none" ? null : value)}
+              onValueChange={(value) =>
+                setClientId(value === "none" ? null : value)
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Fără client" />
@@ -144,11 +162,21 @@ export default function NewMeasurementPage() {
           </Field>
 
           <Field label="Observații">
-            <Textarea
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              placeholder="Perete strâmb, prag înalt, acces dificil..."
-            />
+            <div className="flex items-start gap-2">
+              <Textarea
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+                placeholder="Perete strâmb, prag înalt, acces dificil..."
+                className="flex-1"
+              />
+              <DictateButton
+                onText={(text) =>
+                  setNotes((current) =>
+                    [current, text].filter(Boolean).join(" "),
+                  )
+                }
+              />
+            </div>
           </Field>
 
           <Field label="Fotografii">

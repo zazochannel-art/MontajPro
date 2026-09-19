@@ -15,7 +15,7 @@
  * Cererile către Supabase nu sunt atinse: sincronizarea își face treaba singură.
  */
 
-const VERSION = 'montajpro-v2';
+const VERSION = 'montajpro-v3';
 const SHELL_CACHE = VERSION + '-shell';
 const ASSET_CACHE = VERSION + '-assets';
 const OFFLINE_URL = '/offline.html';
@@ -121,6 +121,56 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => cached);
       return cached || network;
+    }),
+  );
+});
+
+/*
+ * Notificări push.
+ *
+ * Serverul trimite un JSON simplu: titlu, text și unde duce apăsarea. Dacă
+ * datele lipsesc sau nu se pot citi, tot arătăm ceva: o notificare mută e mai
+ * rea decât una generică.
+ */
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { body: event.data ? event.data.text() : '' };
+  }
+
+  const title = payload.title || 'MontajPro';
+  const options = {
+    body: payload.body || '',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    tag: payload.tag || 'montajpro',
+    data: { url: payload.url || '/' },
+    // Pe șantier telefonul stă în buzunar: vibrația contează mai mult decât
+    // sunetul.
+    vibrate: [80, 40, 80],
+    renotify: Boolean(payload.tag),
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      // Dacă aplicația e deja deschisă, o aducem în față în loc să deschidem
+      // încă o filă.
+      for (const client of windows) {
+        if ('focus' in client) {
+          client.navigate(target);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(target);
     }),
   );
 });

@@ -678,3 +678,153 @@ export async function importData(payload: {
   kick();
   return imported;
 }
+
+/* ------------------------ oferta publică --------------------------- */
+
+/**
+ * Pregătește oferta pentru trimitere: îi dă un token dacă nu are și o
+ * marchează drept trimisă. Tokenul este lung intenționat — el ține locul
+ * parolei pentru cine deschide linkul.
+ */
+export async function ensureQuoteLink(quoteId: string): Promise<string | null> {
+  const quote = store.getTable("quotes").find((row) => row.id === quoteId);
+  if (!quote) return null;
+
+  const token = quote.public_token || `${uid()}${uid()}`.replace(/-/g, "");
+  const patch: Partial<Quote> = { public_token: token };
+  if (quote.status === "draft") {
+    patch.status = "sent";
+    patch.sent_at = nowISO();
+  }
+  await store.update("quotes", quoteId, patch);
+  kick();
+  return token;
+}
+
+/* ------------------------------ facturi ---------------------------- */
+
+export function nextInvoiceNumber(series: string): number {
+  const numbers = store
+    .getTable("invoices")
+    .filter((invoice) => !invoice.deleted_at && invoice.series === series)
+    .map((invoice) => invoice.number || 0);
+  return (numbers.length ? Math.max(...numbers) : 0) + 1;
+}
+
+export interface InvoiceInput {
+  id?: string;
+  job_id: string | null;
+  client_id: string | null;
+  series: string;
+  issued_at: string;
+  due_at?: string | null;
+  subtotal: number;
+  vat_percent: number;
+  notes?: string | null;
+  paid_at?: string | null;
+}
+
+export async function saveInvoice(input: InvoiceInput) {
+  const client = input.client_id
+    ? store.getTable("clients").find((row) => row.id === input.client_id)
+    : null;
+  const subtotal = num(input.subtotal);
+  const vat = num(input.vat_percent);
+
+  const payload = {
+    job_id: input.job_id,
+    client_id: input.client_id,
+    series: input.series.trim() || "MP",
+    issued_at: input.issued_at,
+    due_at: input.due_at || null,
+    // Datele clientului se îngheață în factură.
+    client_name: client?.name ?? null,
+    client_address: client?.address ?? null,
+    client_phone: client?.phone ?? null,
+    subtotal,
+    vat_percent: vat,
+    total: Math.round(subtotal * (1 + vat / 100) * 100) / 100,
+    paid_at: input.paid_at || null,
+    notes: input.notes?.trim() || null,
+  };
+
+  const invoice = input.id
+    ? await store.update("invoices", input.id, payload)
+    : await store.insert("invoices", {
+        ...payload,
+        number: nextInvoiceNumber(payload.series),
+      });
+  kick();
+  return invoice;
+}
+
+export async function setInvoicePaid(id: string, paidAt: string | null) {
+  await store.update("invoices", id, { paid_at: paidAt });
+  kick();
+}
+
+export async function deleteInvoice(id: string) {
+  await store.remove("invoices", id);
+  kick();
+}
+
+/* --------------------------- duplicare lucrare --------------------- */
+
+/**
+ * Copiază o lucrare ca punct de plecare pentru alta.
+ *
+ * Se copiază ce se repetă (tip, preț, materiale, măsurători), nu ce ține de
+ * lucrarea trecută: date, plăți, poze, ore lucrate.
+ */
+export async function duplicateJob(id: string) {
+  const source = store.getTable("jobs").find((row) => row.id === id);
+  if (!source) return null;
+
+  const copy = await store.insert("jobs", {
+    client_id: source.client_id,
+    title: `${source.title} (copie)`,
+    type: source.type,
+    status: "quote",
+    address: source.address,
+    scheduled_date: null,
+    scheduled_time: null,
+    estimated_hours: source.estimated_hours,
+    price_total: source.price_total,
+    material_cost: source.material_cost,
+    start_date: null,
+    end_date: null,
+    notes: source.notes,
+    in_portfolio: false,
+    portfolio_description: null,
+  });
+
+  for (const material of store
+    .getTable("job_materials")
+    .filter((row) => row.job_id === id && !row.deleted_at)) {
+    await store.insert("job_materials", {
+      job_id: copy.id,
+      material_id: material.material_id,
+      name: material.name,
+      quantity: material.quantity,
+      unit: material.unit,
+      unit_price: material.unit_price,
+      purchased: false,
+    });
+  }
+
+  for (const measurement of store
+    .getTable("job_measurements")
+    .filter((row) => row.job_id === id && !row.deleted_at)) {
+    await store.insert("job_measurements", {
+      job_id: copy.id,
+      client_id: measurement.client_id,
+      kind: measurement.kind,
+      label: measurement.label,
+      data: measurement.data,
+      notes: measurement.notes,
+    });
+  }
+
+  kick();
+  return copy;
+}

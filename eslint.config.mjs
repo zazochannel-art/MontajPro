@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Funcțiile Edge rulează pe Deno: alt runtime, alte importuri.
+    "supabase/functions/**",
   ]),
 ]);
 

@@ -212,6 +212,41 @@ try {
     (await page.getByText(/7\.500 MDL/).count()) > 0,
   );
 
+  /* ----------------------------- factură --------------------------- */
+  section("Factură din lucrare");
+  await page.goto(`${BASE}/lucrari`, { waitUntil: "networkidle" });
+  await page.getByText("Montaj scară stejar (test)").first().click();
+  await page.waitForURL(/\/lucrari\/[0-9a-f-]{36}/, { timeout: 15000 });
+  await page.getByRole("tab", { name: /Finanțe/i }).click();
+  await page.getByRole("button", { name: /Fă factură/i }).click();
+  await page.locator("#invoice-subtotal").fill("12000");
+  await page.locator("#invoice-vat").fill("20");
+  check(
+    "totalul facturii include TVA",
+    (await page.getByText(/14\.400 MDL/).count()) > 0,
+  );
+  await page.getByRole("button", { name: /^Salvează$/ }).click();
+  await page.waitForURL(/\/facturi\/[0-9a-f-]{36}/, { timeout: 15000 });
+  check("factura s-a creat și s-a deschis", true);
+  await page.getByRole("button", { name: /Marchează achitată/i }).click();
+  await page.getByText(/Achitată/).first().waitFor({ timeout: 10000 });
+  check("factura poate fi marcată achitată", true);
+
+  /* ----------------------------- căutare --------------------------- */
+  section("Căutare globală");
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Caută" }).click();
+  const searchDialog = page.getByRole("dialog");
+  await searchDialog.getByPlaceholder(/Caută client/).fill("Ion");
+  // Căutarea se face în dialog: fără scop, textul s-ar potrivi și cu pagina
+  // de dedesubt, pe care dialogul o acoperă.
+  const clientHit = searchDialog.getByRole("button", { name: /Ion Popescu \(test\)/ });
+  await clientHit.first().waitFor({ timeout: 10000 });
+  check("căutarea găsește clientul", true);
+  await clientHit.first().click();
+  await page.waitForURL(/\/clienti\/[0-9a-f-]{36}/, { timeout: 15000 });
+  check("rezultatul duce la client", true);
+
   /* ----------------------------- navigare -------------------------- */
   section("Navigare în toate paginile");
   for (const [path, heading] of [
@@ -220,6 +255,7 @@ try {
     ["/clienti", /Clienți/],
     ["/masuratori", /Măsurători/],
     ["/finante", /Finanțe/],
+    ["/facturi", /Facturi/],
     ["/materiale", /Materiale/],
     ["/scule", /Scule/],
     ["/portofoliu", /Portofoliu/],
