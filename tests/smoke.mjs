@@ -203,10 +203,14 @@ try {
   section("Ofertă");
   await page.goto(`${BASE}/oferte/nou`, { waitUntil: "networkidle" });
   await page.getByPlaceholder("Montaj scară stejar").fill("Ofertă montaj scară (test)");
-  await page.getByPlaceholder("Descriere linie").first().fill("Montaj trepte");
-  const quoteNumbers = page.locator('input[inputmode="decimal"]');
-  await quoteNumbers.nth(0).fill("15");
-  await quoteNumbers.nth(1).fill("500");
+  // Ca în calculator: alegem poziția, nu scriem niciun preț.
+  await page.getByRole("combobox", { name: "Poziție" }).first().click();
+  await page.getByRole("option", { name: /Montaj treaptă/ }).click();
+  await page.locator('input[inputmode="decimal"]').first().fill("15");
+  check(
+    "poziția aleasă aduce prețul în ofertă (15 × 500)",
+    (await page.getByText(/7\.500 MDL/).count()) > 0,
+  );
   await page.getByRole("button", { name: /Creează oferta/i }).click();
   await page.waitForURL(/\/oferte\/[0-9a-f-]{36}/, { timeout: 15000 });
   check("oferta s-a creat", true);
