@@ -12,6 +12,7 @@ import {
   Ruler,
   Share,
   Smartphone,
+  Plus,
   Tags,
   Trash2,
   Upload,
@@ -40,18 +41,10 @@ import { useTable } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
 import { useInstallPrompt } from "@/hooks/use-install-prompt";
 import { CURRENCIES, DEFAULT_MATERIAL_CATEGORIES } from "@/lib/constants";
-import type { DefaultRates, NotificationPrefs } from "@/lib/types";
+import { BUILTIN_POSITIONS } from "@/lib/price-list";
+import type { NotificationPrefs, PriceItem } from "@/lib/types";
+import { uid } from "@/lib/utils";
 import { formatDateTime } from "@/lib/format";
-
-const RATE_LABELS: Record<keyof DefaultRates, string> = {
-  stair_step: "Treaptă",
-  stair_riser: "Contratreaptă",
-  landing: "Podest",
-  railing: "Balustradă",
-  parquet_m2: "Parchet (m²)",
-  plinth_m: "Plintă (m)",
-  hourly: "Tarif orar",
-};
 
 const NOTIFICATION_LABELS: Record<keyof NotificationPrefs, string> = {
   job_today: "Lucrare azi",
@@ -87,7 +80,25 @@ export default function SettingsPage() {
   }
 
   const rates = settings.default_rates;
+  const priceList = settings.price_list ?? [];
   const prefs = settings.notification_prefs;
+
+  /** O poziție se scrie înapoi întreagă: lista e un singur câmp în setări. */
+  const savePosition = (id: string, patch: Partial<PriceItem>) =>
+    void updateSettings({
+      price_list: priceList.map((item) =>
+        item.id === id ? { ...item, ...patch } : item,
+      ),
+    });
+
+  const addPosition = () =>
+    void updateSettings({
+      price_list: [
+        ...priceList,
+        { id: uid(), name: "", unit: "buc", price: 0, kind: "any" as const },
+      ],
+    });
+
   const categories = settings.material_categories?.length
     ? settings.material_categories
     : DEFAULT_MATERIAL_CATEGORIES;
@@ -225,22 +236,109 @@ export default function SettingsPage() {
           <Ruler className="size-4 text-primary" /> Tarife implicite
         </h3>
         <p className="text-xs text-muted-foreground">
-          Se folosesc automat în calculatorul de preț.
+          Sunt pozițiile din care alegi în calculatorul de preț: alegi poziția,
+          prețul vine de aici.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
-          {(Object.keys(RATE_LABELS) as (keyof DefaultRates)[]).map((key) => (
-            <Field key={key} label={RATE_LABELS[key]}>
+          {BUILTIN_POSITIONS.map((position) => (
+            <Field
+              key={position.key}
+              label={position.name}
+              htmlFor={`rate-${position.key}`}
+              hint={`per ${position.unit}`}
+            >
               <MoneyInput
-                value={rates[key]}
+                id={`rate-${position.key}`}
+                value={rates[position.key]}
                 currency={currency}
                 onChange={(value) =>
                   void updateSettings({
-                    default_rates: { ...rates, [key]: value },
+                    default_rates: { ...rates, [position.key]: value },
                   })
                 }
               />
             </Field>
           ))}
+        </div>
+
+        <div className="space-y-2.5 border-t border-border pt-3.5">
+          <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Poziții proprii
+          </h4>
+          {priceList.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Adaugă ce mai faci în afara celor de mai sus — demontare, transport,
+              pregătit stratul suport — ca să le poți alege direct în calculator.
+            </p>
+          )}
+
+          {priceList.map((item) => (
+            <div
+              key={item.id}
+              className="space-y-2 rounded-xl border border-border bg-background p-2.5"
+            >
+              <div className="flex items-center gap-2">
+                <Input
+                  defaultValue={item.name}
+                  placeholder="Demontare parchet vechi"
+                  className="h-10 flex-1"
+                  onBlur={(event) => savePosition(item.id, { name: event.target.value })}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Șterge ${item.name || "poziția"}`}
+                  onClick={() =>
+                    void updateSettings({
+                      price_list: priceList.filter((other) => other.id !== item.id),
+                    })
+                  }
+                >
+                  <Trash2 className="text-muted-foreground" />
+                </Button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <Field label="Unitate">
+                  <Input
+                    defaultValue={item.unit}
+                    placeholder="buc"
+                    onBlur={(event) =>
+                      savePosition(item.id, { unit: event.target.value || "buc" })
+                    }
+                  />
+                </Field>
+                <Field label="Apare la">
+                  <Select
+                    value={item.kind}
+                    onValueChange={(value) =>
+                      savePosition(item.id, { kind: value as PriceItem["kind"] })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="stairs">Scări</SelectItem>
+                      <SelectItem value="parquet">Parchet</SelectItem>
+                      <SelectItem value="plinth">Plintă</SelectItem>
+                      <SelectItem value="any">Oriunde</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Preț">
+                  <MoneyInput
+                    value={item.price}
+                    currency={currency}
+                    onChange={(value) => savePosition(item.id, { price: value })}
+                  />
+                </Field>
+              </div>
+            </div>
+          ))}
+
+          <Button variant="outline" size="sm" onClick={addPosition}>
+            <Plus /> Adaugă poziție
+          </Button>
         </div>
       </section>
 

@@ -294,6 +294,23 @@ export interface DefaultRates {
   hourly: number;
 }
 
+/**
+ * O poziție proprie din lista de prețuri.
+ *
+ * Tarifele implicite (`DefaultRates`) acoperă lucrările obișnuite; aici intră
+ * ce mai face fiecare montator — demontare, transport, pregătit stratul suport.
+ * Sunt ale utilizatorului, deci se sincronizează odată cu restul setărilor.
+ */
+export interface PriceItem {
+  id: string;
+  name: string;
+  /** `buc`, `m`, `m²`, `oră`… — se pune automat pe linia din calculator. */
+  unit: string;
+  price: number;
+  /** Tipul de lucrare la care apare prima în listă; `any` apare peste tot. */
+  kind: JobType | "any";
+}
+
 export interface NotificationPrefs {
   job_tomorrow: boolean;
   job_today: boolean;
@@ -314,6 +331,8 @@ export interface Settings extends BaseRow {
   /** `metric` (m, m²) sau `imperial` (ft, ft²). */
   units: "metric" | "imperial";
   default_rates: DefaultRates;
+  /** Poziții proprii, peste cele implicite. */
+  price_list: PriceItem[];
   expense_categories: string[];
   material_categories: string[];
   notification_prefs: NotificationPrefs;

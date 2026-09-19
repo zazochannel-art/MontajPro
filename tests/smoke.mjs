@@ -161,14 +161,42 @@ try {
   );
 
   /* ----------------------------- calculator ------------------------ */
-  section("Calculator preț");
+  section("Calculator preț: poziția aduce prețul din setări");
+
+  // Prețul are o singură sursă — tarifele din setări. Le punem acolo…
+  await page.goto(`${BASE}/setari`, { waitUntil: "networkidle" });
+  const stepRate = page.getByLabel("Montaj treaptă");
+  await stepRate.waitFor({ timeout: 10000 });
+  await stepRate.fill("500");
+  await page.getByLabel("Manoperă la oră").fill("200");
+
+  // …și ne asigurăm că s-au scris, reîncărcând pagina.
+  await page.reload({ waitUntil: "networkidle" });
+  const savedRate = page.getByLabel("Montaj treaptă");
+  await savedRate.waitFor({ timeout: 10000 });
+  check("tariful se salvează în setări", (await savedRate.inputValue()).includes("500"));
+
+  // În calculator nu mai scriem niciun preț: linia pornește cu cel din setări.
   await page.goto(`${BASE}/calculator`, { waitUntil: "networkidle" });
+  await page.getByRole("combobox").first().waitFor({ timeout: 10000 });
   const calcInputs = page.locator('input[inputmode="decimal"]');
   await calcInputs.nth(0).fill("15"); // trepte
-  await calcInputs.nth(1).fill("500"); // preț treaptă
   check(
-    "totalul liniei se calculează",
+    "prețul vine automat din setări (15 × 500)",
     (await page.getByText(/7\.500 MDL/).count()) > 0,
+  );
+
+  // Poziție aleasă pe o linie nouă: aduce și unitatea, și prețul.
+  await page.getByRole("button", { name: /Adaugă serviciu/i }).click();
+  await page.getByRole("combobox").last().click();
+  await page.getByRole("option", { name: /Manoperă la oră/ }).click();
+  check(
+    "poziția aleasă aduce prețul cu ea (7.500 + 200)",
+    (await page.getByText(/7\.700 MDL/).count()) > 0,
+  );
+  check(
+    "poziția aleasă aduce și unitatea",
+    (await page.getByText(/1 oră × 200 MDL/).count()) > 0,
   );
 
   /* ----------------------------- ofertă ---------------------------- */

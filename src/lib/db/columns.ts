@@ -123,6 +123,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "currency",
     "units",
     "default_rates",
+    "price_list",
     "expense_categories",
     "material_categories",
     "notification_prefs",

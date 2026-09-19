@@ -194,6 +194,8 @@ export interface CalcLine {
   quantity: number;
   unit: string;
   unit_price: number;
+  /** Poziția din setări de la care a pornit linia; gol dacă e scrisă de mână. */
+  item_id?: string | null;
 }
 
 export function lineTotal(line: Pick<CalcLine, "quantity" | "unit_price">): number {
