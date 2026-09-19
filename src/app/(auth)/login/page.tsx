@@ -147,8 +147,11 @@ export default function LoginPage() {
             <div className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
               <p className="font-medium">Sincronizarea în cloud nu este configurată</p>
               <p className="mt-1 text-amber-200/80">
-                Adaugă cheile Supabase în <code>.env.local</code> ca să poți folosi contul pe
-                mai multe telefoane. Până atunci poți lucra local.
+                Ca să folosești contul pe mai multe telefoane, pune{" "}
+                <code>NEXT_PUBLIC_SUPABASE_URL</code> și{" "}
+                <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> în <code>.env.local</code> (local)
+                sau în variabilele de mediu ale proiectului, apoi redeployează. Până atunci
+                poți lucra local.
               </p>
             </div>
           )}
