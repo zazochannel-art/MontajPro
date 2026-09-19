@@ -136,6 +136,7 @@ function defaultSettings(userId: string): Settings {
     currency: DEFAULT_CURRENCY,
     units: "metric",
     default_rates: { ...DEFAULT_RATES },
+    price_list: [],
     expense_categories: [...EXPENSE_CATEGORIES],
     material_categories: [...DEFAULT_MATERIAL_CATEGORIES],
     notification_prefs: { ...DEFAULT_NOTIFICATION_PREFS },

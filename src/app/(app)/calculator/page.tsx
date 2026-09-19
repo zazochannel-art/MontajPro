@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Calculator, FileText, Hammer, Plus, Save, X } from "lucide-react";
+import { Calculator, FileText, Hammer, Plus, Save, Settings2, X } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,9 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -29,51 +32,86 @@ import { useApp } from "@/lib/app-provider";
 import { calcTotal, lineTotal, type CalcLine } from "@/lib/calc";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { JOB_TYPE_LABELS } from "@/lib/constants";
-import type { JobType } from "@/lib/types";
+import {
+  allPositions,
+  builtinId,
+  CUSTOM_POSITION,
+  everyPriceUnset,
+  findPosition,
+  groupedPositions,
+  type Position,
+} from "@/lib/price-list";
+import type { DefaultRates, JobType } from "@/lib/types";
 import { updateJob } from "@/lib/db/actions";
 import { saveCalcDraft } from "@/lib/calc-draft";
 import { uid } from "@/lib/utils";
 
-type Preset = Omit<CalcLine, "id">;
+/**
+ * Cantitățile cu care pornește fiecare tip de lucrare. Prețurile nu stau aici:
+ * vin din setări, prin pozițiile din `price-list.ts`.
+ */
+const PRESETS: Record<JobType, { key: keyof DefaultRates; quantity: number }[]> = {
+  stairs: [
+    { key: "stair_step", quantity: 15 },
+    { key: "stair_riser", quantity: 0 },
+    { key: "landing", quantity: 1 },
+    { key: "railing", quantity: 1 },
+  ],
+  parquet: [{ key: "parquet_m2", quantity: 85 }],
+  plinth: [{ key: "plinth_m", quantity: 75 }],
+  other: [],
+};
 
-function presetsFor(kind: JobType, rates: Record<string, number>): Preset[] {
-  if (kind === "stairs") {
-    return [
-      { description: "Montaj trepte", quantity: 15, unit: "buc", unit_price: rates.stair_step },
-      { description: "Contratrepte", quantity: 0, unit: "buc", unit_price: rates.stair_riser },
-      { description: "Podest", quantity: 1, unit: "buc", unit_price: rates.landing },
-      { description: "Balustradă", quantity: 1, unit: "set", unit_price: rates.railing },
-    ];
+function lineFrom(position: Position | undefined, quantity: number): CalcLine {
+  if (!position) {
+    return {
+      id: uid(),
+      item_id: null,
+      description: "",
+      quantity,
+      unit: "buc",
+      unit_price: 0,
+    };
   }
-  if (kind === "parquet") {
-    return [
-      { description: "Montaj parchet", quantity: 85, unit: "m²", unit_price: rates.parquet_m2 },
-    ];
-  }
-  if (kind === "plinth") {
-    return [{ description: "Montaj plintă", quantity: 75, unit: "m", unit_price: rates.plinth_m }];
-  }
-  return [{ description: "Serviciu", quantity: 1, unit: "buc", unit_price: 0 }];
+  return {
+    id: uid(),
+    item_id: position.id,
+    description: position.name,
+    quantity,
+    unit: position.unit,
+    unit_price: position.price,
+  };
+}
+
+function presetLines(kind: JobType, positions: Position[]): CalcLine[] {
+  const entries = PRESETS[kind];
+  if (!entries.length) return [lineFrom(undefined, 1)];
+  return entries.map(({ key, quantity }) =>
+    lineFrom(findPosition(positions, builtinId(key)), quantity),
+  );
 }
 
 export default function CalculatorPage() {
   const router = useRouter();
   const { currency, settings } = useApp();
   const jobs = useJobs();
-  const rates = (settings?.default_rates ?? {}) as unknown as Record<string, number>;
+  const positions = useMemo(() => allPositions(settings), [settings]);
 
   const [kind, setKind] = useState<JobType>("stairs");
-  const [lines, setLines] = useState<CalcLine[]>(() =>
-    presetsFor("stairs", rates).map((preset) => ({ ...preset, id: uid() })),
-  );
+  const [lines, setLines] = useState<CalcLine[]>(() => presetLines("stairs", positions));
   const [saveOpen, setSaveOpen] = useState(false);
   const [targetJob, setTargetJob] = useState<string>("new");
 
   const total = useMemo(() => calcTotal(lines), [lines]);
+  const { matching, rest } = useMemo(
+    () => groupedPositions(positions, kind),
+    [positions, kind],
+  );
+  const noRates = everyPriceUnset(positions);
 
   const switchKind = (next: JobType) => {
     setKind(next);
-    setLines(presetsFor(next, rates).map((preset) => ({ ...preset, id: uid() })));
+    setLines(presetLines(next, positions));
   };
 
   const update = (id: string, patch: Partial<CalcLine>) =>
@@ -81,11 +119,23 @@ export default function CalculatorPage() {
       current.map((line) => (line.id === id ? { ...line, ...patch } : line)),
     );
 
-  const addLine = () =>
-    setLines((current) => [
-      ...current,
-      { id: uid(), description: "", quantity: 1, unit: "buc", unit_price: 0 },
-    ]);
+  /** Alegerea poziției aduce cu ea unitatea și prețul din setări. */
+  const choosePosition = (line: CalcLine, value: string) => {
+    if (value === CUSTOM_POSITION) {
+      update(line.id, { item_id: CUSTOM_POSITION });
+      return;
+    }
+    const position = findPosition(positions, value);
+    if (!position) return;
+    update(line.id, {
+      item_id: position.id,
+      description: position.name,
+      unit: position.unit,
+      unit_price: position.price,
+    });
+  };
+
+  const addLine = () => setLines((current) => [...current, lineFrom(undefined, 1)]);
 
   const removeLine = (id: string) =>
     setLines((current) => current.filter((line) => line.id !== id));
@@ -117,12 +167,35 @@ export default function CalculatorPage() {
     router.push("/oferte/nou");
   };
 
+  const option = (position: Position) => (
+    <SelectItem key={position.id} value={position.id}>
+      {position.name}
+      <span className="text-muted-foreground">
+        {" · "}
+        {position.price > 0 ? `${formatMoney(position.price, currency)}/${position.unit}` : "fără preț"}
+      </span>
+    </SelectItem>
+  );
+
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <PageHeader
         title="Calculator preț"
-        description="Pune cantitățile, prețurile ies singure"
+        description="Alege poziția, pune cantitatea — prețul vine din setări"
       />
+
+      {noRates && (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-sm text-amber-200">
+          <Settings2 className="mt-0.5 size-4 shrink-0" />
+          <p>
+            Încă n-ai niciun tarif pus, deci prețurile pornesc de la zero.{" "}
+            <Link href="/setari" className="font-medium underline underline-offset-2">
+              Pune-le o dată în Setări
+            </Link>{" "}
+            și apoi vin singure aici.
+          </p>
+        </div>
+      )}
 
       <Tabs value={kind} onValueChange={(value) => switchKind(value as JobType)}>
         <TabsList>
@@ -137,12 +210,40 @@ export default function CalculatorPage() {
             {lines.map((line) => (
               <div key={line.id} className="rounded-2xl border border-border bg-card p-3.5">
                 <div className="flex items-center gap-2">
-                  <Input
-                    value={line.description}
-                    onChange={(event) => update(line.id, { description: event.target.value })}
-                    placeholder="Denumire serviciu"
-                    className="h-10 flex-1"
-                  />
+                  <div className="flex-1">
+                    <Select
+                      value={line.item_id ?? ""}
+                      onValueChange={(value) => choosePosition(line, value)}
+                    >
+                      <SelectTrigger
+                        className="h-10"
+                        aria-label="Poziție"
+                      >
+                        <SelectValue placeholder="Alege poziția">
+                          {line.item_id === CUSTOM_POSITION
+                            ? line.description || "Altceva"
+                            : findPosition(positions, line.item_id ?? "")?.name}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {matching.length > 0 && (
+                          <SelectGroup>
+                            <SelectLabel>{JOB_TYPE_LABELS[kind]}</SelectLabel>
+                            {matching.map(option)}
+                          </SelectGroup>
+                        )}
+                        {rest.length > 0 && (
+                          <SelectGroup>
+                            <SelectLabel>Alte poziții</SelectLabel>
+                            {rest.map(option)}
+                          </SelectGroup>
+                        )}
+                        <SelectGroup>
+                          <SelectItem value={CUSTOM_POSITION}>Altceva — scriu eu</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <Button
                     variant="ghost"
                     size="icon-sm"
@@ -152,6 +253,15 @@ export default function CalculatorPage() {
                     <X className="text-muted-foreground" />
                   </Button>
                 </div>
+
+                {line.item_id === CUSTOM_POSITION && (
+                  <Input
+                    value={line.description}
+                    onChange={(event) => update(line.id, { description: event.target.value })}
+                    placeholder="Denumire serviciu"
+                    className="mt-2.5 h-10"
+                  />
+                )}
 
                 <div className="mt-2.5 grid grid-cols-[1fr_auto_1fr] items-end gap-2">
                   <Field label="Cantitate">

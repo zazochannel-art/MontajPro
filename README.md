@@ -18,7 +18,7 @@ schimba din Setări (MDL, RON, EUR, USD, UAH, GBP).
 | **Pagina lucrării** | Tab-uri: General, Măsurători, Poze, Materiale, Finanțe, Activitate; buton mare **START / FINALIZEAZĂ** cu cronometru |
 | **Clienți** | CRUD complet, istoric lucrări și plăți, fotografii, acțiuni rapide (sună, WhatsApp, hartă) |
 | **Măsurători** | Scară / parchet / plintă / altceva, cu **calcule automate** (suprafețe, unghi, bucăți necesare, pierdere %) |
-| **Calculator preț** | Trepte × preț, podest, balustradă, m² parchet, metri plintă + servicii proprii; salvează direct în lucrare sau ofertă |
+| **Calculator preț** | Alegi poziția, prețul și unitatea vin din tarifele din Setări; poziții proprii peste cele implicite; salvează direct în lucrare sau ofertă |
 | **Oferte** | Numerotate automat, cu subtotal/reducere/avans/rest, format printabil și partajare prin WhatsApp/share nativ; se transformă într-o lucrare dintr-o apăsare |
 | **Calendar** | Lunar și săptămânal, mutarea lucrării pe altă zi (drag pe desktop, buton pe telefon) |
 | **Finanțe** | Încasări, cheltuieli pe categorii, profit, bani de primit, avansuri — pe lună |
@@ -30,7 +30,7 @@ schimba din Setări (MDL, RON, EUR, USD, UAH, GBP).
 | **Export contabil** | CSV pentru încasări, cheltuieli și facturi, cu separator `;` și virgulă zecimală, gata de deschis în Excel |
 | **Notificări** | În aplicație și push pe telefon: lucrare azi/mâine, plată restantă, materiale lipsă, garanție care expiră, ofertă neconfirmată |
 | **Căutare globală** | Un câmp peste clienți, lucrări, oferte, facturi, materiale, scule și măsurători (Ctrl/Cmd+K) |
-| **Setări** | Profil, monedă, unități, tarife implicite, categorii, notificări, backup, date demo |
+| **Setări** | Profil, monedă, unități, tarife și poziții proprii, categorii, notificări, backup, date demo |
 
 ## Stack
 
@@ -86,7 +86,8 @@ npm run dev                    # http://localhost:3000
      funcția Edge e publicată și secretele sunt în Vault);
    - `0005_restrict_internal_functions.sql` — retrage din browser dreptul de a
      apela funcțiile interne;
-   - `0006_push_config.sql` — citirea secretelor push din Vault.
+   - `0006_push_config.sql` — citirea secretelor push din Vault;
+   - `0007_settings_price_list.sql` — pozițiile proprii din lista de prețuri.
 3. Pune `NEXT_PUBLIC_SUPABASE_URL` și `NEXT_PUBLIC_SUPABASE_ANON_KEY` în
    `.env.local`. Pentru aplicația publicată, aceleași două variabile se pun în
    setările proiectului de găzduire (pe Vercel: Settings → Environment
