@@ -79,9 +79,17 @@ npm run dev                    # http://localhost:3000
 2. Rulează migrațiile din `supabase/migrations/` în ordine (SQL Editor sau
    `supabase db push`):
    - `0001_init.sql` — tabelele, indecșii, triggerele și politicile RLS;
-   - `0002_storage.sql` — bucket-ul privat `job-photos` și politicile lui.
+   - `0002_storage.sql` — bucket-ul privat `job-photos` și politicile lui;
+   - `0003_quote_links_invoices_push.sql` — linkul public de ofertă, facturile
+     și abonamentele push;
+   - `0004_cron.sql` — programarea notificărilor (cere completarea locurilor
+     marcate în fișier);
+   - `0005_restrict_internal_functions.sql` — retrage din browser dreptul de a
+     apela funcțiile interne.
 3. Pune `NEXT_PUBLIC_SUPABASE_URL` și `NEXT_PUBLIC_SUPABASE_ANON_KEY` în
-   `.env.local`.
+   `.env.local`. Pentru aplicația publicată, aceleași două variabile se pun în
+   setările proiectului de găzduire (pe Vercel: Settings → Environment
+   Variables) — se citesc la build, deci după ce le adaugi trebuie un deploy nou.
 4. Repornește `npm run dev` — apare ecranul de autentificare.
 
 Row Level Security este activ pe toate tabelele: fiecare cont vede **doar**
