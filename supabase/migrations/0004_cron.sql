@@ -6,8 +6,11 @@
 -- la fiecare rulare, deci nu ajung niciodată în repo și se pot schimba fără să
 -- rescrii programarea.
 
+-- pg_net merge în `extensions`, nu în `public`: altfel linterul Supabase îl
+-- semnalează, pe bună dreptate — o extensie în schema expusă prin API e
+-- suprafață în plus. Funcțiile lui rămân în schema `net` oricum.
 create extension if not exists pg_cron;
-create extension if not exists pg_net;
+create extension if not exists pg_net with schema extensions;
 
 -- Ora 7:30 UTC — înainte de plecarea pe șantier, indiferent de sezon.
 select cron.unschedule('montajpro-reminders')
