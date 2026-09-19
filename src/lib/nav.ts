@@ -6,6 +6,7 @@ import {
   Image as ImageIcon,
   LayoutDashboard,
   Package,
+  ReceiptText,
   Bell,
   Ruler,
   Settings,
@@ -33,7 +34,12 @@ export const NAV_SECTIONS: NavSection[] = [
     title: "Principal",
     items: [
       { href: "/", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/lucrari", label: "Lucrări", icon: Hammer, badge: "active_jobs" },
+      {
+        href: "/lucrari",
+        label: "Lucrări",
+        icon: Hammer,
+        badge: "active_jobs",
+      },
       { href: "/calendar", label: "Calendar", icon: CalendarDays },
       { href: "/clienti", label: "Clienți", icon: Users },
     ],
@@ -50,6 +56,7 @@ export const NAV_SECTIONS: NavSection[] = [
     title: "Resurse",
     items: [
       { href: "/finante", label: "Finanțe", icon: Wallet },
+      { href: "/facturi", label: "Facturi", icon: ReceiptText },
       { href: "/materiale", label: "Materiale", icon: Package },
       { href: "/scule", label: "Scule", icon: Wrench },
       { href: "/portofoliu", label: "Portofoliu", icon: ImageIcon },
@@ -58,7 +65,12 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: "Cont",
     items: [
-      { href: "/notificari", label: "Notificări", icon: Bell, badge: "notifications" },
+      {
+        href: "/notificari",
+        label: "Notificări",
+        icon: Bell,
+        badge: "notifications",
+      },
       { href: "/setari", label: "Setări", icon: Settings },
     ],
   },

@@ -24,6 +24,7 @@ import { saveMeasurement } from "@/lib/db/actions";
 import { JOB_TYPE_LABELS } from "@/lib/constants";
 import { JOB_TYPES } from "@/lib/types";
 import type { JobMeasurement, JobType, MeasurementData } from "@/lib/types";
+import { DictateButton } from "@/components/ui/dictate-button";
 import { DerivedPanel, MeasurementFields } from "./measurement-fields";
 
 /** Adaugă sau editează o măsurătoare din pagina lucrării. */
@@ -129,11 +130,19 @@ function MeasurementForm({
         <DerivedPanel kind={kind} data={data} />
 
         <Field label="Observații">
-          <Textarea
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            placeholder="Perete strâmb, prag înalt, necesită tăiere pe loc..."
-          />
+          <div className="flex items-start gap-2">
+            <Textarea
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder="Perete strâmb, prag înalt, necesită tăiere pe loc..."
+              className="flex-1"
+            />
+            <DictateButton
+              onText={(text) =>
+                setNotes((current) => [current, text].filter(Boolean).join(" "))
+              }
+            />
+          </div>
         </Field>
 
         <DialogFooter>

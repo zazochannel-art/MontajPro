@@ -6,6 +6,7 @@ import { notFound, useRouter } from "next/navigation";
 import {
   CheckCircle2,
   Hammer,
+  Link2,
   Pencil,
   Printer,
   Send,
@@ -21,16 +22,28 @@ import { useRow, useStoreReady, useTable } from "@/hooks/use-data";
 import {
   convertQuoteToJob,
   deleteQuote,
+  ensureQuoteLink,
   quoteTotal,
   setQuoteStatus,
 } from "@/lib/db/actions";
+import { publicQuoteUrl } from "@/lib/supabase/public-quote";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { QUOTE_STATUS_CLASSES, QUOTE_STATUS_LABELS } from "@/lib/constants";
-import { formatDate, formatMoney, formatNumber, formatQuoteNumber } from "@/lib/format";
+import {
+  formatDate,
+  formatMoney,
+  formatNumber,
+  formatQuoteNumber,
+} from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
 import { cn } from "@/lib/utils";
 
 /** Oferta, în forma în care o vede clientul (și în care se printează). */
-export default function QuotePage({ params }: { params: Promise<{ id: string }> }) {
+export default function QuotePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
   const router = useRouter();
   const ready = useStoreReady();
@@ -52,6 +65,31 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
 
   const { subtotal, total } = quoteTotal(items, quote.discount);
   const rest = total - quote.advance;
+
+  /**
+   * Trimiterea ofertei ca link: clientul o deschide în browser și o poate
+   * accepta cu numele lui. Fără cloud nu există link, deci cade pe text.
+   */
+  const shareLink = async () => {
+    const token = await ensureQuoteLink(quote.id);
+    if (!token) return;
+    const url = publicQuoteUrl(token);
+    const text = `Ofertă ${formatQuoteNumber(quote.number)} — ${quote.title}\n${url}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `Ofertă ${formatQuoteNumber(quote.number)}`,
+          text,
+          url,
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copiat");
+      }
+    } catch {
+      // Partajare anulată de utilizator — nu e o eroare.
+    }
+  };
 
   const share = async () => {
     const lines = [
@@ -76,7 +114,10 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
 
     try {
       if (navigator.share) {
-        await navigator.share({ title: `Ofertă ${formatQuoteNumber(quote.number)}`, text: lines });
+        await navigator.share({
+          title: `Ofertă ${formatQuoteNumber(quote.number)}`,
+          text: lines,
+        });
       } else {
         await navigator.clipboard.writeText(lines);
         toast.success("Oferta a fost copiată");
@@ -98,8 +139,13 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
           {QUOTE_STATUS_LABELS[quote.status]}
         </span>
         <div className="flex-1" />
+        {isSupabaseConfigured ? (
+          <Button variant="outline" size="sm" onClick={shareLink}>
+            <Link2 /> Trimite link
+          </Button>
+        ) : null}
         <Button variant="outline" size="sm" onClick={share}>
-          <Share2 /> Trimite
+          <Share2 /> Trimite text
         </Button>
         <Button variant="outline" size="sm" onClick={() => window.print()}>
           <Printer /> Printează
@@ -113,7 +159,9 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
             <h2 className="text-xl font-bold tracking-tight">
               OFERTĂ {formatQuoteNumber(quote.number)}
             </h2>
-            <p className="text-sm text-muted-foreground">{formatDate(quote.created_at)}</p>
+            <p className="text-sm text-muted-foreground">
+              {formatDate(quote.created_at)}
+            </p>
             {quote.valid_until && (
               <p className="text-sm text-muted-foreground">
                 Valabilă până la {formatDate(quote.valid_until)}
@@ -121,9 +169,15 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
             )}
           </div>
           <div className="text-right text-sm">
-            <p className="font-semibold">{settings?.company || settings?.full_name || "MontajPro"}</p>
-            {settings?.phone && <p className="text-muted-foreground">{settings.phone}</p>}
-            {settings?.email && <p className="text-muted-foreground">{settings.email}</p>}
+            <p className="font-semibold">
+              {settings?.company || settings?.full_name || "MontajPro"}
+            </p>
+            {settings?.phone && (
+              <p className="text-muted-foreground">{settings.phone}</p>
+            )}
+            {settings?.email && (
+              <p className="text-muted-foreground">{settings.email}</p>
+            )}
           </div>
         </header>
 
@@ -159,7 +213,8 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
               <div className="min-w-0">
                 <p className="font-medium">{item.description}</p>
                 <p className="text-xs text-muted-foreground">
-                  {formatNumber(item.quantity)} {item.unit} × {formatMoney(item.unit_price, currency)}
+                  {formatNumber(item.quantity)} {item.unit} ×{" "}
+                  {formatMoney(item.unit_price, currency)}
                 </p>
               </div>
               <p className="shrink-0 font-semibold tabular-nums">
@@ -174,11 +229,15 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
             <>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Subtotal</dt>
-                <dd className="tabular-nums">{formatMoney(subtotal, currency)}</dd>
+                <dd className="tabular-nums">
+                  {formatMoney(subtotal, currency)}
+                </dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Reducere</dt>
-                <dd className="tabular-nums">−{formatMoney(quote.discount, currency)}</dd>
+                <dd className="tabular-nums">
+                  −{formatMoney(quote.discount, currency)}
+                </dd>
               </div>
             </>
           )}
@@ -190,7 +249,9 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
             <>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">AVANS</dt>
-                <dd className="tabular-nums">{formatMoney(quote.advance, currency)}</dd>
+                <dd className="tabular-nums">
+                  {formatMoney(quote.advance, currency)}
+                </dd>
               </div>
               <div className="flex justify-between font-medium">
                 <dt>REST</dt>
@@ -202,7 +263,9 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
 
         {(quote.notes || settings?.quote_terms) && (
           <div className="border-t border-border pt-4 text-sm text-muted-foreground">
-            {quote.notes && <p className="whitespace-pre-wrap">{quote.notes}</p>}
+            {quote.notes && (
+              <p className="whitespace-pre-wrap">{quote.notes}</p>
+            )}
             {settings?.quote_terms && (
               <p className="mt-2 whitespace-pre-wrap">{settings.quote_terms}</p>
             )}
@@ -214,7 +277,37 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
             Status: În așteptarea confirmării
           </p>
         )}
+
+        {quote.accepted_by_client_at && (
+          <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center text-sm text-emerald-200">
+            Acceptată de client
+            {quote.client_signature
+              ? ` — ${quote.client_signature}`
+              : ""} pe {formatDate(quote.accepted_by_client_at)}
+          </p>
+        )}
       </article>
+
+      {quote.public_token && isSupabaseConfigured && (
+        <div className="no-print flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-xs">
+          <Link2 className="size-4 shrink-0 text-muted-foreground" />
+          <span className="min-w-0 flex-1 truncate text-muted-foreground">
+            {publicQuoteUrl(quote.public_token)}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={async () => {
+              await navigator.clipboard.writeText(
+                publicQuoteUrl(quote.public_token!),
+              );
+              toast.success("Link copiat");
+            }}
+          >
+            Copiază
+          </Button>
+        </div>
+      )}
 
       <div className="no-print space-y-2">
         <div className="grid grid-cols-2 gap-2">
@@ -288,7 +381,10 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
               router.replace("/oferte");
             }}
           >
-            <Button variant="outline" className="text-red-400 hover:text-red-300">
+            <Button
+              variant="outline"
+              className="text-red-400 hover:text-red-300"
+            >
               <Trash2 /> Șterge
             </Button>
           </Confirm>

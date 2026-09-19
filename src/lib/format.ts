@@ -87,6 +87,13 @@ export function parseDateKey(key: string): Date {
   return new Date(y, (m || 1) - 1, d || 1);
 }
 
+/** `2026-09-17` + 14 → `2026-10-01`. Pur: nu citește ceasul. */
+export function addDaysToKey(key: string, days: number): string {
+  const date = parseDateKey(key);
+  date.setDate(date.getDate() + days);
+  return toDateKey(date);
+}
+
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
   const date = value.length <= 10 ? parseDateKey(value) : new Date(value);

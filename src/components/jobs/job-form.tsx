@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ClientDialog } from "@/components/forms/client-dialog";
+import { DictateButton } from "@/components/ui/dictate-button";
 import { useZodForm } from "@/hooks/use-zod-form";
 import { jobSchema } from "@/lib/schemas";
 import { saveJob } from "@/lib/db/actions";
@@ -263,12 +264,23 @@ export function JobForm({ job }: { job?: Job | null }) {
           )}
 
           <Field label="Notițe" htmlFor="job-notes">
-            <Textarea
-              id="job-notes"
-              value={form.values.notes ?? ""}
-              onChange={(event) => form.set("notes", event.target.value)}
-              placeholder="Detalii despre lucrare, cerințe speciale..."
-            />
+            <div className="flex items-start gap-2">
+              <Textarea
+                id="job-notes"
+                value={form.values.notes ?? ""}
+                onChange={(event) => form.set("notes", event.target.value)}
+                placeholder="Detalii despre lucrare, cerințe speciale..."
+                className="flex-1"
+              />
+              <DictateButton
+                onText={(text) =>
+                  form.set(
+                    "notes",
+                    [form.values.notes, text].filter(Boolean).join(" "),
+                  )
+                }
+              />
+            </div>
           </Field>
         </div>
 

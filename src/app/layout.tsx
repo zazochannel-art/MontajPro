@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
-import { AppProvider } from "@/lib/app-provider";
 import { ServiceWorker } from "@/components/pwa/service-worker";
 import "./globals.css";
 
@@ -43,11 +42,18 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+/**
+ * Layout-ul rădăcină ține doar ce e valabil pentru orice pagină.
+ *
+ * `AppProvider` stă mai jos, în layout-urile aplicației și ale autentificării:
+ * pagina publică a ofertei este deschisă de client, pe telefonul lui, și n-are
+ * de ce să pornească baza locală sau un cont.
+ */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ro" className={`${inter.variable} h-full`} suppressHydrationWarning>
       <body className="min-h-full antialiased">
-        <AppProvider>{children}</AppProvider>
+        {children}
         <Toaster
           position="top-center"
           richColors

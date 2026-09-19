@@ -1,12 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Receipt, Trash2, TrendingUp, Wallet } from "lucide-react";
+import {
+  Plus,
+  Receipt,
+  ReceiptText,
+  Trash2,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Confirm } from "@/components/ui/confirm";
 import { PaymentDialog } from "@/components/forms/payment-dialog";
 import { ExpenseDialog } from "@/components/forms/expense-dialog";
+import { InvoiceDialog } from "@/components/forms/invoice-dialog";
 import { deletePayment, deleteExpense } from "@/lib/db/actions";
 import {
   EXPENSE_CATEGORY_LABELS,
@@ -34,6 +42,7 @@ export function FinanceTab({
   const { currency } = useApp();
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
 
   const rows = [
@@ -212,6 +221,15 @@ export function FinanceTab({
         )}
       </section>
 
+      <Button
+        variant="outline"
+        className="w-full"
+        size="lg"
+        onClick={() => setInvoiceOpen(true)}
+      >
+        <ReceiptText /> Fă factură pentru lucrare
+      </Button>
+
       <PaymentDialog
         open={paymentOpen}
         onOpenChange={setPaymentOpen}
@@ -223,6 +241,11 @@ export function FinanceTab({
       <ExpenseDialog
         open={expenseOpen}
         onOpenChange={setExpenseOpen}
+        defaultJobId={job.id}
+      />
+      <InvoiceDialog
+        open={invoiceOpen}
+        onOpenChange={setInvoiceOpen}
         defaultJobId={job.id}
       />
     </div>

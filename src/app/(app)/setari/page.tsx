@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/select";
 import { exportData, importData, updateSettings } from "@/lib/db/actions";
 import { hasDemoData, removeDemoData, seedDemoData } from "@/lib/db/demo";
+import { PushToggle } from "@/components/settings/push-toggle";
 import { useTable } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
 import { useInstallPrompt } from "@/hooks/use-install-prompt";
@@ -297,6 +298,12 @@ export default function SettingsPage() {
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <Bell className="size-4 text-primary" /> Notificări
         </h3>
+
+        <PushToggle />
+
+        <p className="border-t border-border pt-3 text-xs text-muted-foreground">
+          Ce anume primești:
+        </p>
         {(Object.keys(NOTIFICATION_LABELS) as (keyof NotificationPrefs)[]).map(
           (key) => (
             <div key={key} className="flex items-center justify-between gap-3">

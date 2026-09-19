@@ -220,6 +220,29 @@ export interface Quote extends BaseRow {
   notes: string | null;
   sent_at: string | null;
   accepted_at: string | null;
+  /** Cheia linkului trimis clientului; gol până la prima partajare. */
+  public_token: string | null;
+  accepted_by_client_at: string | null;
+  /** Numele scris de client la acceptare. */
+  client_signature: string | null;
+}
+
+export interface Invoice extends BaseRow {
+  job_id: ID | null;
+  client_id: ID | null;
+  series: string;
+  number: number;
+  issued_at: string;
+  due_at: string | null;
+  /** Datele clientului sunt copiate: factura nu se schimbă retroactiv. */
+  client_name: string | null;
+  client_address: string | null;
+  client_phone: string | null;
+  subtotal: number;
+  vat_percent: number;
+  total: number;
+  paid_at: string | null;
+  notes: string | null;
 }
 
 export interface QuoteItem extends BaseRow {
@@ -313,6 +336,7 @@ export interface Tables {
   expenses: Expense;
   quotes: Quote;
   quote_items: QuoteItem;
+  invoices: Invoice;
   tools: Tool;
   work_sessions: WorkSession;
   notifications: AppNotification;
@@ -332,6 +356,7 @@ export const TABLE_NAMES: TableName[] = [
   "expenses",
   "quotes",
   "quote_items",
+  "invoices",
   "tools",
   "work_sessions",
   "notifications",

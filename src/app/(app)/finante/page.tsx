@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   ChevronLeft,
   ChevronRight,
+  FileSpreadsheet,
   Plus,
   Receipt,
   Trash2,
@@ -29,6 +30,8 @@ import {
   PAYMENT_METHOD_LABELS,
 } from "@/lib/constants";
 import { formatDateShort, formatMoney, monthName } from "@/lib/format";
+import { downloadCsv, expensesCsv, paymentsCsv } from "@/lib/export";
+import { useClients } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
 import type { Expense } from "@/lib/types";
 
@@ -39,6 +42,7 @@ export default function FinancePage() {
   const expenses = useTable("expenses");
   const jobs = useJobs();
   const paymentIndex = useJobPaymentIndex();
+  const clients = useClients();
 
   const [cursor, setCursor] = useState(() => new Date());
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -55,20 +59,32 @@ export default function FinancePage() {
       .filter((expense) => expense.spent_at.slice(0, 7) === monthKey)
       .sort((a, b) => b.spent_at.localeCompare(a.spent_at));
 
-    const income = monthPayments.reduce((acc, payment) => acc + payment.amount, 0);
-    const spent = monthExpenses.reduce((acc, expense) => acc + expense.amount, 0);
+    const income = monthPayments.reduce(
+      (acc, payment) => acc + payment.amount,
+      0,
+    );
+    const spent = monthExpenses.reduce(
+      (acc, expense) => acc + expense.amount,
+      0,
+    );
     const advances = monthPayments
       .filter((payment) => payment.kind === "advance")
       .reduce((acc, payment) => acc + payment.amount, 0);
 
     const receivable = jobs
       .filter((job) => job.status !== "quote")
-      .reduce((acc, job) => acc + Math.max(0, paymentIndex[job.id]?.rest ?? 0), 0);
+      .reduce(
+        (acc, job) => acc + Math.max(0, paymentIndex[job.id]?.rest ?? 0),
+        0,
+      );
 
-    const byCategory = monthExpenses.reduce<Record<string, number>>((acc, expense) => {
-      acc[expense.category] = (acc[expense.category] ?? 0) + expense.amount;
-      return acc;
-    }, {});
+    const byCategory = monthExpenses.reduce<Record<string, number>>(
+      (acc, expense) => {
+        acc[expense.category] = (acc[expense.category] ?? 0) + expense.amount;
+        return acc;
+      },
+      {},
+    );
 
     return {
       monthPayments,
@@ -83,18 +99,25 @@ export default function FinancePage() {
   }, [payments, expenses, jobs, paymentIndex, monthKey]);
 
   const jobTitle = (jobId: string | null) =>
-    jobId ? (jobs.find((job) => job.id === jobId)?.title ?? "Lucrare ștearsă") : null;
+    jobId
+      ? (jobs.find((job) => job.id === jobId)?.title ?? "Lucrare ștearsă")
+      : null;
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Finanțe" description="Cât intră, cât iese, cât rămâne" />
+      <PageHeader
+        title="Finanțe"
+        description="Cât intră, cât iese, cât rămâne"
+      />
 
       <div className="flex items-center gap-2">
         <Button
           variant="outline"
           size="icon"
           aria-label="Luna anterioară"
-          onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
+          onClick={() =>
+            setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))
+          }
         >
           <ChevronLeft />
         </Button>
@@ -105,7 +128,9 @@ export default function FinancePage() {
           variant="outline"
           size="icon"
           aria-label="Luna următoare"
-          onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
+          onClick={() =>
+            setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))
+          }
         >
           <ChevronRight />
         </Button>
@@ -156,9 +181,35 @@ export default function FinancePage() {
         </TabsList>
 
         <TabsContent value="income" className="space-y-3">
-          <Button variant="outline" className="w-full" size="lg" onClick={() => setPaymentOpen(true)}>
-            <Plus /> Adaugă încasare
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => setPaymentOpen(true)}
+            >
+              <Plus /> Încasare
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              disabled={!data.monthPayments.length}
+              onClick={() => {
+                downloadCsv(
+                  `incasari-${monthKey}.csv`,
+                  paymentsCsv(
+                    data.monthPayments,
+                    jobs,
+                    (id) =>
+                      clients.find((client) => client.id === id)?.name ?? "",
+                    currency,
+                  ),
+                );
+                toast.success("Export descărcat");
+              }}
+            >
+              <FileSpreadsheet /> Export CSV
+            </Button>
+          </div>
 
           {data.monthPayments.length ? (
             <ul className="space-y-2">
@@ -212,17 +263,32 @@ export default function FinancePage() {
         </TabsContent>
 
         <TabsContent value="expenses" className="space-y-3">
-          <Button
-            variant="outline"
-            className="w-full"
-            size="lg"
-            onClick={() => {
-              setEditingExpense(null);
-              setExpenseOpen(true);
-            }}
-          >
-            <Plus /> Adaugă cheltuială
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => {
+                setEditingExpense(null);
+                setExpenseOpen(true);
+              }}
+            >
+              <Plus /> Cheltuială
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              disabled={!data.monthExpenses.length}
+              onClick={() => {
+                downloadCsv(
+                  `cheltuieli-${monthKey}.csv`,
+                  expensesCsv(data.monthExpenses, jobs, currency),
+                );
+                toast.success("Export descărcat");
+              }}
+            >
+              <FileSpreadsheet /> Export CSV
+            </Button>
+          </div>
 
           {data.byCategory.length > 0 && (
             <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
@@ -244,7 +310,9 @@ export default function FinancePage() {
                   <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-gradient-to-r from-primary to-secondary"
-                      style={{ width: `${data.spent ? (amount / data.spent) * 100 : 0}%` }}
+                      style={{
+                        width: `${data.spent ? (amount / data.spent) * 100 : 0}%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -310,7 +378,12 @@ export default function FinancePage() {
         </TabsContent>
       </Tabs>
 
-      <PaymentDialog open={paymentOpen} onOpenChange={setPaymentOpen} jobId={null} clientId={null} />
+      <PaymentDialog
+        open={paymentOpen}
+        onOpenChange={setPaymentOpen}
+        jobId={null}
+        clientId={null}
+      />
       <ExpenseDialog
         open={expenseOpen}
         onOpenChange={setExpenseOpen}
