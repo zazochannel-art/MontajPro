@@ -82,10 +82,11 @@ npm run dev                    # http://localhost:3000
    - `0002_storage.sql` — bucket-ul privat `job-photos` și politicile lui;
    - `0003_quote_links_invoices_push.sql` — linkul public de ofertă, facturile
      și abonamentele push;
-   - `0004_cron.sql` — programarea notificărilor (cere completarea locurilor
-     marcate în fișier);
+   - `0004_cron.sql` — programarea notificărilor zilnice (rulează după ce
+     funcția Edge e publicată și secretele sunt în Vault);
    - `0005_restrict_internal_functions.sql` — retrage din browser dreptul de a
-     apela funcțiile interne.
+     apela funcțiile interne;
+   - `0006_push_config.sql` — citirea secretelor push din Vault.
 3. Pune `NEXT_PUBLIC_SUPABASE_URL` și `NEXT_PUBLIC_SUPABASE_ANON_KEY` în
    `.env.local`. Pentru aplicația publicată, aceleași două variabile se pun în
    setările proiectului de găzduire (pe Vercel: Settings → Environment
@@ -119,19 +120,39 @@ ecranul telefonului. Se configurează o singură dată:
 
 ```bash
 npx web-push generate-vapid-keys          # o pereche de chei
-
-# cheia publică merge în .env.local
-NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
-
-# cheia privată și restul secretelor merg la funcția Edge
-supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... \
-  VAPID_SUBJECT=mailto:tu@exemplu.md CRON_SECRET=un-șir-lung-aleatoriu
-
-supabase functions deploy send-reminders
+supabase functions deploy send-reminders --no-verify-jwt
 ```
 
-Apoi rulează `supabase/migrations/0004_cron.sql`, după ce înlocuiești
-`<PROJECT_REF>` și `<CRON_SECRET>` — programează funcția zilnic la 7:30 UTC.
+Cheia publică merge în `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (`.env.local` pe
+calculator, variabilele proiectului pentru aplicația publicată).
+
+Cheia privată și restul secretelor stau în bază, în Vault — așa se pot pune
+numai din SQL, fără acces la tabloul de bord:
+
+```sql
+select vault.create_secret('<cheia publică>',  'montajpro_vapid_public');
+select vault.create_secret('<cheia privată>',  'montajpro_vapid_private');
+select vault.create_secret('https://exemplu.md', 'montajpro_vapid_subject');
+select vault.create_secret('<șir lung aleatoriu>', 'montajpro_cron_secret');
+select vault.create_secret(
+  'https://<PROJECT_REF>.supabase.co/functions/v1/send-reminders',
+  'montajpro_functions_url');
+```
+
+Funcția le citește prin `public.push_config()`, pe care o poate chema doar
+`service_role`. Cine preferă variabilele de mediu poate folosi în schimb
+`supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... \
+VAPID_SUBJECT=... CRON_SECRET=...`; mediul bate baza.
+
+Apoi rulează `supabase/migrations/0004_cron.sql` — programează funcția zilnic
+la 7:30 UTC, citind adresa și secretul tot din Vault, deci n-are nimic de
+completat de mână.
+
+Funcția se publică fără verificarea JWT (`--no-verify-jwt`) pentru că își face
+singură verificarea, cu antetul `x-cron-secret`, și refuză tot dacă secretul nu
+e configurat. Verificarea platformei ar fi lăsat să treacă orice utilizator
+autentificat al proiectului, care ar fi putut astfel declanșa notificări pentru
+toată lumea.
 
 Din aplicație: **Setări → Notificări → Notificări pe telefon**. Pe iPhone,
 push-ul funcționează doar după ce aplicația e adăugată pe ecranul principal.
