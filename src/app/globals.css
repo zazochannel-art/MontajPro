@@ -168,7 +168,7 @@
   }
 }
 
-/* Print — pentru ofertele tipărite/salvate ca PDF. */
+/* Print — pentru ofertele tipărite. */
 @media print {
   .no-print {
     display: none !important;
@@ -182,4 +182,27 @@
     color: #0a0a0a !important;
     border-color: #d4d4d8 !important;
   }
+}
+
+/*
+ * Aceeași înfățișare, dar pe ecran, cât durează fotografierea documentului
+ * pentru PDF. Fără ea, PDF-ul ar ieși pe fundalul negru al aplicației —
+ * corect pe telefon, nepotrivit pentru o hârtie trimisă clientului.
+ */
+.pdf-capture {
+  background: #fff !important;
+  color: #0a0a0a !important;
+  border-color: #d4d4d8 !important;
+}
+.pdf-capture .text-muted-foreground,
+.pdf-capture .text-muted-foreground\/70 {
+  color: #52525b !important;
+}
+.pdf-capture .bg-background,
+.pdf-capture .bg-card {
+  background: #f4f4f5 !important;
+}
+.pdf-capture .border-border,
+.pdf-capture .border-input {
+  border-color: #d4d4d8 !important;
 }

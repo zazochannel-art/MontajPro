@@ -122,6 +122,41 @@ export const DEFAULT_RATES: DefaultRates = {
   hourly: 0,
 };
 
+/**
+ * Pașii cu care pornește o lucrare, pe tip.
+ *
+ * Nu sunt lege — se editează în Setări. Rostul lor e să nu pornești de la o
+ * listă goală tocmai când ești pe șantier.
+ */
+export const DEFAULT_TASK_TEMPLATES: Record<JobType, string[]> = {
+  stairs: [
+    "Verificat dimensiunile la fața locului",
+    "Comandat materialul",
+    "Pregătit structura",
+    "Montat trepte",
+    "Montat contratrepte",
+    "Montat balustrada",
+    "Finisat și curățat",
+  ],
+  parquet: [
+    "Verificat umiditatea șapei",
+    "Nivelat stratul suport",
+    "Adus materialul cu 48h înainte",
+    "Montat izolația",
+    "Montat parchetul",
+    "Montat plintele",
+    "Curățat",
+  ],
+  plinth: [
+    "Măsurat perimetrul",
+    "Tăiat colțurile",
+    "Fixat plinta",
+    "Chituit îmbinările",
+    "Curățat",
+  ],
+  other: ["Pregătire", "Execuție", "Curățenie"],
+};
+
 export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   job_tomorrow: true,
   job_today: true,

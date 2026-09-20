@@ -245,6 +245,48 @@ export interface Invoice extends BaseRow {
   notes: string | null;
 }
 
+/**
+ * Un pas din lista de pe șantier.
+ *
+ * Pașii se repetă de la o lucrare la alta, de-asta pornesc dintr-un șablon pe
+ * tip de lucrare, păstrat în setări. Odată puși pe lucrare, sunt ai ei: un
+ * șablon schimbat mai târziu nu rescrie lucrările deja pornite.
+ */
+export interface JobTask extends BaseRow {
+  job_id: ID;
+  title: string;
+  done: boolean;
+  done_at: string | null;
+  position: number;
+}
+
+/**
+ * Procesul-verbal de predare.
+ *
+ * Oferta se acceptă la început; asta încheie lucrarea. Datele clientului se
+ * copiază, ca la factură: un document semnat nu se schimbă pentru că cineva a
+ * editat fișa clientului peste șase luni. Semnătura se ține ca imagine PNG în
+ * chiar rândul acesta — câțiva kilobytes, care se sincronizează odată cu el și
+ * nu depind de Storage.
+ */
+export interface Handover extends BaseRow {
+  job_id: ID;
+  client_id: ID | null;
+  number: number;
+  handed_at: string;
+  client_name: string | null;
+  client_address: string | null;
+  client_phone: string | null;
+  /** Ce s-a executat, copiat din lucrare și editabil. */
+  work_summary: string | null;
+  warranty_months: number | null;
+  notes: string | null;
+  /** PNG ca data URL, desenat cu degetul. */
+  signature: string | null;
+  signer_name: string | null;
+  signed_at: string | null;
+}
+
 export interface QuoteItem extends BaseRow {
   quote_id: ID;
   description: string;
@@ -333,6 +375,8 @@ export interface Settings extends BaseRow {
   default_rates: DefaultRates;
   /** Poziții proprii, peste cele implicite. */
   price_list: PriceItem[];
+  /** Pașii cu care pornește o lucrare nouă, pe tip. */
+  task_templates: Partial<Record<JobType, string[]>>;
   expense_categories: string[];
   material_categories: string[];
   notification_prefs: NotificationPrefs;
@@ -356,6 +400,8 @@ export interface Tables {
   quotes: Quote;
   quote_items: QuoteItem;
   invoices: Invoice;
+  handovers: Handover;
+  job_tasks: JobTask;
   tools: Tool;
   work_sessions: WorkSession;
   notifications: AppNotification;
@@ -376,6 +422,8 @@ export const TABLE_NAMES: TableName[] = [
   "quotes",
   "quote_items",
   "invoices",
+  "handovers",
+  "job_tasks",
   "tools",
   "work_sessions",
   "notifications",

@@ -160,6 +160,21 @@ try {
     (await page.getByText(/4\.000 MDL/).count()) > 0,
   );
 
+  /* ----------------------------- pașii lucrării --------------------- */
+  section("Pașii lucrării");
+  await page.goto(`${BASE}/lucrari`, { waitUntil: "networkidle" });
+  await page.getByText("Montaj scară stejar (test)").first().click();
+  await page.waitForURL(/\/lucrari\/[0-9a-f-]{36}/, { timeout: 15000 });
+  await page.getByRole("button", { name: /Pune pașii pentru/i }).click();
+  await page.getByText(/pași adăugați/i).waitFor({ timeout: 10000 });
+  // exact: altfel prinde și butonul „Șterge Montat trepte”.
+  const firstTask = page.getByLabel("Montat trepte", { exact: true });
+  await firstTask.waitFor({ timeout: 10000 });
+  check("șablonul pune pașii pe lucrare", true);
+  await firstTask.click();
+  await page.getByText(/^1 din/).waitFor({ timeout: 10000 });
+  check("pasul bifat se numără", true);
+
   /* ----------------------------- calculator ------------------------ */
   section("Calculator preț: poziția aduce prețul din setări");
 
@@ -264,6 +279,17 @@ try {
   await page.getByText(/Achitată/).first().waitFor({ timeout: 10000 });
   check("factura poate fi marcată achitată", true);
 
+  // PDF-ul e o fotografie a documentului: dacă html2canvas se împiedică de
+  // vreun stil, aici se vede, nu pe telefonul clientului.
+  const download = page.waitForEvent("download", { timeout: 30000 });
+  await page.getByRole("button", { name: /^PDF$/ }).click();
+  const file = await download;
+  check(
+    "factura se descarcă ca PDF",
+    file.suggestedFilename().endsWith(".pdf"),
+    file.suggestedFilename(),
+  );
+
   /* ----------------------------- căutare --------------------------- */
   section("Căutare globală");
   await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
@@ -292,6 +318,8 @@ try {
     ["/scule", /Scule/],
     ["/portofoliu", /Portofoliu/],
     ["/notificari", /Notificări/],
+    ["/rapoarte", /Rapoarte/],
+    ["/echipa", /Echipă/],
     ["/setari", /Setări/],
   ]) {
     await page.goto(`${BASE}${path}`, { waitUntil: "networkidle" });

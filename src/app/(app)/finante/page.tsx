@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   ChevronLeft,
   ChevronRight,
+  Clock,
   FileSpreadsheet,
   Plus,
   Receipt,
@@ -22,14 +23,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { ExpenseDialog } from "@/components/forms/expense-dialog";
 import { PaymentDialog } from "@/components/forms/payment-dialog";
-import { useJobPaymentIndex, useJobs, useTable } from "@/hooks/use-data";
+import {
+  useJobPaymentIndex,
+  useJobs,
+  useMinuteTick,
+  useTable,
+} from "@/hooks/use-data";
 import { deleteExpense, deletePayment } from "@/lib/db/actions";
 import {
   EXPENSE_CATEGORY_LABELS,
   PAYMENT_KIND_LABELS,
   PAYMENT_METHOD_LABELS,
 } from "@/lib/constants";
-import { formatDateShort, formatMoney, monthName } from "@/lib/format";
+import {
+  formatDateShort,
+  formatMoney,
+  formatNumber,
+  monthName,
+} from "@/lib/format";
+import { totalWorkedMinutes } from "@/lib/calc";
 import { downloadCsv, expensesCsv, paymentsCsv } from "@/lib/export";
 import { useClients } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
@@ -40,6 +52,8 @@ export default function FinancePage() {
   const { currency } = useApp();
   const payments = useTable("payments");
   const expenses = useTable("expenses");
+  const sessions = useTable("work_sessions");
+  const now = useMinuteTick();
   const jobs = useJobs();
   const paymentIndex = useJobPaymentIndex();
   const clients = useClients();
@@ -86,17 +100,28 @@ export default function FinancePage() {
       {},
     );
 
+    // Ce a rămas, împărțit la orele de la cronometru: cifra care spune dacă
+    // luna a meritat. Fără ore cronometrate n-avem ce arăta.
+    const hours =
+      totalWorkedMinutes(
+        sessions.filter((row) => row.started_at.slice(0, 7) === monthKey),
+        now,
+      ) / 60;
+    const profit = income - spent;
+
     return {
       monthPayments,
       monthExpenses,
       income,
       spent,
-      profit: income - spent,
+      profit,
       advances,
       receivable,
+      hours,
+      perHour: hours >= 0.25 ? profit / hours : null,
       byCategory: Object.entries(byCategory).sort((a, b) => b[1] - a[1]),
     };
-  }, [payments, expenses, jobs, paymentIndex, monthKey]);
+  }, [payments, expenses, sessions, now, jobs, paymentIndex, monthKey]);
 
   const jobTitle = (jobId: string | null) =>
     jobId
@@ -136,7 +161,7 @@ export default function FinancePage() {
         </Button>
       </div>
 
-      <section className="grid grid-cols-2 gap-2.5 lg:grid-cols-5">
+      <section className="grid grid-cols-2 gap-2.5 lg:grid-cols-6">
         <StatCard
           label="Încasări"
           value={formatMoney(data.income, currency, { compact: true })}
@@ -167,6 +192,21 @@ export default function FinancePage() {
           value={formatMoney(data.advances, currency, { compact: true })}
           icon={Wallet}
           tone="secondary"
+        />
+        <StatCard
+          label="Câștig pe oră"
+          value={
+            data.perHour === null
+              ? "—"
+              : formatMoney(data.perHour, currency, { compact: true })
+          }
+          icon={Clock}
+          tone={data.perHour === null ? "default" : "primary"}
+          hint={
+            data.hours >= 0.25
+              ? `${formatNumber(data.hours)} ore cronometrate`
+              : "pornește cronometrul pe lucrări"
+          }
         />
       </section>
 

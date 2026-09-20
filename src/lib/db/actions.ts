@@ -768,6 +768,211 @@ export async function deleteInvoice(id: string) {
   kick();
 }
 
+/**
+ * Ofertă nouă, pornită dintr-una existentă.
+ *
+ * Se copiază ce se repetă — client, linii, reducere, avans, condiții. Nu se
+ * copiază ce ține de exemplarul trecut: numărul, linkul public, data trimiterii
+ * și acceptarea clientului. O ofertă duplicată e o ciornă, nu una trimisă.
+ */
+export async function duplicateQuote(id: string) {
+  const source = store.getTable("quotes").find((row) => row.id === id);
+  if (!source) return null;
+
+  const items = store
+    .getTable("quote_items")
+    .filter((row) => row.quote_id === id && !row.deleted_at)
+    .sort((a, b) => a.position - b.position);
+
+  const copy = await store.insert("quotes", {
+    number: nextQuoteNumber(),
+    client_id: source.client_id,
+    job_id: null,
+    status: "draft" as const,
+    title: `${source.title} (copie)`,
+    advance: source.advance,
+    discount: source.discount,
+    valid_until: null,
+    notes: source.notes,
+    sent_at: null,
+    accepted_at: null,
+    public_token: null,
+    accepted_by_client_at: null,
+    client_signature: null,
+  });
+  if (!copy) return null;
+
+  let position = 0;
+  for (const item of items) {
+    await store.insert("quote_items", {
+      quote_id: copy.id,
+      description: item.description,
+      quantity: item.quantity,
+      unit: item.unit,
+      unit_price: item.unit_price,
+      position: position++,
+    });
+  }
+
+  kick();
+  return copy;
+}
+
+/* --------------------------- pașii lucrării ------------------------ */
+
+export async function addJobTask(jobId: string, title: string) {
+  const clean = title.trim();
+  if (!clean) return null;
+  const existing = store
+    .getTable("job_tasks")
+    .filter((row) => row.job_id === jobId && !row.deleted_at);
+  const task = await store.insert("job_tasks", {
+    job_id: jobId,
+    title: clean,
+    done: false,
+    done_at: null,
+    position: existing.length
+      ? Math.max(...existing.map((row) => row.position)) + 1
+      : 0,
+  });
+  kick();
+  return task;
+}
+
+export async function toggleJobTask(id: string, done: boolean) {
+  await store.update("job_tasks", id, { done, done_at: done ? nowISO() : null });
+  kick();
+}
+
+export async function renameJobTask(id: string, title: string) {
+  await store.update("job_tasks", id, { title: title.trim() });
+  kick();
+}
+
+export async function deleteJobTask(id: string) {
+  await store.remove("job_tasks", id);
+  kick();
+}
+
+/**
+ * Pune pașii din șablon pe lucrare.
+ *
+ * Pașii deja existenți rămân, iar cei cu același nume nu se adaugă a doua
+ * oară: butonul poate fi apăsat de două ori fără să dubleze lista.
+ */
+export async function applyTaskTemplate(jobId: string, titles: string[]) {
+  const existing = store
+    .getTable("job_tasks")
+    .filter((row) => row.job_id === jobId && !row.deleted_at);
+  const known = new Set(existing.map((row) => row.title.trim().toLowerCase()));
+  let position = existing.length
+    ? Math.max(...existing.map((row) => row.position)) + 1
+    : 0;
+
+  let added = 0;
+  for (const title of titles) {
+    const clean = title.trim();
+    if (!clean || known.has(clean.toLowerCase())) continue;
+    known.add(clean.toLowerCase());
+    await store.insert("job_tasks", {
+      job_id: jobId,
+      title: clean,
+      done: false,
+      done_at: null,
+      position: position++,
+    });
+    added++;
+  }
+  kick();
+  return added;
+}
+
+/* --------------------------- proces-verbal ------------------------- */
+
+export function nextHandoverNumber(): number {
+  const numbers = store
+    .getTable("handovers")
+    .filter((row) => !row.deleted_at)
+    .map((row) => row.number || 0);
+  return (numbers.length ? Math.max(...numbers) : 0) + 1;
+}
+
+export interface HandoverInput {
+  id?: string;
+  job_id: string;
+  handed_at: string;
+  work_summary?: string | null;
+  warranty_months?: number | null;
+  notes?: string | null;
+}
+
+/**
+ * Procesul-verbal de predare al unei lucrări.
+ *
+ * Datele clientului se copiază în document, ca la factură: odată semnat, nu
+ * are voie să se schimbe pentru că s-a editat fișa clientului mai târziu.
+ */
+export async function saveHandover(input: HandoverInput) {
+  const job = store.getTable("jobs").find((row) => row.id === input.job_id);
+  if (!job) return null;
+  const client = job.client_id
+    ? store.getTable("clients").find((row) => row.id === job.client_id)
+    : null;
+
+  const payload = {
+    job_id: job.id,
+    client_id: job.client_id,
+    handed_at: input.handed_at,
+    client_name: client?.name ?? null,
+    client_address: client?.address ?? job.address ?? null,
+    client_phone: client?.phone ?? null,
+    work_summary: input.work_summary?.trim() || null,
+    warranty_months: input.warranty_months ?? null,
+    notes: input.notes?.trim() || null,
+  };
+
+  const handover = input.id
+    ? await store.update("handovers", input.id, payload)
+    : await store.insert("handovers", {
+        ...payload,
+        number: nextHandoverNumber(),
+        signature: null,
+        signer_name: null,
+        signed_at: null,
+      });
+  kick();
+  return handover;
+}
+
+/** Semnătura desenată de client, cu numele și ora. */
+export async function signHandover(
+  id: string,
+  signature: string,
+  signerName: string,
+) {
+  await store.update("handovers", id, {
+    signature,
+    signer_name: signerName.trim() || null,
+    signed_at: nowISO(),
+  });
+  kick();
+}
+
+/** Ștergerea semnăturii, dacă s-a semnat din greșeală. */
+export async function clearHandoverSignature(id: string) {
+  await store.update("handovers", id, {
+    signature: null,
+    signer_name: null,
+    signed_at: null,
+  });
+  kick();
+}
+
+export async function deleteHandover(id: string) {
+  await store.remove("handovers", id);
+  kick();
+}
+
 /* --------------------------- duplicare lucrare --------------------- */
 
 /**

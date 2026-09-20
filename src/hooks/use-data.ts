@@ -107,6 +107,7 @@ export function useJobDetails(jobId: string | null | undefined) {
   const allExpenses = useTable("expenses");
   const allSessions = useTable("work_sessions");
   const allQuotes = useTable("quotes");
+  const allSettings = useTable("settings");
 
   return useMemo(() => {
     const measurements = allMeasurements.filter((row) => row.job_id === jobId);
@@ -122,12 +123,15 @@ export function useJobDetails(jobId: string | null | undefined) {
     const quotes = allQuotes.filter((row) => row.job_id === jobId);
     const activeSession = sessions.find((row) => !row.ended_at) ?? null;
 
+    const workedMinutes = totalWorkedMinutes(sessions, now);
     const money = jobMoney({
       price: job?.price_total ?? 0,
       payments,
       materials,
       expenses,
       extraMaterialCost: job?.material_cost ?? 0,
+      workedMinutes,
+      hourlyTarget: allSettings[0]?.default_rates?.hourly ?? null,
     });
 
     return {
@@ -142,12 +146,13 @@ export function useJobDetails(jobId: string | null | undefined) {
       quotes,
       activeSession,
       money,
-      workedMinutes: totalWorkedMinutes(sessions, now),
+      workedMinutes,
     };
   }, [
     now,
     job,
     client,
+    allSettings,
     jobId,
     allMeasurements,
     allPhotos,

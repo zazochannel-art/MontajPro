@@ -137,6 +137,7 @@ function defaultSettings(userId: string): Settings {
     units: "metric",
     default_rates: { ...DEFAULT_RATES },
     price_list: [],
+    task_templates: {},
     expense_categories: [...EXPENSE_CATEGORIES],
     material_categories: [...DEFAULT_MATERIAL_CATEGORIES],
     notification_prefs: { ...DEFAULT_NOTIFICATION_PREFS },

@@ -14,8 +14,8 @@ import { TABLE_NAMES } from "../types";
 const DB_NAME = "montajpro";
 // Versiunea crește la fiecare tabel nou: altfel, pe telefoanele care au deja
 // baza deschisă, magazinul nou nu s-ar mai crea niciodată.
-// v2: facturi.
-const DB_VERSION = 2;
+// v2: facturi. v3: procese-verbale de predare. v4: pașii lucrării.
+const DB_VERSION = 4;
 
 export const OUTBOX_STORE = "__outbox";
 export const META_STORE = "__meta";

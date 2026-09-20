@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
+  Clock,
+  FileSignature,
   Plus,
   Receipt,
   ReceiptText,
@@ -15,13 +18,20 @@ import { Confirm } from "@/components/ui/confirm";
 import { PaymentDialog } from "@/components/forms/payment-dialog";
 import { ExpenseDialog } from "@/components/forms/expense-dialog";
 import { InvoiceDialog } from "@/components/forms/invoice-dialog";
+import { HandoverDialog } from "@/components/forms/handover-dialog";
+import { useTable } from "@/hooks/use-data";
 import { deletePayment, deleteExpense } from "@/lib/db/actions";
 import {
   EXPENSE_CATEGORY_LABELS,
   PAYMENT_KIND_LABELS,
   PAYMENT_METHOD_LABELS,
 } from "@/lib/constants";
-import { formatDateShort, formatMoney, formatPercent } from "@/lib/format";
+import {
+  formatDateShort,
+  formatMoney,
+  formatNumber,
+  formatPercent,
+} from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
 import type { Expense, Job, Payment } from "@/lib/types";
 import type { JobMoney } from "@/lib/calc";
@@ -43,6 +53,11 @@ export function FinanceTab({
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [handoverOpen, setHandoverOpen] = useState(false);
+  // Un singur proces-verbal per lucrare: dacă există, butonul îl deschide.
+  const handover = useTable("handovers").find(
+    (row) => row.job_id === job.id,
+  );
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
 
   const rows = [
@@ -101,6 +116,38 @@ export function FinanceTab({
             {formatMoney(money.profit, currency)}
           </p>
         </div>
+
+        {money.hours > 0 && (
+          <div className="mt-2.5 flex items-center justify-between gap-3 rounded-xl bg-background p-3.5">
+            <div>
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Clock className="size-3.5" /> Câștig pe oră
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {formatNumber(money.hours)} ore la cronometru
+                {money.hourlyTarget
+                  ? ` · tariful tău ${formatMoney(money.hourlyTarget, currency)}`
+                  : ""}
+              </p>
+            </div>
+            <p
+              className={cn(
+                "text-xl font-bold tabular-nums",
+                money.perHour === null
+                  ? "text-muted-foreground"
+                  : money.hourlyTarget === null
+                    ? ""
+                    : money.perHour >= money.hourlyTarget
+                      ? "text-emerald-300"
+                      : "text-amber-300",
+              )}
+            >
+              {money.perHour === null
+                ? "—"
+                : formatMoney(money.perHour, currency)}
+            </p>
+          </div>
+        )}
       </section>
 
       <section className="space-y-2">
@@ -221,14 +268,33 @@ export function FinanceTab({
         )}
       </section>
 
-      <Button
-        variant="outline"
-        className="w-full"
-        size="lg"
-        onClick={() => setInvoiceOpen(true)}
-      >
-        <ReceiptText /> Fă factură pentru lucrare
-      </Button>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Button
+          variant="outline"
+          className="w-full"
+          size="lg"
+          onClick={() => setInvoiceOpen(true)}
+        >
+          <ReceiptText /> Fă factură
+        </Button>
+        {handover ? (
+          <Button asChild variant="outline" className="w-full" size="lg">
+            <Link href={`/predare/${handover.id}`}>
+              <FileSignature />{" "}
+              {handover.signed_at ? "Proces-verbal semnat" : "Proces-verbal"}
+            </Link>
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            className="w-full"
+            size="lg"
+            onClick={() => setHandoverOpen(true)}
+          >
+            <FileSignature /> Proces-verbal
+          </Button>
+        )}
+      </div>
 
       <PaymentDialog
         open={paymentOpen}
@@ -247,6 +313,11 @@ export function FinanceTab({
         open={invoiceOpen}
         onOpenChange={setInvoiceOpen}
         defaultJobId={job.id}
+      />
+      <HandoverDialog
+        open={handoverOpen}
+        onOpenChange={setHandoverOpen}
+        jobId={job.id}
       />
     </div>
   );

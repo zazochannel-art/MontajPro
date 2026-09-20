@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
 import {
   CheckCircle2,
+  Copy,
   Hammer,
   Link2,
   Pencil,
@@ -16,12 +17,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { PdfButton } from "@/components/ui/pdf-button";
+import { pdfFileName } from "@/lib/pdf";
 import { Confirm } from "@/components/ui/confirm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRow, useStoreReady, useTable } from "@/hooks/use-data";
 import {
   convertQuoteToJob,
   deleteQuote,
+  duplicateQuote,
   ensureQuoteLink,
   quoteTotal,
   setQuoteStatus,
@@ -147,13 +151,17 @@ export default function QuotePage({
         <Button variant="outline" size="sm" onClick={share}>
           <Share2 /> Trimite text
         </Button>
+        <PdfButton targetId="document" filename={pdfFileName(["oferta", quote.number, quote.title])} />
         <Button variant="outline" size="sm" onClick={() => window.print()}>
           <Printer /> Printează
         </Button>
       </div>
 
       {/* Documentul propriu-zis */}
-      <article className="print-surface space-y-5 rounded-2xl border border-border bg-card p-5 sm:p-7">
+      <article
+        id="document"
+        className="print-surface space-y-5 rounded-2xl border border-border bg-card p-5 sm:p-7"
+      >
         <header className="flex items-start justify-between gap-4 border-b border-border pb-4">
           <div>
             <h2 className="text-xl font-bold tracking-tight">
@@ -372,6 +380,20 @@ export default function QuotePage({
             <Link href={`/oferte/${quote.id}/editare`}>
               <Pencil /> Editează
             </Link>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              const copy = await duplicateQuote(quote.id);
+              if (!copy) {
+                toast.error("Oferta nu a putut fi duplicată");
+                return;
+              }
+              toast.success("Ofertă duplicată");
+              router.push(`/oferte/${copy.id}/editare`);
+            }}
+          >
+            <Copy /> Duplică
           </Button>
           <Confirm
             title="Ștergi oferta?"
