@@ -9,6 +9,7 @@ import {
   CheckCheck,
   FileText,
   Package,
+  PhoneCall,
   ShieldAlert,
   Wallet,
   X,
@@ -31,6 +32,8 @@ const ICONS: Record<NotificationKind, LucideIcon> = {
   tool_warranty: ShieldAlert,
   materials_missing: Package,
   quote_pending: FileText,
+  follow_up: PhoneCall,
+  job_warranty: ShieldAlert,
 };
 
 const TONES: Record<NotificationKind, string> = {
@@ -40,6 +43,8 @@ const TONES: Record<NotificationKind, string> = {
   tool_warranty: "bg-red-500/10 text-red-300",
   materials_missing: "bg-amber-500/10 text-amber-300",
   quote_pending: "bg-fuchsia-500/10 text-fuchsia-300",
+  follow_up: "bg-emerald-500/10 text-emerald-300",
+  job_warranty: "bg-red-500/10 text-red-300",
 };
 
 export default function NotificationsPage() {

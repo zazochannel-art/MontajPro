@@ -68,6 +68,8 @@ export const NOTIFICATION_KINDS = [
   "tool_warranty",
   "materials_missing",
   "quote_pending",
+  "follow_up",
+  "job_warranty",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
@@ -375,6 +377,10 @@ export interface NotificationPrefs {
   tool_warranty: boolean;
   materials_missing: boolean;
   quote_pending: boolean;
+  /** Sună clientul la câteva luni după montaj. */
+  follow_up: boolean;
+  /** Garanția lucrării stă să expire. */
+  job_warranty: boolean;
 }
 
 export interface Settings extends BaseRow {

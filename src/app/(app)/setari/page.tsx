@@ -64,6 +64,8 @@ const NOTIFICATION_LABELS: Record<keyof NotificationPrefs, string> = {
   tool_warranty: "Garanție sculă",
   materials_missing: "Materiale lipsă",
   quote_pending: "Ofertă neconfirmată",
+  follow_up: "Revino la client",
+  job_warranty: "Garanția lucrării",
 };
 
 export default function SettingsPage() {
