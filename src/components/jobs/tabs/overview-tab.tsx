@@ -31,6 +31,7 @@ import type { JobMoney } from "@/lib/calc";
 import { deleteJob, duplicateJob, setJobStatus } from "@/lib/db/actions";
 import { formatDate, formatDuration, formatMoney } from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
+import { TaskList } from "@/components/jobs/task-list";
 import { mapsHref, telHref } from "@/lib/utils";
 
 /** Rezumatul lucrării: cine, unde, când, cât. */
@@ -55,6 +56,8 @@ export function OverviewTab({
 
   return (
     <div className="space-y-4">
+      <TaskList job={job} />
+
       <section className="rounded-2xl border border-border bg-card p-4">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Client

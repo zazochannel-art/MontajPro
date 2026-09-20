@@ -246,6 +246,21 @@ export interface Invoice extends BaseRow {
 }
 
 /**
+ * Un pas din lista de pe șantier.
+ *
+ * Pașii se repetă de la o lucrare la alta, de-asta pornesc dintr-un șablon pe
+ * tip de lucrare, păstrat în setări. Odată puși pe lucrare, sunt ai ei: un
+ * șablon schimbat mai târziu nu rescrie lucrările deja pornite.
+ */
+export interface JobTask extends BaseRow {
+  job_id: ID;
+  title: string;
+  done: boolean;
+  done_at: string | null;
+  position: number;
+}
+
+/**
  * Procesul-verbal de predare.
  *
  * Oferta se acceptă la început; asta încheie lucrarea. Datele clientului se
@@ -360,6 +375,8 @@ export interface Settings extends BaseRow {
   default_rates: DefaultRates;
   /** Poziții proprii, peste cele implicite. */
   price_list: PriceItem[];
+  /** Pașii cu care pornește o lucrare nouă, pe tip. */
+  task_templates: Partial<Record<JobType, string[]>>;
   expense_categories: string[];
   material_categories: string[];
   notification_prefs: NotificationPrefs;
@@ -384,6 +401,7 @@ export interface Tables {
   quote_items: QuoteItem;
   invoices: Invoice;
   handovers: Handover;
+  job_tasks: JobTask;
   tools: Tool;
   work_sessions: WorkSession;
   notifications: AppNotification;
@@ -405,6 +423,7 @@ export const TABLE_NAMES: TableName[] = [
   "quote_items",
   "invoices",
   "handovers",
+  "job_tasks",
   "tools",
   "work_sessions",
   "notifications",

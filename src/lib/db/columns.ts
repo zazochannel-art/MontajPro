@@ -112,6 +112,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
   ],
   work_sessions: [...BASE, "job_id", "started_at", "ended_at", "duration_minutes", "note"],
   notifications: [...BASE, "kind", "title", "body", "job_id", "due_date", "read_at"],
+  job_tasks: [...BASE, "job_id", "title", "done", "done_at", "position"],
   handovers: [
     ...BASE,
     "job_id",
@@ -140,6 +141,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "units",
     "default_rates",
     "price_list",
+    "task_templates",
     "expense_categories",
     "material_categories",
     "notification_prefs",

@@ -768,6 +768,75 @@ export async function deleteInvoice(id: string) {
   kick();
 }
 
+/* --------------------------- pașii lucrării ------------------------ */
+
+export async function addJobTask(jobId: string, title: string) {
+  const clean = title.trim();
+  if (!clean) return null;
+  const existing = store
+    .getTable("job_tasks")
+    .filter((row) => row.job_id === jobId && !row.deleted_at);
+  const task = await store.insert("job_tasks", {
+    job_id: jobId,
+    title: clean,
+    done: false,
+    done_at: null,
+    position: existing.length
+      ? Math.max(...existing.map((row) => row.position)) + 1
+      : 0,
+  });
+  kick();
+  return task;
+}
+
+export async function toggleJobTask(id: string, done: boolean) {
+  await store.update("job_tasks", id, { done, done_at: done ? nowISO() : null });
+  kick();
+}
+
+export async function renameJobTask(id: string, title: string) {
+  await store.update("job_tasks", id, { title: title.trim() });
+  kick();
+}
+
+export async function deleteJobTask(id: string) {
+  await store.remove("job_tasks", id);
+  kick();
+}
+
+/**
+ * Pune pașii din șablon pe lucrare.
+ *
+ * Pașii deja existenți rămân, iar cei cu același nume nu se adaugă a doua
+ * oară: butonul poate fi apăsat de două ori fără să dubleze lista.
+ */
+export async function applyTaskTemplate(jobId: string, titles: string[]) {
+  const existing = store
+    .getTable("job_tasks")
+    .filter((row) => row.job_id === jobId && !row.deleted_at);
+  const known = new Set(existing.map((row) => row.title.trim().toLowerCase()));
+  let position = existing.length
+    ? Math.max(...existing.map((row) => row.position)) + 1
+    : 0;
+
+  let added = 0;
+  for (const title of titles) {
+    const clean = title.trim();
+    if (!clean || known.has(clean.toLowerCase())) continue;
+    known.add(clean.toLowerCase());
+    await store.insert("job_tasks", {
+      job_id: jobId,
+      title: clean,
+      done: false,
+      done_at: null,
+      position: position++,
+    });
+    added++;
+  }
+  kick();
+  return added;
+}
+
 /* --------------------------- proces-verbal ------------------------- */
 
 export function nextHandoverNumber(): number {

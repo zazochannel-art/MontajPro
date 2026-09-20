@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import {
   Bell,
   Building2,
+  ListChecks,
   Coins,
   Download,
   FlaskConical,
@@ -40,7 +41,13 @@ import { PushToggle } from "@/components/settings/push-toggle";
 import { useTable } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
 import { useInstallPrompt } from "@/hooks/use-install-prompt";
-import { CURRENCIES, DEFAULT_MATERIAL_CATEGORIES } from "@/lib/constants";
+import {
+  CURRENCIES,
+  DEFAULT_MATERIAL_CATEGORIES,
+  DEFAULT_TASK_TEMPLATES,
+  JOB_TYPE_LABELS,
+} from "@/lib/constants";
+import { JOB_TYPES } from "@/lib/types";
 import { BUILTIN_POSITIONS } from "@/lib/price-list";
 import type { NotificationPrefs, PriceItem } from "@/lib/types";
 import { uid } from "@/lib/utils";
@@ -81,6 +88,7 @@ export default function SettingsPage() {
 
   const rates = settings.default_rates;
   const priceList = settings.price_list ?? [];
+  const templates = settings.task_templates ?? {};
   const prefs = settings.notification_prefs;
 
   /** O poziție se scrie înapoi întreagă: lista e un singur câmp în setări. */
@@ -340,6 +348,45 @@ export default function SettingsPage() {
             <Plus /> Adaugă poziție
           </Button>
         </div>
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
+          <ListChecks className="size-4 text-primary" /> Pașii lucrării
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          Câte un pas pe rând. Îi pui pe o lucrare dintr-o apăsare, iar de acolo
+          sunt ai ei — un șablon schimbat mai târziu nu rescrie lucrările
+          pornite.
+        </p>
+        {JOB_TYPES.map((type) => (
+          <Field
+            key={type}
+            label={JOB_TYPE_LABELS[type]}
+            htmlFor={`template-${type}`}
+          >
+            <Textarea
+              id={`template-${type}`}
+              rows={5}
+              defaultValue={(
+                templates[type]?.length
+                  ? templates[type]
+                  : DEFAULT_TASK_TEMPLATES[type]
+              ).join("\n")}
+              onBlur={(event) =>
+                void updateSettings({
+                  task_templates: {
+                    ...templates,
+                    [type]: event.target.value
+                      .split("\n")
+                      .map((line) => line.trim())
+                      .filter(Boolean),
+                  },
+                })
+              }
+            />
+          </Field>
+        ))}
       </section>
 
       <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
