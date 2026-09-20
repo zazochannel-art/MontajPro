@@ -388,6 +388,8 @@ export interface Settings extends BaseRow {
   notification_prefs: NotificationPrefs;
   vat_percent: number;
   quote_terms: string | null;
+  /** Scrie data peste pozele făcute din aplicație. */
+  photo_stamp: boolean;
 }
 
 /* ------------------------------------------------------------------ */

@@ -15,13 +15,47 @@ import { uid } from "./utils";
 const MAX_DIMENSION = 1600;
 const JPEG_QUALITY = 0.82;
 
+/**
+ * Scrie data peste poză, jos în dreapta.
+ *
+ * O poză „înainte” fără dată nu ține loc de dovadă: oricine poate spune că e
+ * de altădată. Bara închisă din spate e acolo pentru că un text alb pe o
+ * șapă albă nu se vede.
+ */
+function drawStamp(
+  context: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  text: string,
+) {
+  const size = Math.max(14, Math.round(width * 0.028));
+  context.font = `600 ${size}px system-ui, -apple-system, sans-serif`;
+  context.textBaseline = "alphabetic";
+  const padding = Math.round(size * 0.55);
+  const textWidth = context.measureText(text).width;
+  const boxWidth = textWidth + padding * 2;
+  const boxHeight = size + padding * 1.6;
+  const x = width - boxWidth - padding;
+  const y = height - boxHeight - padding;
+
+  context.fillStyle = "rgba(0, 0, 0, 0.55)";
+  context.fillRect(x, y, boxWidth, boxHeight);
+  context.fillStyle = "#ffffff";
+  context.fillText(text, x + padding, y + boxHeight - padding * 1.1);
+}
+
 /** Redimensionează și comprimă o poză înainte de urcare. */
-export async function compressImage(file: File): Promise<Blob> {
+export async function compressImage(
+  file: File,
+  stamp?: string | null,
+): Promise<Blob> {
   if (typeof document === "undefined" || !file.type.startsWith("image/")) return file;
   try {
     const bitmap = await createImageBitmap(file);
     const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
-    if (scale === 1 && file.size < 900_000) {
+    // Scurtătura „e deja mică, o lăsăm așa” nu se aplică la ștampilat: acolo
+    // poza chiar trebuie redesenată.
+    if (scale === 1 && file.size < 900_000 && !stamp) {
       bitmap.close?.();
       return file;
     }
@@ -32,13 +66,28 @@ export async function compressImage(file: File): Promise<Blob> {
     if (!context) return file;
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close?.();
+    if (stamp) drawStamp(context, canvas.width, canvas.height, stamp);
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY),
     );
-    return blob && blob.size < file.size ? blob : file;
+    // Ștampilată, poza trebuie păstrată chiar dacă a ieșit mai mare.
+    return blob && (stamp || blob.size < file.size) ? blob : file;
   } catch {
     return file;
   }
+}
+
+/**
+ * Textul ștampilei, sau `null` dacă utilizatorul a oprit-o.
+ *
+ * Ora intră și ea: la o lucrare de două zile, ziua singură nu spune care poză
+ * e de dimineață și care de la final.
+ */
+export function stampText(enabled: boolean | null | undefined): string | null {
+  if (enabled === false) return null;
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 }
 
 export interface StoredAsset {
@@ -51,8 +100,9 @@ export async function storeImage(
   file: File,
   folder: string,
   userId: string,
+  stamp?: string | null,
 ): Promise<StoredAsset> {
-  const blob = await compressImage(file);
+  const blob = await compressImage(file, stamp);
   const localKey = uid();
   await blobPut(localKey, blob);
 

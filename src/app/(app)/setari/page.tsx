@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import {
   Bell,
   Building2,
+  Camera,
   ListChecks,
   Coins,
   Download,
@@ -418,6 +419,26 @@ export default function SettingsPage() {
             Fișierul are pe fiecare rând: denumire; unitate; preț; tip. Merge și
             cu virgulă sau tab ca separator, și cu zecimale cu virgulă.
           </p>
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
+          <Camera className="size-4 text-primary" /> Fotografii
+        </h3>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm">Pune data pe poze</p>
+            <p className="text-xs text-muted-foreground">
+              O poză „înainte” fără dată nu ține loc de dovadă.
+            </p>
+          </div>
+          <Switch
+            checked={settings.photo_stamp !== false}
+            onCheckedChange={(checked) =>
+              void updateSettings({ photo_stamp: checked })
+            }
+          />
         </div>
       </section>
 

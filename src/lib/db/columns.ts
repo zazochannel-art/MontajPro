@@ -147,6 +147,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "notification_prefs",
     "vat_percent",
     "quote_terms",
+    "photo_stamp",
   ],
 };
 

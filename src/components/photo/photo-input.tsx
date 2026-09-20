@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { Camera, ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { storeImage, type StoredAsset } from "@/lib/storage";
+import { stampText, storeImage, type StoredAsset } from "@/lib/storage";
 import { useApp } from "@/lib/app-provider";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +28,7 @@ export function PhotoInput({
   variant?: "tile" | "button";
   className?: string;
 }) {
-  const { userId } = useApp();
+  const { userId, settings } = useApp();
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -42,7 +42,12 @@ export function PhotoInput({
           toast.error(`${file.name} nu este o imagine`);
           continue;
         }
-        const asset = await storeImage(file, folder, userId);
+        const asset = await storeImage(
+          file,
+          folder,
+          userId,
+          stampText(settings?.photo_stamp),
+        );
         await onCaptured(asset, file);
       }
       toast.success(

@@ -1,7 +1,7 @@
 "use client";
 
 import { getSupabase } from "./supabase/client";
-import { storeImage } from "./storage";
+import { stampText, storeImage } from "./storage";
 
 /**
  * Al doilea om.
@@ -202,7 +202,9 @@ export async function addSharedPhoto(
 ) {
   const supabase = getSupabase();
   if (!supabase) throw new Error("Fără semnal");
-  const asset = await storeImage(file, "jobs", job.owner_id);
+  // Ștampila e pornită implicit: poza ajutorului e tocmai cea care are nevoie
+  // de dată, fiindcă patronul n-a fost acolo.
+  const asset = await storeImage(file, "jobs", job.owner_id, stampText(true));
   if (!asset.storage_path) throw new Error("Poza n-a putut fi urcată");
   const { error } = await supabase.rpc("shared_photo_add", {
     job: job.id,
