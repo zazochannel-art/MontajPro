@@ -48,6 +48,8 @@ import {
   JOB_TYPE_LABELS,
 } from "@/lib/constants";
 import { JOB_TYPES } from "@/lib/types";
+import { parsePriceList, priceListToCsv } from "@/lib/price-import";
+import { downloadCsv } from "@/lib/export";
 import { BUILTIN_POSITIONS } from "@/lib/price-list";
 import type { NotificationPrefs, PriceItem } from "@/lib/types";
 import { uid } from "@/lib/utils";
@@ -75,6 +77,7 @@ export default function SettingsPage() {
   } = useApp();
   const { canInstall, installed, isIOS, install } = useInstallPrompt();
   const fileRef = useRef<HTMLInputElement>(null);
+  const priceFileRef = useRef<HTMLInputElement>(null);
   const [newCategory, setNewCategory] = useState("");
   // Recitim la fiecare schimbare de date, ca butonul demo să fie corect.
   useTable("clients");
@@ -98,6 +101,38 @@ export default function SettingsPage() {
         item.id === id ? { ...item, ...patch } : item,
       ),
     });
+
+  /**
+   * Pozițiile aduse dintr-un fișier se adaugă peste cele existente; cele cu
+   * același nume se sar, ca un import repetat să nu dubleze lista.
+   */
+  const importPrices = async (file: File) => {
+    try {
+      const { items, skipped } = parsePriceList(await file.text());
+      if (!items.length) {
+        toast.error("Niciun rând de preț recunoscut în fișier");
+        return;
+      }
+      const known = new Set(
+        priceList.map((item) => item.name.trim().toLowerCase()),
+      );
+      const fresh = items.filter((item) => {
+        const key = item.name.trim().toLowerCase();
+        if (known.has(key)) return false;
+        known.add(key);
+        return true;
+      });
+      await updateSettings({ price_list: [...priceList, ...fresh] });
+      toast.success(
+        `${fresh.length} ${fresh.length === 1 ? "poziție adăugată" : "poziții adăugate"}` +
+          (items.length - fresh.length + skipped > 0
+            ? ` · ${items.length - fresh.length + skipped} rânduri sărite`
+            : ""),
+      );
+    } catch {
+      toast.error("Fișierul nu a putut fi citit");
+    }
+  };
 
   const addPosition = () =>
     void updateSettings({
@@ -344,9 +379,44 @@ export default function SettingsPage() {
             </div>
           ))}
 
-          <Button variant="outline" size="sm" onClick={addPosition}>
-            <Plus /> Adaugă poziție
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={addPosition}>
+              <Plus /> Adaugă poziție
+            </Button>
+            <input
+              ref={priceFileRef}
+              type="file"
+              accept=".csv,.txt,text/csv,text/plain"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) void importPrices(file);
+              }}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => priceFileRef.current?.click()}
+            >
+              <Upload /> Importă din fișier
+            </Button>
+            {priceList.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  downloadCsv("montajpro-preturi.csv", priceListToCsv(priceList))
+                }
+              >
+                <Download /> Exportă
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Fișierul are pe fiecare rând: denumire; unitate; preț; tip. Merge și
+            cu virgulă sau tab ca separator, și cu zecimale cu virgulă.
+          </p>
         </div>
       </section>
 

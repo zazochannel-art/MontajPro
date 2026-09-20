@@ -768,6 +768,56 @@ export async function deleteInvoice(id: string) {
   kick();
 }
 
+/**
+ * Ofertă nouă, pornită dintr-una existentă.
+ *
+ * Se copiază ce se repetă — client, linii, reducere, avans, condiții. Nu se
+ * copiază ce ține de exemplarul trecut: numărul, linkul public, data trimiterii
+ * și acceptarea clientului. O ofertă duplicată e o ciornă, nu una trimisă.
+ */
+export async function duplicateQuote(id: string) {
+  const source = store.getTable("quotes").find((row) => row.id === id);
+  if (!source) return null;
+
+  const items = store
+    .getTable("quote_items")
+    .filter((row) => row.quote_id === id && !row.deleted_at)
+    .sort((a, b) => a.position - b.position);
+
+  const copy = await store.insert("quotes", {
+    number: nextQuoteNumber(),
+    client_id: source.client_id,
+    job_id: null,
+    status: "draft" as const,
+    title: `${source.title} (copie)`,
+    advance: source.advance,
+    discount: source.discount,
+    valid_until: null,
+    notes: source.notes,
+    sent_at: null,
+    accepted_at: null,
+    public_token: null,
+    accepted_by_client_at: null,
+    client_signature: null,
+  });
+  if (!copy) return null;
+
+  let position = 0;
+  for (const item of items) {
+    await store.insert("quote_items", {
+      quote_id: copy.id,
+      description: item.description,
+      quantity: item.quantity,
+      unit: item.unit,
+      unit_price: item.unit_price,
+      position: position++,
+    });
+  }
+
+  kick();
+  return copy;
+}
+
 /* --------------------------- pașii lucrării ------------------------ */
 
 export async function addJobTask(jobId: string, title: string) {

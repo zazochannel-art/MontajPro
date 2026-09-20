@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
 import {
   CheckCircle2,
+  Copy,
   Hammer,
   Link2,
   Pencil,
@@ -24,6 +25,7 @@ import { useRow, useStoreReady, useTable } from "@/hooks/use-data";
 import {
   convertQuoteToJob,
   deleteQuote,
+  duplicateQuote,
   ensureQuoteLink,
   quoteTotal,
   setQuoteStatus,
@@ -378,6 +380,20 @@ export default function QuotePage({
             <Link href={`/oferte/${quote.id}/editare`}>
               <Pencil /> Editează
             </Link>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              const copy = await duplicateQuote(quote.id);
+              if (!copy) {
+                toast.error("Oferta nu a putut fi duplicată");
+                return;
+              }
+              toast.success("Ofertă duplicată");
+              router.push(`/oferte/${copy.id}/editare`);
+            }}
+          >
+            <Copy /> Duplică
           </Button>
           <Confirm
             title="Ștergi oferta?"
