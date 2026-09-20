@@ -234,3 +234,37 @@ test("ștergerea logică ajunge pe server", async () => {
   // Selectorii nu-l mai văd.
   assert.equal(store.getTable("clients").filter((r) => !r.deleted_at).length, 0);
 });
+
+test("un tabel care refuză citirea nu le oprește pe celelalte", async () => {
+  // Pull-ul cere tabelele în valuri paralele; un tabel supărat n-are voie să
+  // ia cu el valul întreg.
+  backend.seed("materials", {
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    user_id: USER,
+    name: "Parchet stejar",
+    quantity: 10,
+    unit: "m²",
+    price: 300,
+  });
+  backend.seed("clients", {
+    id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    user_id: USER,
+    name: "Ion Popescu",
+  });
+  backend.rejectReads("clients");
+
+  await syncNow();
+
+  // Materialul a venit, deși clienții au picat.
+  assert.equal(store.getTable("materials").length, 1);
+  assert.equal(store.getTable("clients").length, 0);
+
+  const state = store.getSyncState();
+  assert.equal(state.status, "error");
+  assert.match(state.error ?? "", /clients/);
+
+  backend.allowReads("clients");
+  await syncNow();
+  assert.equal(store.getTable("clients").length, 1);
+  assert.equal(store.getSyncState().status, "idle");
+});
