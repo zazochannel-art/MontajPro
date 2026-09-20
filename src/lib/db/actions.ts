@@ -768,6 +768,92 @@ export async function deleteInvoice(id: string) {
   kick();
 }
 
+/* --------------------------- proces-verbal ------------------------- */
+
+export function nextHandoverNumber(): number {
+  const numbers = store
+    .getTable("handovers")
+    .filter((row) => !row.deleted_at)
+    .map((row) => row.number || 0);
+  return (numbers.length ? Math.max(...numbers) : 0) + 1;
+}
+
+export interface HandoverInput {
+  id?: string;
+  job_id: string;
+  handed_at: string;
+  work_summary?: string | null;
+  warranty_months?: number | null;
+  notes?: string | null;
+}
+
+/**
+ * Procesul-verbal de predare al unei lucrări.
+ *
+ * Datele clientului se copiază în document, ca la factură: odată semnat, nu
+ * are voie să se schimbe pentru că s-a editat fișa clientului mai târziu.
+ */
+export async function saveHandover(input: HandoverInput) {
+  const job = store.getTable("jobs").find((row) => row.id === input.job_id);
+  if (!job) return null;
+  const client = job.client_id
+    ? store.getTable("clients").find((row) => row.id === job.client_id)
+    : null;
+
+  const payload = {
+    job_id: job.id,
+    client_id: job.client_id,
+    handed_at: input.handed_at,
+    client_name: client?.name ?? null,
+    client_address: client?.address ?? job.address ?? null,
+    client_phone: client?.phone ?? null,
+    work_summary: input.work_summary?.trim() || null,
+    warranty_months: input.warranty_months ?? null,
+    notes: input.notes?.trim() || null,
+  };
+
+  const handover = input.id
+    ? await store.update("handovers", input.id, payload)
+    : await store.insert("handovers", {
+        ...payload,
+        number: nextHandoverNumber(),
+        signature: null,
+        signer_name: null,
+        signed_at: null,
+      });
+  kick();
+  return handover;
+}
+
+/** Semnătura desenată de client, cu numele și ora. */
+export async function signHandover(
+  id: string,
+  signature: string,
+  signerName: string,
+) {
+  await store.update("handovers", id, {
+    signature,
+    signer_name: signerName.trim() || null,
+    signed_at: nowISO(),
+  });
+  kick();
+}
+
+/** Ștergerea semnăturii, dacă s-a semnat din greșeală. */
+export async function clearHandoverSignature(id: string) {
+  await store.update("handovers", id, {
+    signature: null,
+    signer_name: null,
+    signed_at: null,
+  });
+  kick();
+}
+
+export async function deleteHandover(id: string) {
+  await store.remove("handovers", id);
+  kick();
+}
+
 /* --------------------------- duplicare lucrare --------------------- */
 
 /**

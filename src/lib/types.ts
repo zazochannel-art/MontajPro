@@ -245,6 +245,33 @@ export interface Invoice extends BaseRow {
   notes: string | null;
 }
 
+/**
+ * Procesul-verbal de predare.
+ *
+ * Oferta se acceptă la început; asta încheie lucrarea. Datele clientului se
+ * copiază, ca la factură: un document semnat nu se schimbă pentru că cineva a
+ * editat fișa clientului peste șase luni. Semnătura se ține ca imagine PNG în
+ * chiar rândul acesta — câțiva kilobytes, care se sincronizează odată cu el și
+ * nu depind de Storage.
+ */
+export interface Handover extends BaseRow {
+  job_id: ID;
+  client_id: ID | null;
+  number: number;
+  handed_at: string;
+  client_name: string | null;
+  client_address: string | null;
+  client_phone: string | null;
+  /** Ce s-a executat, copiat din lucrare și editabil. */
+  work_summary: string | null;
+  warranty_months: number | null;
+  notes: string | null;
+  /** PNG ca data URL, desenat cu degetul. */
+  signature: string | null;
+  signer_name: string | null;
+  signed_at: string | null;
+}
+
 export interface QuoteItem extends BaseRow {
   quote_id: ID;
   description: string;
@@ -356,6 +383,7 @@ export interface Tables {
   quotes: Quote;
   quote_items: QuoteItem;
   invoices: Invoice;
+  handovers: Handover;
   tools: Tool;
   work_sessions: WorkSession;
   notifications: AppNotification;
@@ -376,6 +404,7 @@ export const TABLE_NAMES: TableName[] = [
   "quotes",
   "quote_items",
   "invoices",
+  "handovers",
   "tools",
   "work_sessions",
   "notifications",

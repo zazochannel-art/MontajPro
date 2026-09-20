@@ -19,7 +19,6 @@ import type { Job, JobMaterial, JobMeasurement, WorkSession } from "../src/lib/t
 
 function job(patch: Partial<Job> & { id: string }): Job {
   return {
-    id: patch.id,
     user_id: "u",
     created_at: "2026-01-10T08:00:00.000Z",
     updated_at: "2026-01-10T08:00:00.000Z",
