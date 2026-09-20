@@ -114,6 +114,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
   work_sessions: [...BASE, "job_id", "started_at", "ended_at", "duration_minutes", "note"],
   notifications: [...BASE, "kind", "title", "body", "job_id", "due_date", "read_at"],
   job_tasks: [...BASE, "job_id", "title", "done", "done_at", "position"],
+  fixed_costs: [...BASE, "name", "amount", "started_at", "ended_at", "notes"],
   handovers: [
     ...BASE,
     "job_id",

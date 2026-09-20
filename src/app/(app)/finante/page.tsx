@@ -21,6 +21,7 @@ import { Confirm } from "@/components/ui/confirm";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { FixedCosts } from "@/components/finance/fixed-costs";
 import { ExpenseDialog } from "@/components/forms/expense-dialog";
 import { PaymentDialog } from "@/components/forms/payment-dialog";
 import {
@@ -41,7 +42,7 @@ import {
   formatNumber,
   monthName,
 } from "@/lib/format";
-import { totalWorkedMinutes } from "@/lib/calc";
+import { fixedCostsForMonth, totalWorkedMinutes } from "@/lib/calc";
 import { downloadCsv, expensesCsv, paymentsCsv } from "@/lib/export";
 import { useClients } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
@@ -53,6 +54,7 @@ export default function FinancePage() {
   const payments = useTable("payments");
   const expenses = useTable("expenses");
   const sessions = useTable("work_sessions");
+  const fixedCosts = useTable("fixed_costs");
   const now = useMinuteTick();
   const jobs = useJobs();
   const paymentIndex = useJobPaymentIndex();
@@ -107,13 +109,17 @@ export default function FinancePage() {
         sessions.filter((row) => row.started_at.slice(0, 7) === monthKey),
         now,
       ) / 60;
-    const profit = income - spent;
+    // Cheltuielile fixe intră în profitul lunii: fără ele, cifra e mai mare
+    // decât adevărul cu exact suma lor.
+    const fixed = fixedCostsForMonth(fixedCosts, monthKey);
+    const profit = income - spent - fixed;
 
     return {
       monthPayments,
       monthExpenses,
       income,
       spent,
+      fixed,
       profit,
       advances,
       receivable,
@@ -121,7 +127,7 @@ export default function FinancePage() {
       perHour: hours >= 0.25 ? profit / hours : null,
       byCategory: Object.entries(byCategory).sort((a, b) => b[1] - a[1]),
     };
-  }, [payments, expenses, sessions, now, jobs, paymentIndex, monthKey]);
+  }, [payments, expenses, sessions, fixedCosts, now, jobs, paymentIndex, monthKey]);
 
   const jobTitle = (jobId: string | null) =>
     jobId
@@ -179,6 +185,11 @@ export default function FinancePage() {
           value={formatMoney(data.profit, currency, { compact: true })}
           icon={Wallet}
           tone={data.profit >= 0 ? "success" : "danger"}
+          hint={
+            data.fixed > 0
+              ? `după ${formatMoney(data.fixed, currency, { compact: true })} fixe`
+              : undefined
+          }
         />
         <StatCard
           label="Bani de primit"
@@ -217,6 +228,9 @@ export default function FinancePage() {
           </TabsTrigger>
           <TabsTrigger value="expenses" className="flex-1">
             Cheltuieli
+          </TabsTrigger>
+          <TabsTrigger value="fixed" className="flex-1">
+            Fixe
           </TabsTrigger>
         </TabsList>
 
@@ -416,6 +430,11 @@ export default function FinancePage() {
             />
           )}
         </TabsContent>
+
+        <TabsContent value="fixed">
+          <FixedCosts monthKey={monthKey} />
+        </TabsContent>
+
       </Tabs>
 
       <PaymentDialog

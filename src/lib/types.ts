@@ -260,6 +260,26 @@ export interface Invoice extends BaseRow {
 }
 
 /**
+ * Cheltuiala care vine în fiecare lună, indiferent de lucrări.
+ *
+ * Chiria la depozit, leasingul, telefonul, asigurarea. Până acum n-aveau unde
+ * să fie puse decât ca o cheltuială pe o lucrare — ceea ce e fals — așa că
+ * profitul lunar ieșea mai mare decât adevărul cu exact suma lor.
+ *
+ * Nu se șterg când te lași de ele: le pui o dată de încheiere, ca lunile
+ * trecute să rămână cum au fost.
+ */
+export interface FixedCost extends BaseRow {
+  name: string;
+  amount: number;
+  /** Prima lună în care se plătește (ISO date). */
+  started_at: string;
+  /** Ultima lună în care s-a plătit; gol cât timp curge. */
+  ended_at: string | null;
+  notes: string | null;
+}
+
+/**
  * Un pas din lista de pe șantier.
  *
  * Pașii se repetă de la o lucrare la alta, de-asta pornesc dintr-un șablon pe
@@ -425,6 +445,7 @@ export interface Tables {
   invoices: Invoice;
   handovers: Handover;
   job_tasks: JobTask;
+  fixed_costs: FixedCost;
   tools: Tool;
   work_sessions: WorkSession;
   notifications: AppNotification;
@@ -447,6 +468,7 @@ export const TABLE_NAMES: TableName[] = [
   "invoices",
   "handovers",
   "job_tasks",
+  "fixed_costs",
   "tools",
   "work_sessions",
   "notifications",

@@ -266,6 +266,27 @@ export function calcTotal(lines: Pick<CalcLine, "quantity" | "unit_price">[]): n
 /* Finanțe                                                             */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Cât din cheltuielile fixe cade pe luna dată.
+ *
+ * O cheltuială se numără dacă începuse până la sfârșitul lunii și nu se
+ * încheiase înainte de începutul ei. Datele de început și de sfârșit sunt
+ * acolo tocmai ca o lună trecută să rămână cum a fost, chiar dacă între timp
+ * ai renunțat la chirie.
+ */
+export function fixedCostsForMonth(
+  costs: { amount: number; started_at: string; ended_at: string | null }[],
+  monthKey: string,
+): number {
+  const first = `${monthKey}-01`;
+  const last = `${monthKey}-31`;
+  return costs.reduce((acc, cost) => {
+    if (cost.started_at.slice(0, 10) > last) return acc;
+    if (cost.ended_at && cost.ended_at.slice(0, 10) < first) return acc;
+    return acc + num(cost.amount);
+  }, 0);
+}
+
 export interface JobMoney {
   price: number;
   paid: number;

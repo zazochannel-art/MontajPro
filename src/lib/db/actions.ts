@@ -874,6 +874,48 @@ export async function duplicateQuote(id: string) {
   return copy;
 }
 
+/* --------------------------- cheltuieli fixe ----------------------- */
+
+export interface FixedCostInput {
+  id?: string;
+  name: string;
+  amount: number;
+  started_at: string;
+  ended_at?: string | null;
+  notes?: string | null;
+}
+
+export async function saveFixedCost(input: FixedCostInput) {
+  const payload = {
+    name: input.name.trim(),
+    amount: num(input.amount),
+    started_at: input.started_at,
+    ended_at: input.ended_at || null,
+    notes: input.notes?.trim() || null,
+  };
+  const row = input.id
+    ? await store.update("fixed_costs", input.id, payload)
+    : await store.insert("fixed_costs", payload);
+  kick();
+  return row;
+}
+
+/**
+ * Încheierea unei cheltuieli fixe.
+ *
+ * Nu o ștergem: lunile în care chiar ai plătit-o trebuie să rămână cum au
+ * fost, altfel profitul de anul trecut s-ar rescrie singur.
+ */
+export async function endFixedCost(id: string, endedAt: string) {
+  await store.update("fixed_costs", id, { ended_at: endedAt });
+  kick();
+}
+
+export async function deleteFixedCost(id: string) {
+  await store.remove("fixed_costs", id);
+  kick();
+}
+
 /* --------------------------- pașii lucrării ------------------------ */
 
 export async function addJobTask(jobId: string, title: string) {
