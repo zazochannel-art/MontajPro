@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Calculator,
+  HardHat,
   CalendarDays,
   FileText,
   Hammer,
@@ -67,6 +68,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: "Cont",
     items: [
+      { href: "/echipa", label: "Echipă", icon: HardHat },
       {
         href: "/notificari",
         label: "Notificări",

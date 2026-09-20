@@ -18,10 +18,10 @@ schimba din Setări (MDL, RON, EUR, USD, UAH, GBP).
 | **Pagina lucrării** | Tab-uri: General, Măsurători, Poze, Materiale, Finanțe, Activitate; buton mare **START / FINALIZEAZĂ** cu cronometru |
 | **Clienți** | CRUD complet, istoric lucrări și plăți, fotografii, acțiuni rapide (sună, WhatsApp, hartă) |
 | **Măsurători** | Scară / parchet / plintă / altceva, cu **calcule automate** (suprafețe, unghi, bucăți necesare, pierdere %) |
-| **Calculator preț** | Alegi poziția, prețul și unitatea vin din tarifele din Setări; poziții proprii peste cele implicite; salvează direct în lucrare sau ofertă |
+| **Calculator preț** | Alegi poziția, prețul și unitatea vin din tarifele din Setări; cantitățile pot veni direct dintr-o măsurătoare; salvează în lucrare sau ofertă |
 | **Oferte** | Linii alese din aceleași poziții ca în calculator, cu prețul din Setări; numerotate automat, cu subtotal/reducere/avans/rest, format printabil și partajare prin WhatsApp/share nativ; se transformă într-o lucrare dintr-o apăsare |
 | **Calendar** | Lunar și săptămânal, mutarea lucrării pe altă zi (drag pe desktop, buton pe telefon) |
-| **Finanțe** | Încasări, cheltuieli pe categorii, profit, bani de primit, avansuri — pe lună |
+| **Finanțe** | Încasări, cheltuieli pe categorii, profit, bani de primit, avansuri și câștigul pe oră — pe lună |
 | **Materiale** | Inventar + listă de cumpărături generată din lucrările active |
 | **Scule** | Evidență cu preț, dată cumpărare, garanție și alertă înainte de expirare |
 | **Portofoliu** | Lucrările finalizate cu „înainte / după” |
@@ -30,7 +30,12 @@ schimba din Setări (MDL, RON, EUR, USD, UAH, GBP).
 | **Export contabil** | CSV pentru încasări, cheltuieli și facturi, cu separator `;` și virgulă zecimală, gata de deschis în Excel |
 | **Notificări** | În aplicație și push pe telefon: lucrare azi/mâine, plată restantă, materiale lipsă, garanție care expiră, ofertă neconfirmată |
 | **Căutare globală** | Un câmp peste clienți, lucrări, oferte, facturi, materiale, scule și măsurători (Ctrl/Cmd+K) |
-| **Setări** | Profil, monedă, unități, tarife și poziții proprii, categorii, notificări, backup, date demo |
+| **Pașii lucrării** | Listă bifabilă pe prima filă a lucrării, pornită din șabloane pe tip, editabile în Setări |
+| **Rapoarte** | Ce tip de lucrare aduce bani, preț mediu pe treaptă/m²/m, câștig pe oră, top clienți — doar din lucrări finalizate |
+| **Proces-verbal de predare** | Ce s-a executat, garanția, pozele „după” și semnătura clientului desenată cu degetul |
+| **PDF** | Ofertă, factură și proces-verbal se descarcă ca .pdf, identic pe orice telefon |
+| **Echipă** | Al doilea om vede lucrarea, bifează pași, pornește cronometrul și pune poze — fără să vadă un leu |
+| **Setări** | Profil, monedă, unități, tarife și poziții proprii (cu import/export), pașii pe tip, categorii, notificări, echipă, backup, date demo |
 
 ## Stack
 
@@ -87,7 +92,10 @@ npm run dev                    # http://localhost:3000
    - `0005_restrict_internal_functions.sql` — retrage din browser dreptul de a
      apela funcțiile interne;
    - `0006_push_config.sql` — citirea secretelor push din Vault;
-   - `0007_settings_price_list.sql` — pozițiile proprii din lista de prețuri.
+   - `0007_settings_price_list.sql` — pozițiile proprii din lista de prețuri;
+   - `0008_handovers.sql` — procesele-verbale de predare;
+   - `0009_job_tasks.sql` — pașii lucrării și șabloanele lor;
+   - `0010_team.sql` — echipa și funcțiile prin care ajutorul vede lucrarea.
 3. Pune `NEXT_PUBLIC_SUPABASE_URL` și `NEXT_PUBLIC_SUPABASE_ANON_KEY` în
    `.env.local`. Pentru aplicația publicată, aceleași două variabile se pun în
    setările proiectului de găzduire (pe Vercel: Settings → Environment
@@ -113,6 +121,27 @@ care le poate schimba sunt statusul, ora acceptării și numele semnatarului.
 
 Linkul funcționează doar cu Supabase configurat. În mod local butonul trimite,
 ca înainte, un text.
+
+## Al doilea om
+
+Ajutorul intră cu contul lui, pe e-mailul la care a fost invitat din Setări →
+Echipă, acceptă invitația și vede lucrările în meniul **Echipă**: titlu, tip,
+adresă, client, notițe și pașii de bifat. Poate bifa pași, porni și opri
+cronometrul și trimite poze de pe șantier.
+
+Ce nu vede: prețuri, plăți, cheltuieli, oferte, facturi, rapoarte. Nu pentru
+că sunt ascunse în interfață, ci pentru că nu ies din server.
+
+Cum e construit contează aici: **RLS-ul existent nu s-a atins**. Fiecare rând
+rămâne al unui singur cont, ca până acum, iar ajutorul ajunge la datele
+patronului doar prin funcții din bază (`shared_*`), cu drepturile
+definitorului, care returnează explicit câmp cu câmp. Ce nu e scris acolo nu
+există pentru el, iar o greșeală într-o politică nouă n-are cum să deschidă
+restul aplicației.
+
+Limita, spusă pe față: ecranul de lucrări partajate cere semnal. Datele
+partajate sunt ale altui cont și nu intră în sincronizarea local-first;
+lucrările proprii ale ajutorului merg offline ca până acum.
 
 ## Notificări push
 

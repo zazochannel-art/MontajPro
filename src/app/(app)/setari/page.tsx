@@ -38,6 +38,7 @@ import {
 import { exportData, importData, updateSettings } from "@/lib/db/actions";
 import { hasDemoData, removeDemoData, seedDemoData } from "@/lib/db/demo";
 import { PushToggle } from "@/components/settings/push-toggle";
+import { TeamSection } from "@/components/settings/team-section";
 import { useTable } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
 import { useInstallPrompt } from "@/hooks/use-install-prompt";
@@ -419,6 +420,8 @@ export default function SettingsPage() {
           </p>
         </div>
       </section>
+
+      <TeamSection />
 
       <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
