@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  FileCheck,
   FileText,
   Hammer,
   Package,
@@ -60,6 +61,7 @@ export function GlobalSearch({
   const materials = useTable("materials");
   const tools = useTable("tools");
   const measurements = useTable("job_measurements");
+  const handovers = useTable("handovers");
 
   const hits = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -119,6 +121,21 @@ export function GlobalSearch({
       });
     }
 
+    for (const handover of handovers) {
+      if (!has(handover.client_name, handover.work_summary, String(handover.number)))
+        continue;
+      result.push({
+        id: handover.id,
+        href: `/predare/${handover.id}`,
+        icon: FileCheck,
+        title: `Proces-verbal ${handover.number} — ${handover.client_name ?? "fără client"}`,
+        subtitle: handover.signed_at
+          ? `semnat ${formatDateShort(handover.signed_at)}`
+          : "nesemnat",
+        group: "Procese-verbale",
+      });
+    }
+
     for (const material of materials) {
       if (!has(material.name, material.category, material.supplier)) continue;
       result.push({
@@ -158,7 +175,7 @@ export function GlobalSearch({
     }
 
     return result;
-  }, [query, clients, jobs, quotes, invoices, materials, tools, measurements, currency]);
+  }, [query, clients, jobs, quotes, invoices, materials, tools, measurements, handovers, currency]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Hit[]>();
