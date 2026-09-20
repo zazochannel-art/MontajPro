@@ -143,7 +143,7 @@ export function FixedCosts({ monthKey }: { monthKey: string }) {
           </Field>
         </FieldRow>
         <Button variant="outline" size="sm" loading={busy} onClick={add}>
-          <Plus /> Adaugă
+          <Plus /> Adaugă cheltuiala fixă
         </Button>
       </div>
     </div>

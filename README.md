@@ -22,7 +22,7 @@ schimba din Setări (MDL, RON, EUR, USD, UAH, GBP).
 | **Oferte** | Linii alese din aceleași poziții ca în calculator, cu prețul din Setări; numerotate automat, cu subtotal/reducere/avans/rest, format printabil și partajare prin WhatsApp/share nativ; se transformă într-o lucrare dintr-o apăsare |
 | **Calendar** | Lunar și săptămânal, mutarea lucrării pe altă zi (drag pe desktop, buton pe telefon) |
 | **Finanțe** | Încasări, cheltuieli pe categorii, profit, bani de primit, avansuri și câștigul pe oră — pe lună |
-| **Materiale** | Inventar + listă de cumpărături generată din lucrările active |
+| **Materiale** | Inventar care scade când iei din depozit + listă de cumpărături care ține cont de ce ai deja pe raft |
 | **Scule** | Evidență cu preț, dată cumpărare, garanție și alertă înainte de expirare |
 | **Portofoliu** | Lucrările finalizate cu „înainte / după” |
 | **Oferte trimise ca link** | Clientul deschide oferta în browser, fără cont, și o acceptă cu numele lui — confirmarea ajunge înapoi cu dată și oră |
@@ -34,7 +34,9 @@ schimba din Setări (MDL, RON, EUR, USD, UAH, GBP).
 | **Rapoarte** | Ce tip de lucrare aduce bani, preț mediu pe treaptă/m²/m, câștig pe oră, top clienți — doar din lucrări finalizate |
 | **Proces-verbal de predare** | Ce s-a executat, garanția, pozele „după” și semnătura clientului desenată cu degetul |
 | **PDF** | Ofertă, factură și proces-verbal se descarcă ca .pdf, identic pe orice telefon |
-| **Echipă** | Al doilea om vede lucrarea, bifează pași, pornește cronometrul și pune poze — fără să vadă un leu |
+| **Echipă** | Al doilea om vede lucrarea, bifează pași, pornește cronometrul și pune poze — fără să vadă un leu, și fără să aibă nevoie de semnal |
+| **Scadențar** | Tranșele lucrării (la semnare, la material, la predare) cu termen și memento; „am luat” scrie o încasare adevărată |
+| **Cheltuieli fixe** | Chirie, leasing, telefon — se scad din profitul lunii, ca cifra să nu fie mai mare decât adevărul |
 | **Setări** | Profil, monedă, unități, tarife și poziții proprii (cu import/export), pașii pe tip, categorii, notificări, echipă, backup, date demo |
 
 ## Stack
@@ -95,7 +97,14 @@ npm run dev                    # http://localhost:3000
    - `0007_settings_price_list.sql` — pozițiile proprii din lista de prețuri;
    - `0008_handovers.sql` — procesele-verbale de predare;
    - `0009_job_tasks.sql` — pașii lucrării și șabloanele lor;
-   - `0010_team.sql` — echipa și funcțiile prin care ajutorul vede lucrarea.
+   - `0010_team.sql` — echipa și funcțiile prin care ajutorul vede lucrarea;
+   - `0011_who_worked.sql` — numele celui care a lucrat, lângă id;
+   - `0012_photo_stamp.sql` — data scrisă peste poze;
+   - `0013_stock_usage.sql` — materialul scos din depozit;
+   - `0014_follow_up_reminders.sql` — revenirea la client și garanția lucrării;
+   - `0015_fixed_costs.sql` — cheltuielile fixe lunare;
+   - `0016_installments.sql` — scadențarul de plăți;
+   - `0017_shared_offline.sql` — orele ajutorului, scrise cu ceasul lor.
 3. Pune `NEXT_PUBLIC_SUPABASE_URL` și `NEXT_PUBLIC_SUPABASE_ANON_KEY` în
    `.env.local`. Pentru aplicația publicată, aceleași două variabile se pun în
    setările proiectului de găzduire (pe Vercel: Settings → Environment
@@ -139,9 +148,11 @@ definitorului, care returnează explicit câmp cu câmp. Ce nu e scris acolo nu
 există pentru el, iar o greșeală într-o politică nouă n-are cum să deschidă
 restul aplicației.
 
-Limita, spusă pe față: ecranul de lucrări partajate cere semnal. Datele
-partajate sunt ale altui cont și nu intră în sincronizarea local-first;
-lucrările proprii ale ajutorului merg offline ca până acum.
+Merge și fără semnal, ca restul aplicației. Ce s-a citit ultima dată rămâne pe
+telefon, cronometrul pornește local, iar bifele și orele lucrate se pun la
+coadă și pleacă la primul internet — de oriunde din aplicație, nu doar de pe
+ecranul Echipă. Orele se scriu cu ceasul lor adevărat: o sesiune terminată
+dimineața și urcată seara rămâne de trei ore, nu de unsprezece.
 
 ## Notificări push
 
