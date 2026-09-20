@@ -166,6 +166,9 @@ export interface JobPhoto extends BaseRow {
   /** Fallback local: cheia blobului din IndexedDB când nu există rețea. */
   local_key: string | null;
   caption: string | null;
+  /** Ajutorul care a trimis poza; gol dacă ai pus-o tu. */
+  by_member_id: ID | null;
+  by_member_name: string | null;
 }
 
 export interface JobMaterial extends BaseRow {
@@ -315,6 +318,9 @@ export interface WorkSession extends BaseRow {
   /** Calculat la oprire, în minute. */
   duration_minutes: number | null;
   note: string | null;
+  /** Ajutorul care a pornit cronometrul; gol dacă ai lucrat tu. */
+  by_member_id: ID | null;
+  by_member_name: string | null;
 }
 
 export interface AppNotification extends BaseRow {

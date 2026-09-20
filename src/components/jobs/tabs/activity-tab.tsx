@@ -131,13 +131,19 @@ export function ActivityTab({
       a.started_at.localeCompare(b.started_at),
     );
     ordered.forEach((session, index) => {
+      const duration = session.ended_at
+        ? `Durată: ${formatDuration(session.duration_minutes)}`
+        : "În desfășurare";
       list.push({
         at: session.started_at,
         icon: index === 0 ? PlayCircle : Timer,
-        title: index === 0 ? "Lucrare începută" : "Sesiune de lucru",
-        detail: session.ended_at
-          ? `Durată: ${formatDuration(session.duration_minutes)}`
-          : "În desfășurare",
+        // Cine a lucrat: fără nume, patronul vede doar ore apărute din senin.
+        title: session.by_member_name
+          ? `Sesiune de lucru — ${session.by_member_name}`
+          : index === 0
+            ? "Lucrare începută"
+            : "Sesiune de lucru",
+        detail: duration,
         tone: "bg-cyan-500/10 text-cyan-300",
       });
     });
@@ -154,11 +160,20 @@ export function ActivityTab({
         (acc, photo) => (photo.created_at > acc ? photo.created_at : acc),
         list_[0].created_at,
       );
+      const senders = [
+        ...new Set(
+          list_
+            .map((photo) => photo.by_member_name)
+            .filter((name): name is string => Boolean(name)),
+        ),
+      ];
       list.push({
         at: last,
         icon: Camera,
         title: `Fotografii „${stage === "before" ? "înainte" : stage === "during" ? "în timpul lucrării" : "după"}”`,
-        detail: `${list_.length} poze`,
+        detail: senders.length
+          ? `${list_.length} poze · de la ${senders.join(", ")}`
+          : `${list_.length} poze`,
         tone: "bg-violet-500/10 text-violet-300",
       });
     }

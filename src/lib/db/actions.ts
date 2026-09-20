@@ -199,6 +199,9 @@ export async function startWork(jobId: string) {
     ended_at: null,
     duration_minutes: null,
     note: null,
+    // Gol: sesiunea pornită de aici e a ta, nu a unui ajutor.
+    by_member_id: null,
+    by_member_name: null,
   });
   const job = store.getTable("jobs").find((row) => row.id === jobId);
   if (job && job.status !== "in_progress")
