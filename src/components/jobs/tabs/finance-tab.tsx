@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  Clock,
   Plus,
   Receipt,
   ReceiptText,
@@ -21,7 +22,12 @@ import {
   PAYMENT_KIND_LABELS,
   PAYMENT_METHOD_LABELS,
 } from "@/lib/constants";
-import { formatDateShort, formatMoney, formatPercent } from "@/lib/format";
+import {
+  formatDateShort,
+  formatMoney,
+  formatNumber,
+  formatPercent,
+} from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
 import type { Expense, Job, Payment } from "@/lib/types";
 import type { JobMoney } from "@/lib/calc";
@@ -101,6 +107,38 @@ export function FinanceTab({
             {formatMoney(money.profit, currency)}
           </p>
         </div>
+
+        {money.hours > 0 && (
+          <div className="mt-2.5 flex items-center justify-between gap-3 rounded-xl bg-background p-3.5">
+            <div>
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Clock className="size-3.5" /> Câștig pe oră
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {formatNumber(money.hours)} ore la cronometru
+                {money.hourlyTarget
+                  ? ` · tariful tău ${formatMoney(money.hourlyTarget, currency)}`
+                  : ""}
+              </p>
+            </div>
+            <p
+              className={cn(
+                "text-xl font-bold tabular-nums",
+                money.perHour === null
+                  ? "text-muted-foreground"
+                  : money.hourlyTarget === null
+                    ? ""
+                    : money.perHour >= money.hourlyTarget
+                      ? "text-emerald-300"
+                      : "text-amber-300",
+              )}
+            >
+              {money.perHour === null
+                ? "—"
+                : formatMoney(money.perHour, currency)}
+            </p>
+          </div>
+        )}
       </section>
 
       <section className="space-y-2">

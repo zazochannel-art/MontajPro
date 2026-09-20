@@ -275,14 +275,31 @@ export interface JobMoney {
   expensesCost: number;
   profit: number;
   margin: number;
+  /** Ore lucrate, din cronometru. */
+  hours: number;
+  /** Cât a rămas pe oră: profitul împărțit la ore. `null` fără ore. */
+  perHour: number | null;
+  /** Tariful orar din setări, ca să fie cu ce compara. `null` dacă nu e pus. */
+  hourlyTarget: number | null;
 }
 
+/**
+ * Toți banii unei lucrări.
+ *
+ * Manopera proprie NU se scade din profit: pentru un montator pe cont propriu,
+ * ce rămâne după materiale și cheltuieli *este* plata muncii lui. Dacă am
+ * scădea-o și pe ea, am număra același lucru de două ori. Orele servesc la
+ * altceva — împart profitul ca să iasă câștigul pe oră, singura cifră care
+ * spune dacă prețul a fost bun.
+ */
 export function jobMoney(input: {
   price: number;
   payments: { amount: number; kind: string }[];
   materials: { quantity: number; unit_price: number }[];
   expenses: { amount: number }[];
   extraMaterialCost?: number | null;
+  workedMinutes?: number | null;
+  hourlyTarget?: number | null;
 }): JobMoney {
   const price = num(input.price);
   const paid = input.payments.reduce((acc, p) => acc + num(p.amount), 0);
@@ -296,6 +313,8 @@ export function jobMoney(input: {
     ) + num(input.extraMaterialCost);
   const expensesCost = input.expenses.reduce((acc, e) => acc + num(e.amount), 0);
   const profit = price - materialsCost - expensesCost;
+  const hours = num(input.workedMinutes) / 60;
+  const target = num(input.hourlyTarget);
   return {
     price,
     paid,
@@ -305,6 +324,10 @@ export function jobMoney(input: {
     expensesCost,
     profit,
     margin: price > 0 ? (profit / price) * 100 : 0,
+    hours,
+    // Sub un sfert de oră cifra sare în tavan și nu spune nimic.
+    perHour: hours >= 0.25 ? profit / hours : null,
+    hourlyTarget: target > 0 ? target : null,
   };
 }
 
