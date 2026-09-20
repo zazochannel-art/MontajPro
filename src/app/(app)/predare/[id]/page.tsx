@@ -6,6 +6,8 @@ import { notFound, useRouter } from "next/navigation";
 import { ExternalLink, Pencil, Printer, Share2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { PdfButton } from "@/components/ui/pdf-button";
+import { pdfFileName } from "@/lib/pdf";
 import { Badge } from "@/components/ui/badge";
 import { Confirm } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
@@ -89,12 +91,16 @@ export default function HandoverPage({
         <Button variant="outline" size="sm" onClick={share}>
           <Share2 /> Trimite
         </Button>
+        <PdfButton targetId="document" filename={pdfFileName(["proces-verbal", handover.number])} />
         <Button variant="outline" size="sm" onClick={() => window.print()}>
           <Printer /> Printează
         </Button>
       </div>
 
-      <article className="print-surface space-y-5 rounded-2xl border border-border bg-card p-5 sm:p-7">
+      <article
+        id="document"
+        className="print-surface space-y-5 rounded-2xl border border-border bg-card p-5 sm:p-7"
+      >
         <header className="flex items-start justify-between gap-4 border-b border-border pb-4">
           <div>
             <h2 className="text-lg font-bold tracking-tight">

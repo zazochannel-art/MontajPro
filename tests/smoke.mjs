@@ -264,6 +264,17 @@ try {
   await page.getByText(/Achitată/).first().waitFor({ timeout: 10000 });
   check("factura poate fi marcată achitată", true);
 
+  // PDF-ul e o fotografie a documentului: dacă html2canvas se împiedică de
+  // vreun stil, aici se vede, nu pe telefonul clientului.
+  const download = page.waitForEvent("download", { timeout: 30000 });
+  await page.getByRole("button", { name: /^PDF$/ }).click();
+  const file = await download;
+  check(
+    "factura se descarcă ca PDF",
+    file.suggestedFilename().endsWith(".pdf"),
+    file.suggestedFilename(),
+  );
+
   /* ----------------------------- căutare --------------------------- */
   section("Căutare globală");
   await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
