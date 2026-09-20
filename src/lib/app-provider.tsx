@@ -143,6 +143,7 @@ function defaultSettings(userId: string): Settings {
     notification_prefs: { ...DEFAULT_NOTIFICATION_PREFS },
     vat_percent: 0,
     quote_terms: null,
+    photo_stamp: true,
   };
 }
 

@@ -13,6 +13,7 @@ import { retryUpload } from "../storage";
 import { metaGet, metaSet } from "./idb";
 import { store } from "./store";
 import { toPayload } from "./columns";
+import { flushQueue } from "../team";
 import { TABLE_NAMES } from "../types";
 import type { BaseRow, TableName } from "../types";
 
@@ -187,6 +188,10 @@ export function syncNow(): Promise<void> {
       // Întâi urcăm pozele rămase locale: așa `storage_path` apucă să plece
       // în același ciclu, nu abia la sincronizarea următoare.
       await flushPendingUploads(store.userId);
+
+      // Coada echipei nu trece prin outbox — sunt rânduri ale altui cont — dar
+      // trebuie golită de oriunde din aplicație, nu doar de pe ecranul Echipă.
+      await flushQueue().catch(() => 0);
 
       const problems = await pushOutbox();
 

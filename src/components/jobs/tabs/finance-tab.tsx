@@ -19,6 +19,7 @@ import { PaymentDialog } from "@/components/forms/payment-dialog";
 import { ExpenseDialog } from "@/components/forms/expense-dialog";
 import { InvoiceDialog } from "@/components/forms/invoice-dialog";
 import { HandoverDialog } from "@/components/forms/handover-dialog";
+import { Installments } from "@/components/jobs/installments";
 import { useTable } from "@/hooks/use-data";
 import { deletePayment, deleteExpense } from "@/lib/db/actions";
 import {
@@ -149,6 +150,8 @@ export function FinanceTab({
           </div>
         )}
       </section>
+
+      <Installments job={job} />
 
       <section className="space-y-2">
         <div className="flex items-center justify-between">

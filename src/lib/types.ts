@@ -68,6 +68,9 @@ export const NOTIFICATION_KINDS = [
   "tool_warranty",
   "materials_missing",
   "quote_pending",
+  "installment_due",
+  "follow_up",
+  "job_warranty",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
@@ -166,6 +169,9 @@ export interface JobPhoto extends BaseRow {
   /** Fallback local: cheia blobului din IndexedDB când nu există rețea. */
   local_key: string | null;
   caption: string | null;
+  /** Ajutorul care a trimis poza; gol dacă ai pus-o tu. */
+  by_member_id: ID | null;
+  by_member_name: string | null;
 }
 
 export interface JobMaterial extends BaseRow {
@@ -175,7 +181,16 @@ export interface JobMaterial extends BaseRow {
   quantity: number;
   unit: string;
   unit_price: number;
+  /** Cumpărat de la furnizor. */
   purchased: boolean;
+  /**
+   * Scos din depozit pentru lucrarea asta.
+   *
+   * Separat de `purchased`: una e să cumperi, alta e să iei din ce ai. Doar
+   * asta mișcă stocul, și doar o dată — steagul e acolo ca a doua apăsare să
+   * nu scadă încă o dată.
+   */
+  taken_from_stock: boolean;
 }
 
 export interface Material extends BaseRow {
@@ -242,6 +257,46 @@ export interface Invoice extends BaseRow {
   vat_percent: number;
   total: number;
   paid_at: string | null;
+  notes: string | null;
+}
+
+/**
+ * O tranșă planificată din prețul lucrării.
+ *
+ * Până acum erau doar „avans” și „rest”. În realitate banii vin în trei
+ * momente — la semnare, la comanda materialului, la predare — iar dacă nu sunt
+ * scrise undeva, îți amintești tu de ele. Scadențarul le ține minte și te
+ * anunță.
+ *
+ * `payment_id` leagă tranșa de încasarea reală: planul rămâne plan, banii
+ * rămân bani, iar legătura spune care plan s-a împlinit.
+ */
+export interface Installment extends BaseRow {
+  job_id: ID;
+  label: string;
+  amount: number;
+  due_date: string | null;
+  payment_id: ID | null;
+  position: number;
+}
+
+/**
+ * Cheltuiala care vine în fiecare lună, indiferent de lucrări.
+ *
+ * Chiria la depozit, leasingul, telefonul, asigurarea. Până acum n-aveau unde
+ * să fie puse decât ca o cheltuială pe o lucrare — ceea ce e fals — așa că
+ * profitul lunar ieșea mai mare decât adevărul cu exact suma lor.
+ *
+ * Nu se șterg când te lași de ele: le pui o dată de încheiere, ca lunile
+ * trecute să rămână cum au fost.
+ */
+export interface FixedCost extends BaseRow {
+  name: string;
+  amount: number;
+  /** Prima lună în care se plătește (ISO date). */
+  started_at: string;
+  /** Ultima lună în care s-a plătit; gol cât timp curge. */
+  ended_at: string | null;
   notes: string | null;
 }
 
@@ -315,6 +370,9 @@ export interface WorkSession extends BaseRow {
   /** Calculat la oprire, în minute. */
   duration_minutes: number | null;
   note: string | null;
+  /** Ajutorul care a pornit cronometrul; gol dacă ai lucrat tu. */
+  by_member_id: ID | null;
+  by_member_name: string | null;
 }
 
 export interface AppNotification extends BaseRow {
@@ -360,6 +418,12 @@ export interface NotificationPrefs {
   tool_warranty: boolean;
   materials_missing: boolean;
   quote_pending: boolean;
+  /** Tranșă de încasat, scadentă. */
+  installment_due: boolean;
+  /** Sună clientul la câteva luni după montaj. */
+  follow_up: boolean;
+  /** Garanția lucrării stă să expire. */
+  job_warranty: boolean;
 }
 
 export interface Settings extends BaseRow {
@@ -382,6 +446,8 @@ export interface Settings extends BaseRow {
   notification_prefs: NotificationPrefs;
   vat_percent: number;
   quote_terms: string | null;
+  /** Scrie data peste pozele făcute din aplicație. */
+  photo_stamp: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -402,6 +468,8 @@ export interface Tables {
   invoices: Invoice;
   handovers: Handover;
   job_tasks: JobTask;
+  fixed_costs: FixedCost;
+  installments: Installment;
   tools: Tool;
   work_sessions: WorkSession;
   notifications: AppNotification;
@@ -424,6 +492,8 @@ export const TABLE_NAMES: TableName[] = [
   "invoices",
   "handovers",
   "job_tasks",
+  "fixed_costs",
+  "installments",
   "tools",
   "work_sessions",
   "notifications",

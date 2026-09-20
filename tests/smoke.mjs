@@ -175,6 +175,29 @@ try {
   await page.getByText(/^1 din/).waitFor({ timeout: 10000 });
   check("pasul bifat se numără", true);
 
+  /* --------------------------- scadențar și fixe -------------------- */
+  section("Scadențar și cheltuieli fixe");
+  await page.getByRole("tab", { name: /Finanțe/i }).click();
+  await page.getByRole("button", { name: /Împarte în 30/i }).click();
+  await page.getByText("Avans la semnare").waitFor({ timeout: 10000 });
+  check("scadențarul se împarte din preț", true);
+  // 12.000 × 30% = 3.600 pe prima tranșă.
+  check(
+    "prima tranșă e 30% din preț",
+    (await page.getByText(/3\.600 MDL/).count()) > 0,
+  );
+
+  await page.goto(`${BASE}/finante`, { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: /^Fixe$/ }).click();
+  await page.locator("#fixed-name").fill("Chirie depozit (test)");
+  await page.locator("#fixed-amount").fill("1000");
+  await page.getByRole("button", { name: /Adaugă cheltuiala fixă/i }).click();
+  await page.getByText("Chirie depozit (test)").waitFor({ timeout: 10000 });
+  check(
+    "cheltuiala fixă se scade din luna curentă",
+    (await page.getByText(/−1\.000 MDL/).count()) > 0,
+  );
+
   /* ----------------------------- calculator ------------------------ */
   section("Calculator preț: poziția aduce prețul din setări");
 
@@ -319,6 +342,7 @@ try {
     ["/portofoliu", /Portofoliu/],
     ["/notificari", /Notificări/],
     ["/rapoarte", /Rapoarte/],
+    ["/predari", /Procese-verbale/],
     ["/echipa", /Echipă/],
     ["/setari", /Setări/],
   ]) {

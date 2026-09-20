@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Camera,
   ChevronDown,
+  CloudOff,
   HardHat,
   MapPin,
   Phone,
@@ -20,13 +21,16 @@ import { useMinuteTick } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
 import {
   addSharedPhoto,
-  openSharedSession,
-  setSharedTask,
-  sharedJobs,
-  sharedTasks,
-  startSharedSession,
-  stopSharedSession,
-  type OpenSession,
+  cachedJobs,
+  cachedTasks,
+  flushQueue,
+  markTask,
+  queueLength,
+  refreshJobs,
+  refreshTasks,
+  startedAt,
+  startTimer,
+  stopTimer,
   type SharedJob,
   type SharedTask,
 } from "@/lib/team";
@@ -38,36 +42,48 @@ import { cn } from "@/lib/utils";
 /**
  * Lucrările la care ești ajutor.
  *
- * Ecranul cere semnal: datele sunt ale altui cont și vin prin funcții din
- * bază, nu prin sincronizarea local-first. Lucrările tale merg offline ca până
- * acum.
+ * Merge și fără semnal: ce s-a citit ultima dată rămâne pe telefon, iar
+ * bifele și orele lucrate pleacă singure la primul internet.
  */
 export default function TeamJobsPage() {
   const { online } = useApp();
   const [jobs, setJobs] = useState<SharedJob[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [pending, setPending] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    void sharedJobs().then((list) => {
-      if (!cancelled) setJobs(list);
-    });
+    const load = async () => {
+      const cached = await cachedJobs();
+      if (!cancelled && cached.length) setJobs(cached);
+      const sent = await flushQueue();
+      const fresh = await refreshJobs();
+      if (cancelled) return;
+      setJobs(fresh ?? cached);
+      setPending(await queueLength());
+      if (sent > 0) {
+        toast.success(
+          sent === 1 ? "O modificare a plecat" : `${sent} modificări au plecat`,
+        );
+      }
+    };
+    void load();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [online]);
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Echipă"
-        description="Lucrările la care ești ajutor"
-      />
+      <PageHeader title="Echipă" description="Lucrările la care ești ajutor" />
 
-      {!online && (
-        <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-sm text-amber-200">
-          Ecranul ăsta cere semnal: lucrările sunt ale altui cont și se citesc
-          de pe server. Lucrările tale merg mai departe și fără internet.
+      {pending > 0 && (
+        <p className="flex items-center gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-sm text-amber-200">
+          <CloudOff className="size-4 shrink-0" />
+          {pending === 1
+            ? "O modificare așteaptă semnal."
+            : `${pending} modificări așteaptă semnal.`}{" "}
+          Pleacă singure când revine internetul.
         </p>
       )}
 
@@ -87,6 +103,7 @@ export default function TeamJobsPage() {
               job={job}
               open={openId === job.id}
               onToggle={() => setOpenId(openId === job.id ? null : job.id)}
+              onQueued={async () => setPending(await queueLength())}
             />
           ))}
         </div>
@@ -99,67 +116,80 @@ function SharedJobCard({
   job,
   open,
   onToggle,
+  onQueued,
 }: {
   job: SharedJob;
   open: boolean;
   onToggle: () => void;
+  onQueued: () => Promise<void>;
 }) {
   const now = useMinuteTick();
   const fileRef = useRef<HTMLInputElement>(null);
   const [tasks, setTasks] = useState<SharedTask[] | null>(null);
-  const [session, setSession] = useState<OpenSession | null>(null);
+  const [since, setSince] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void startedAt(job.id).then((value) => {
+      if (!cancelled) setSince(value);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [job.id]);
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    void Promise.all([sharedTasks(job.id), openSharedSession(job.id)]).then(
-      ([list, current]) => {
-        if (cancelled) return;
-        setTasks(list);
-        setSession(current);
-      },
-    );
+    const load = async () => {
+      const cached = await cachedTasks(job.id);
+      if (!cancelled && cached.length) setTasks(cached);
+      const fresh = await refreshTasks(job.id);
+      if (!cancelled) setTasks(fresh ?? cached);
+    };
+    void load();
     return () => {
       cancelled = true;
     };
   }, [open, job.id]);
 
-  const minutes = session
-    ? Math.max(0, Math.round((now - new Date(session.started_at).getTime()) / 60_000))
+  const minutes = since
+    ? Math.max(0, Math.round((now - new Date(since).getTime()) / 60_000))
     : 0;
 
-  const toggleTask = async (task: SharedTask, done: boolean) => {
-    try {
-      await setSharedTask(task.id, done);
+  const toggleTask = useCallback(
+    async (task: SharedTask, done: boolean) => {
       setTasks(
         (current) =>
           current?.map((row) => (row.id === task.id ? { ...row, done } : row)) ??
           null,
       );
-    } catch {
-      toast.error("Bifa n-a ajuns la server — verifică semnalul");
-    }
-  };
+      const result = await markTask(job.id, task.id, done);
+      if (result === "queued") {
+        await onQueued();
+        toast.info("Bifat local — pleacă la primul semnal");
+      }
+    },
+    [job.id, onQueued],
+  );
 
   const toggleTimer = async () => {
     setBusy(true);
     try {
-      if (session) {
-        await stopSharedSession(session.id);
-        setSession(null);
-        toast.success("Cronometru oprit");
-      } else {
-        const id = await startSharedSession(job.id);
-        if (!id) {
-          toast.error("Lucrarea nu mai e partajată cu tine");
-          return;
+      if (since) {
+        const result = await stopTimer(job.id);
+        setSince(null);
+        if (result === "queued") {
+          await onQueued();
+          toast.info("Orele au rămas pe telefon — pleacă la primul semnal");
+        } else {
+          toast.success("Cronometru oprit");
         }
-        setSession({ id, started_at: new Date().toISOString() });
+      } else {
+        setSince(await startTimer(job.id));
         toast.success("Cronometru pornit");
       }
-    } catch {
-      toast.error("N-a mers — verifică semnalul");
     } finally {
       setBusy(false);
     }
@@ -171,7 +201,7 @@ function SharedJobCard({
       await addSharedPhoto(job, file, null);
       toast.success("Poză trimisă");
     } catch {
-      toast.error("Poza n-a putut fi trimisă");
+      toast.error("Poza n-a putut fi trimisă — încearcă unde ai semnal");
     } finally {
       setBusy(false);
     }
@@ -197,8 +227,8 @@ function SharedJobCard({
             {job.client_name ? ` · ${job.client_name}` : ""}
           </p>
         </div>
-        {session && (
-          <span className="shrink-0 rounded-full bg-primary/15 px-2.5 py-1 text-xs font-medium text-primary tabular-nums">
+        {since && (
+          <span className="shrink-0 rounded-full bg-primary/15 px-2.5 py-1 text-xs font-medium tabular-nums text-primary">
             {formatDuration(minutes)}
           </span>
         )}
@@ -278,12 +308,12 @@ function SharedJobCard({
           <div className="grid grid-cols-2 gap-2">
             <Button
               size="lg"
-              variant={session ? "outline" : "default"}
+              variant={since ? "outline" : "default"}
               loading={busy}
               onClick={() => void toggleTimer()}
             >
-              {session ? <Square /> : <Play />}
-              {session ? "Oprește" : "Start"}
+              {since ? <Square /> : <Play />}
+              {since ? "Oprește" : "Start"}
             </Button>
             <input
               ref={fileRef}

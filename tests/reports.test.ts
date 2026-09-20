@@ -8,6 +8,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { fixedCostsForMonth } from "../src/lib/calc.ts";
 import {
   buildJobRows,
   byClient,
@@ -190,4 +191,20 @@ test("unitatea se citește după tipul măsurătorii", () => {
   assert.equal(measurementUnits("plinth", { linear_meters: 61 }), 61);
   assert.equal(measurementUnits("other", { quantity: 3 }), null);
   assert.equal(measurementUnits("stairs", {}), null);
+});
+
+test("cheltuielile fixe se numără doar în lunile în care au curs", () => {
+  const costs = [
+    { amount: 2000, started_at: "2026-01-15", ended_at: null },
+    { amount: 500, started_at: "2026-03-01", ended_at: "2026-04-20" },
+    { amount: 900, started_at: "2026-09-01", ended_at: null },
+  ];
+  // Ianuarie: doar chiria începută pe 15 — data de început e în lună.
+  assert.equal(fixedCostsForMonth(costs, "2026-01"), 2000);
+  // Martie: chiria plus cea de-a doua, pornită de la întâi.
+  assert.equal(fixedCostsForMonth(costs, "2026-03"), 2500);
+  // Mai: a doua s-a încheiat în aprilie, deci iese din socoteală.
+  assert.equal(fixedCostsForMonth(costs, "2026-05"), 2000);
+  // Decembrie 2025: nimic nu începuse încă.
+  assert.equal(fixedCostsForMonth(costs, "2025-12"), 0);
 });

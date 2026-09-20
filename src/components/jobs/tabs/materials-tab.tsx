@@ -1,17 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { Package, Pencil, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import {
+  Package,
+  PackageCheck,
+  PackageMinus,
+  Pencil,
+  Plus,
+  ShoppingCart,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Confirm } from "@/components/ui/confirm";
 import { EmptyState } from "@/components/ui/empty-state";
 import { JobMaterialDialog } from "@/components/forms/job-material-dialog";
-import { deleteJobMaterial, toggleJobMaterial } from "@/lib/db/actions";
+import {
+  deleteJobMaterial,
+  returnToStock,
+  takeFromStock,
+  toggleJobMaterial,
+} from "@/lib/db/actions";
+import { useTable } from "@/hooks/use-data";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
-import type { JobMaterial } from "@/lib/types";
+import type { JobMaterial, Material } from "@/lib/types";
 import { sum } from "@/lib/utils";
 
 export function MaterialsTab({
@@ -33,6 +47,7 @@ export function MaterialsTab({
     material.purchased ? material.quantity * material.unit_price : 0,
   );
   const missing = materials.filter((material) => !material.purchased);
+  const inventory = useTable("materials");
 
   return (
     <div className="space-y-3">
@@ -86,6 +101,9 @@ export function MaterialsTab({
                         currency,
                       )}`}
                   </p>
+                  {material.material_id && (
+                    <StockLine material={material} inventory={inventory} />
+                  )}
                 </div>
                 <div className="flex shrink-0 gap-0.5">
                   <Button
@@ -159,5 +177,57 @@ export function MaterialsTab({
         material={editing}
       />
     </div>
+  );
+}
+
+/**
+ * Ce e în depozit pentru linia asta, și butonul care îl scoate de acolo.
+ *
+ * „Cumpărat” și „luat din stoc” sunt două lucruri diferite: una e să dai bani
+ * furnizorului, alta e să iei de pe raft ce aveai deja. Doar a doua mișcă
+ * inventarul.
+ */
+function StockLine({
+  material,
+  inventory,
+}: {
+  material: JobMaterial;
+  inventory: Material[];
+}) {
+  const stock = inventory.find((row) => row.id === material.material_id);
+  if (!stock) return null;
+
+  if (material.taken_from_stock) {
+    return (
+      <button
+        type="button"
+        className="mt-1 inline-flex items-center gap-1 text-xs text-emerald-300 hover:underline"
+        onClick={async () => {
+          await returnToStock(material.id);
+          toast.success("Material pus la loc în depozit");
+        }}
+      >
+        <PackageCheck className="size-3" /> luat din depozit · pune la loc
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+      onClick={async () => {
+        const result = await takeFromStock(material.id);
+        if (!result) return;
+        toast.success(
+          result.short > 0
+            ? `Ai luat tot ce era; lipsesc ${formatNumber(result.short)} ${material.unit}`
+            : "Scos din depozit",
+        );
+      }}
+    >
+      <PackageMinus className="size-3" />
+      în depozit: {formatNumber(stock.quantity)} {stock.unit} · ia din stoc
+    </button>
   );
 }

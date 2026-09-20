@@ -36,6 +36,8 @@ export function NotificationEngine() {
   const quotes = useTable("quotes");
   const clients = useTable("clients");
   const existing = useTable("notifications");
+  const handovers = useTable("handovers");
+  const installments = useTable("installments");
   // Fiecare inserare re-declanșează efectul; fără acest zăvor două rulări
   // paralele ar putea scrie aceeași notificare de două ori.
   const busy = useRef(false);
@@ -148,6 +150,70 @@ export function NotificationEngine() {
           }
         }
 
+        /** Tranșa scadentă: banii nu se cer singuri. */
+        if (prefs.installment_due) {
+          for (const row of installments) {
+            if (row.payment_id || !row.due_date) continue;
+            const days = daysUntil(row.due_date);
+            if (days === null || days > 0) continue;
+            const job = jobs.find((item) => item.id === row.job_id);
+            candidates.push({
+              key: `installment_due:${row.id}`,
+              kind: "installment_due",
+              title: "Tranșă de încasat",
+              body: `${job?.title ?? "Lucrare"} — ${row.label}, scadentă pe ${formatDateShort(row.due_date)}`,
+              job_id: row.job_id,
+              due_date: row.due_date,
+            });
+          }
+        }
+
+        /**
+         * Revenirea la client.
+         *
+         * Cel mai ieftin mod de a avea lucrări e un client vechi. Fereastra e
+         * largă (o lună) fiindcă aplicația se deschide când se deschide, nu în
+         * ziua fixată de noi.
+         */
+        if (prefs.follow_up) {
+          for (const job of jobs) {
+            if (job.status !== "done" || !job.end_date) continue;
+            const days = daysUntil(job.end_date);
+            if (days === null) continue;
+            const elapsed = -days;
+            if (elapsed < 180 || elapsed > 210) continue;
+            const client = clients.find((row) => row.id === job.client_id);
+            candidates.push({
+              key: `follow_up:${job.id}`,
+              kind: "follow_up",
+              title: "Sună clientul",
+              body: `${client?.name ?? "Client"} — au trecut 6 luni de la „${job.title}”`,
+              job_id: job.id,
+              due_date: null,
+            });
+          }
+        }
+
+        if (prefs.job_warranty) {
+          for (const handover of handovers) {
+            const end = warrantyEndDate(
+              handover.handed_at,
+              handover.warranty_months,
+            );
+            if (!end) continue;
+            const days = daysUntil(end);
+            if (days === null || days < 0 || days > 30) continue;
+            candidates.push({
+              key: `job_warranty:${handover.id}`,
+              kind: "job_warranty",
+              title: "Garanția lucrării expiră",
+              body: `${handover.client_name ?? "Lucrare"} — garanția expiră pe ${formatDateShort(toDateKey(end))}`,
+              job_id: handover.job_id,
+              due_date: toDateKey(end),
+            });
+          }
+        }
+
         if (prefs.quote_pending) {
           for (const quote of quotes) {
             if (quote.status !== "sent" || !quote.sent_at) continue;
@@ -202,6 +268,8 @@ export function NotificationEngine() {
     tools,
     quotes,
     clients,
+    handovers,
+    installments,
     existing,
   ]);
 

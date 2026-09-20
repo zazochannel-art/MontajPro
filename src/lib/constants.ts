@@ -164,6 +164,9 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   tool_warranty: true,
   materials_missing: true,
   quote_pending: true,
+  installment_due: true,
+  follow_up: true,
+  job_warranty: true,
 };
 
 export const DEFAULT_MATERIAL_CATEGORIES = [

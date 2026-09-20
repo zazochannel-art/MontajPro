@@ -199,6 +199,9 @@ export async function startWork(jobId: string) {
     ended_at: null,
     duration_minutes: null,
     note: null,
+    // Gol: sesiunea pornită de aici e a ta, nu a unui ajutor.
+    by_member_id: null,
+    by_member_name: null,
   });
   const job = store.getTable("jobs").find((row) => row.id === jobId);
   if (job && job.status !== "in_progress")
@@ -315,11 +318,64 @@ export async function saveJobMaterial(input: {
     unit_price: num(input.unit_price),
     purchased: input.purchased ?? false,
   };
+  // La editare nu atingem steagul de stoc: l-ar stinge fără să pună materialul
+  // înapoi pe raft, și stocul ar rămâne scăzut degeaba.
   const row = input.id
     ? await store.update("job_materials", input.id, payload)
-    : await store.insert("job_materials", payload);
+    : await store.insert("job_materials", { ...payload, taken_from_stock: false });
   kick();
   return row;
+}
+
+/**
+ * Scoate din depozit materialul pus pe lucrare.
+ *
+ * Inventarul nu scădea niciodată singur: aveai cantități în depozit și
+ * materiale pe lucrări, iar cele două nu se atingeau. După câteva lucrări,
+ * stocul din aplicație n-avea nicio legătură cu raftul.
+ *
+ * Scade o singură dată — steagul de pe linie ține minte — și nu coboară sub
+ * zero: un stoc negativ nu înseamnă nimic. Cât a lipsit se întoarce
+ * apelantului, ca omul să afle că a luat mai mult decât scria.
+ */
+export async function takeFromStock(jobMaterialId: string) {
+  const line = store
+    .getTable("job_materials")
+    .find((row) => row.id === jobMaterialId);
+  if (!line || line.taken_from_stock || !line.material_id) return null;
+
+  const stock = store
+    .getTable("materials")
+    .find((row) => row.id === line.material_id);
+  if (!stock) return null;
+
+  const needed = num(line.quantity);
+  const available = num(stock.quantity);
+  await store.update("materials", stock.id, {
+    quantity: Math.max(0, available - needed),
+  });
+  await store.update("job_materials", line.id, { taken_from_stock: true });
+  kick();
+  return { needed, available, short: Math.max(0, needed - available) };
+}
+
+/** Materialul se întoarce pe raft: nu s-a folosit, sau s-a apăsat greșit. */
+export async function returnToStock(jobMaterialId: string) {
+  const line = store
+    .getTable("job_materials")
+    .find((row) => row.id === jobMaterialId);
+  if (!line || !line.taken_from_stock || !line.material_id) return;
+
+  const stock = store
+    .getTable("materials")
+    .find((row) => row.id === line.material_id);
+  if (stock) {
+    await store.update("materials", stock.id, {
+      quantity: num(stock.quantity) + num(line.quantity),
+    });
+  }
+  await store.update("job_materials", line.id, { taken_from_stock: false });
+  kick();
 }
 
 export async function toggleJobMaterial(id: string, purchased: boolean) {
@@ -816,6 +872,162 @@ export async function duplicateQuote(id: string) {
 
   kick();
   return copy;
+}
+
+/* --------------------------- scadențar ----------------------------- */
+
+export interface InstallmentInput {
+  id?: string;
+  job_id: string;
+  label: string;
+  amount: number;
+  due_date?: string | null;
+}
+
+export async function saveInstallment(input: InstallmentInput) {
+  const existing = store
+    .getTable("installments")
+    .filter((row) => row.job_id === input.job_id && !row.deleted_at);
+  const payload = {
+    job_id: input.job_id,
+    label: input.label.trim() || "Tranșă",
+    amount: num(input.amount),
+    due_date: input.due_date || null,
+  };
+  const row = input.id
+    ? await store.update("installments", input.id, payload)
+    : await store.insert("installments", {
+        ...payload,
+        payment_id: null,
+        position: existing.length
+          ? Math.max(...existing.map((item) => item.position)) + 1
+          : 0,
+      });
+  kick();
+  return row;
+}
+
+export async function deleteInstallment(id: string) {
+  await store.remove("installments", id);
+  kick();
+}
+
+/**
+ * Tranșa s-a încasat.
+ *
+ * Nu marcăm doar un steag: se scrie o plată adevărată, care intră în încasări
+ * și în restul de plată, iar tranșa ține minte care plată a fost. Altfel
+ * scadențarul ar spune „încasat” în timp ce Finanțele n-ar ști nimic.
+ */
+export async function settleInstallment(
+  id: string,
+  input: { method: PaymentMethod; paid_at: string },
+) {
+  const line = store.getTable("installments").find((row) => row.id === id);
+  if (!line || line.payment_id) return null;
+  const job = store.getTable("jobs").find((row) => row.id === line.job_id);
+
+  const payment = await store.insert("payments", {
+    job_id: line.job_id,
+    client_id: job?.client_id ?? null,
+    amount: num(line.amount),
+    kind: line.position === 0 ? ("advance" as const) : ("partial" as const),
+    method: input.method,
+    paid_at: input.paid_at,
+    note: line.label,
+  });
+  await store.update("installments", id, { payment_id: payment.id });
+  kick();
+  return payment;
+}
+
+/** Plata s-a șters sau s-a greșit: tranșa redevine neîncasată. */
+export async function unsettleInstallment(id: string) {
+  const line = store.getTable("installments").find((row) => row.id === id);
+  if (!line?.payment_id) return;
+  await store.remove("payments", line.payment_id);
+  await store.update("installments", id, { payment_id: null });
+  kick();
+}
+
+/**
+ * Împarte prețul lucrării în trei tranșe obișnuite.
+ *
+ * Procentele sunt cele din practică, nu o lege: se editează după. Rotunjirea
+ * merge la ultima tranșă, ca suma să dea fix prețul.
+ */
+export async function planInstallments(jobId: string) {
+  const job = store.getTable("jobs").find((row) => row.id === jobId);
+  if (!job) return 0;
+  const existing = store
+    .getTable("installments")
+    .filter((row) => row.job_id === jobId && !row.deleted_at);
+  if (existing.length) return 0;
+
+  const price = num(job.price_total);
+  const first = Math.round(price * 0.3);
+  const second = Math.round(price * 0.4);
+  const parts = [
+    { label: "Avans la semnare", amount: first },
+    { label: "La comanda materialului", amount: second },
+    { label: "La predare", amount: price - first - second },
+  ];
+
+  let position = 0;
+  for (const part of parts) {
+    await store.insert("installments", {
+      job_id: jobId,
+      label: part.label,
+      amount: part.amount,
+      due_date: null,
+      payment_id: null,
+      position: position++,
+    });
+  }
+  kick();
+  return parts.length;
+}
+
+/* --------------------------- cheltuieli fixe ----------------------- */
+
+export interface FixedCostInput {
+  id?: string;
+  name: string;
+  amount: number;
+  started_at: string;
+  ended_at?: string | null;
+  notes?: string | null;
+}
+
+export async function saveFixedCost(input: FixedCostInput) {
+  const payload = {
+    name: input.name.trim(),
+    amount: num(input.amount),
+    started_at: input.started_at,
+    ended_at: input.ended_at || null,
+    notes: input.notes?.trim() || null,
+  };
+  const row = input.id
+    ? await store.update("fixed_costs", input.id, payload)
+    : await store.insert("fixed_costs", payload);
+  kick();
+  return row;
+}
+
+/**
+ * Încheierea unei cheltuieli fixe.
+ *
+ * Nu o ștergem: lunile în care chiar ai plătit-o trebuie să rămână cum au
+ * fost, altfel profitul de anul trecut s-ar rescrie singur.
+ */
+export async function endFixedCost(id: string, endedAt: string) {
+  await store.update("fixed_costs", id, { ended_at: endedAt });
+  kick();
+}
+
+export async function deleteFixedCost(id: string) {
+  await store.remove("fixed_costs", id);
+  kick();
 }
 
 /* --------------------------- pașii lucrării ------------------------ */

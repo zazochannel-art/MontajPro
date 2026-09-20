@@ -46,10 +46,26 @@ export default function MaterialsPage() {
       ["confirmed", "materials", "in_progress"].includes(job.status),
     );
     const jobById = new Map(activeJobs.map((job) => [job.id, job]));
+    // Ce mai ai de cumpărat ține cont de depozit: un material pe care îl ai
+    // deja pe raft n-are ce căuta pe lista de la magazin.
+    const stockById = new Map(materials.map((row) => [row.id, row]));
     return jobMaterials
-      .filter((material) => !material.purchased && jobById.has(material.job_id))
-      .map((material) => ({ material, job: jobById.get(material.job_id)! }));
-  }, [jobMaterials, jobs]);
+      .filter((material) => {
+        if (material.purchased || material.taken_from_stock) return false;
+        if (!jobById.has(material.job_id)) return false;
+        const stock = material.material_id
+          ? stockById.get(material.material_id)
+          : null;
+        return !stock || stock.quantity < material.quantity;
+      })
+      .map((material) => ({
+        material,
+        job: jobById.get(material.job_id)!,
+        inStock: material.material_id
+          ? (stockById.get(material.material_id)?.quantity ?? 0)
+          : 0,
+      }));
+  }, [jobMaterials, jobs, materials]);
 
   const stockValue = sum(filtered, (material) => material.quantity * material.price);
   const shoppingTotal = sum(
@@ -203,7 +219,7 @@ export default function MaterialsPage() {
               </div>
 
               <ul className="space-y-2">
-                {shoppingList.map(({ material, job }) => (
+                {shoppingList.map(({ material, job, inStock }) => (
                   <li
                     key={material.id}
                     className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5"
@@ -223,6 +239,8 @@ export default function MaterialsPage() {
                         <Link href={`/lucrari/${job.id}`} className="text-primary hover:underline">
                           {job.title}
                         </Link>
+                        {inStock > 0 &&
+                          ` · ai ${formatNumber(inStock)} în depozit`}
                       </p>
                     </div>
                     <span className="shrink-0 text-sm font-medium tabular-nums">

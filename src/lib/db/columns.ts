@@ -50,6 +50,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "unit",
     "unit_price",
     "purchased",
+    "taken_from_stock",
   ],
   materials: [...BASE, "name", "category", "quantity", "unit", "price", "supplier", "notes"],
   payments: [...BASE, "job_id", "client_id", "amount", "kind", "method", "paid_at", "note"],
@@ -113,6 +114,16 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
   work_sessions: [...BASE, "job_id", "started_at", "ended_at", "duration_minutes", "note"],
   notifications: [...BASE, "kind", "title", "body", "job_id", "due_date", "read_at"],
   job_tasks: [...BASE, "job_id", "title", "done", "done_at", "position"],
+  fixed_costs: [...BASE, "name", "amount", "started_at", "ended_at", "notes"],
+  installments: [
+    ...BASE,
+    "job_id",
+    "label",
+    "amount",
+    "due_date",
+    "payment_id",
+    "position",
+  ],
   handovers: [
     ...BASE,
     "job_id",
@@ -147,6 +158,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "notification_prefs",
     "vat_percent",
     "quote_terms",
+    "photo_stamp",
   ],
 };
 
