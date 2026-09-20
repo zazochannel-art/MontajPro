@@ -318,11 +318,64 @@ export async function saveJobMaterial(input: {
     unit_price: num(input.unit_price),
     purchased: input.purchased ?? false,
   };
+  // La editare nu atingem steagul de stoc: l-ar stinge fără să pună materialul
+  // înapoi pe raft, și stocul ar rămâne scăzut degeaba.
   const row = input.id
     ? await store.update("job_materials", input.id, payload)
-    : await store.insert("job_materials", payload);
+    : await store.insert("job_materials", { ...payload, taken_from_stock: false });
   kick();
   return row;
+}
+
+/**
+ * Scoate din depozit materialul pus pe lucrare.
+ *
+ * Inventarul nu scădea niciodată singur: aveai cantități în depozit și
+ * materiale pe lucrări, iar cele două nu se atingeau. După câteva lucrări,
+ * stocul din aplicație n-avea nicio legătură cu raftul.
+ *
+ * Scade o singură dată — steagul de pe linie ține minte — și nu coboară sub
+ * zero: un stoc negativ nu înseamnă nimic. Cât a lipsit se întoarce
+ * apelantului, ca omul să afle că a luat mai mult decât scria.
+ */
+export async function takeFromStock(jobMaterialId: string) {
+  const line = store
+    .getTable("job_materials")
+    .find((row) => row.id === jobMaterialId);
+  if (!line || line.taken_from_stock || !line.material_id) return null;
+
+  const stock = store
+    .getTable("materials")
+    .find((row) => row.id === line.material_id);
+  if (!stock) return null;
+
+  const needed = num(line.quantity);
+  const available = num(stock.quantity);
+  await store.update("materials", stock.id, {
+    quantity: Math.max(0, available - needed),
+  });
+  await store.update("job_materials", line.id, { taken_from_stock: true });
+  kick();
+  return { needed, available, short: Math.max(0, needed - available) };
+}
+
+/** Materialul se întoarce pe raft: nu s-a folosit, sau s-a apăsat greșit. */
+export async function returnToStock(jobMaterialId: string) {
+  const line = store
+    .getTable("job_materials")
+    .find((row) => row.id === jobMaterialId);
+  if (!line || !line.taken_from_stock || !line.material_id) return;
+
+  const stock = store
+    .getTable("materials")
+    .find((row) => row.id === line.material_id);
+  if (stock) {
+    await store.update("materials", stock.id, {
+      quantity: num(stock.quantity) + num(line.quantity),
+    });
+  }
+  await store.update("job_materials", line.id, { taken_from_stock: false });
+  kick();
 }
 
 export async function toggleJobMaterial(id: string, purchased: boolean) {

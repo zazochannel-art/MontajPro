@@ -50,6 +50,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "unit",
     "unit_price",
     "purchased",
+    "taken_from_stock",
   ],
   materials: [...BASE, "name", "category", "quantity", "unit", "price", "supplier", "notes"],
   payments: [...BASE, "job_id", "client_id", "amount", "kind", "method", "paid_at", "note"],

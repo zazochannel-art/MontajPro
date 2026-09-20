@@ -178,7 +178,16 @@ export interface JobMaterial extends BaseRow {
   quantity: number;
   unit: string;
   unit_price: number;
+  /** Cumpărat de la furnizor. */
   purchased: boolean;
+  /**
+   * Scos din depozit pentru lucrarea asta.
+   *
+   * Separat de `purchased`: una e să cumperi, alta e să iei din ce ai. Doar
+   * asta mișcă stocul, și doar o dată — steagul e acolo ca a doua apăsare să
+   * nu scadă încă o dată.
+   */
+  taken_from_stock: boolean;
 }
 
 export interface Material extends BaseRow {
