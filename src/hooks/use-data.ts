@@ -2,6 +2,7 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 import { store } from "@/lib/db/store";
+import { trashItems, type TrashItem } from "@/lib/trash";
 import type { TableName, Tables } from "@/lib/types";
 import { jobMoney, totalWorkedMinutes } from "@/lib/calc";
 import { todayKey, toDateKey } from "@/lib/format";
@@ -49,6 +50,38 @@ export function useRow<K extends TableName>(
   return useMemo(
     () => (id ? (rows.find((row) => row.id === id) ?? null) : null),
     [rows, id],
+  );
+}
+
+/**
+ * Coșul de gunoi.
+ *
+ * Se uită la rândurile pe care `useTable` le ascunde, deci n-are o felie a
+ * lui. Rezultatul se ține într-un cache legat de numărul de revizie:
+ * `useSyncExternalStore` cere ca două citiri fără schimbări să întoarcă exact
+ * același obiect, altfel randează la nesfârșit.
+ */
+let trashCache: { revision: number; days: number; value: TrashItem[] } | null =
+  null;
+
+export function useTrash(days = 30): TrashItem[] {
+  return useSyncExternalStore(
+    store.subscribe,
+    () => {
+      if (
+        !trashCache ||
+        trashCache.revision !== store.revision ||
+        trashCache.days !== days
+      ) {
+        trashCache = {
+          revision: store.revision,
+          days,
+          value: trashItems(days),
+        };
+      }
+      return trashCache.value;
+    },
+    () => EMPTY as unknown as TrashItem[],
   );
 }
 
