@@ -242,10 +242,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   /* ----------------------- rândul de setări ------------------------- */
 
-  const settings = useMemo(
-    () => state.settings.find((row) => !row.deleted_at) ?? null,
-    [state.settings],
-  );
+  const settings = useMemo(() => {
+    const row = state.settings.find((item) => !item.deleted_at) ?? null;
+    if (!row) return null;
+    // Un rând salvat înainte ca un tip de notificare să existe nu are cheia
+    // lui, iar `if (prefs.x)` ar fi tăcut pentru totdeauna pe conturile vechi.
+    return {
+      ...row,
+      notification_prefs: {
+        ...DEFAULT_NOTIFICATION_PREFS,
+        ...row.notification_prefs,
+      },
+    };
+  }, [state.settings]);
 
   // În modul cloud așteptăm prima sincronizare înainte de a crea setările
   // implicite. Altfel, pe al doilea telefon am scrie un al doilea rând înainte

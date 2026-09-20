@@ -21,6 +21,7 @@ import { TodayJobCard } from "@/components/dashboard/today-job-card";
 import { JobCard } from "@/components/jobs/job-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
+import { BackupReminder } from "@/components/backup/backup-reminder";
 import { useDashboardData } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
 import { formatDuration, formatMoney, monthName, weekdayName } from "@/lib/format";
@@ -42,6 +43,8 @@ export default function DashboardPage() {
           {firstName ? `Salut, ${firstName}` : "Salut"} 👋
         </h2>
       </header>
+
+      <BackupReminder />
 
       <section className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
         <StatCard

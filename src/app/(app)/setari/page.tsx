@@ -37,8 +37,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { archiveOldJobs, exportData, importData, updateSettings } from "@/lib/db/actions";
+import { archiveOldJobs, updateSettings } from "@/lib/db/actions";
 import { hasDemoData, removeDemoData, seedDemoData } from "@/lib/db/demo";
+import { BackupSection } from "@/components/settings/backup-section";
 import { PushToggle } from "@/components/settings/push-toggle";
 import { TeamSection } from "@/components/settings/team-section";
 import { useArchivedJobs, useTable } from "@/hooks/use-data";
@@ -82,7 +83,6 @@ export default function SettingsPage() {
     pendingChanges,
   } = useApp();
   const { canInstall, installed, isIOS, install } = useInstallPrompt();
-  const fileRef = useRef<HTMLInputElement>(null);
   const priceFileRef = useRef<HTMLInputElement>(null);
   const [newCategory, setNewCategory] = useState("");
   const [archiveMonths, setArchiveMonths] = useState("12");
@@ -153,30 +153,6 @@ export default function SettingsPage() {
   const categories = settings.material_categories?.length
     ? settings.material_categories
     : DEFAULT_MATERIAL_CATEGORIES;
-
-  const download = () => {
-    const payload = exportData();
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `montajpro-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success("Backup descărcat");
-  };
-
-  const upload = async (file: File) => {
-    try {
-      const text = await file.text();
-      const count = await importData(JSON.parse(text));
-      toast.success(`${count} înregistrări importate`);
-    } catch {
-      toast.error("Fișierul nu a putut fi citit");
-    }
-  };
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -710,32 +686,7 @@ export default function SettingsPage() {
         </Confirm>
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
-        <h3 className="text-sm font-semibold">Backup</h3>
-        <p className="text-xs text-muted-foreground">
-          Descarcă toate datele într-un fișier, ca să le poți păstra sau muta pe
-          alt telefon.
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" onClick={download}>
-            <Download /> Export
-          </Button>
-          <Button variant="outline" onClick={() => fileRef.current?.click()}>
-            <Upload /> Import
-          </Button>
-        </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json"
-          className="hidden"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) void upload(file);
-            event.target.value = "";
-          }}
-        />
-      </section>
+      <BackupSection />
 
       <Confirm
         title="Ieși din cont?"
