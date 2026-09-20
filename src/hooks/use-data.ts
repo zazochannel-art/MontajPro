@@ -106,18 +106,36 @@ export function useClients() {
 }
 
 /** Lucrările, cele mai recente / apropiate primele. */
+function sortJobs(jobs: Tables["jobs"][]): Tables["jobs"][] {
+  return [...jobs].sort((a, b) => {
+    const aKey = a.scheduled_date || a.created_at.slice(0, 10);
+    const bKey = b.scheduled_date || b.created_at.slice(0, 10);
+    if (aKey === bKey) return b.created_at.localeCompare(a.created_at);
+    return bKey.localeCompare(aKey);
+  });
+}
+
+/**
+ * Toate lucrările, arhiva inclusă.
+ *
+ * Rapoartele, istoricul clientului și portofoliul se uită aici: banii de anul
+ * trecut n-au voie să dispară odată cu curățenia din lista de lucru.
+ */
+export function useAllJobs() {
+  const all = useTable("jobs");
+  return useMemo(() => sortJobs(all), [all]);
+}
+
+/** Lucrările de zi cu zi: fără cele arhivate. */
 export function useJobs() {
-  const jobs = useTable("jobs");
-  return useMemo(
-    () =>
-      [...jobs].sort((a, b) => {
-        const aKey = a.scheduled_date || a.created_at.slice(0, 10);
-        const bKey = b.scheduled_date || b.created_at.slice(0, 10);
-        if (aKey === bKey) return b.created_at.localeCompare(a.created_at);
-        return bKey.localeCompare(aKey);
-      }),
-    [jobs],
-  );
+  const all = useAllJobs();
+  return useMemo(() => all.filter((job) => !job.archived_at), [all]);
+}
+
+/** Doar arhiva — lucrările vechi, scoase din drum. */
+export function useArchivedJobs() {
+  const all = useAllJobs();
+  return useMemo(() => all.filter((job) => job.archived_at), [all]);
 }
 
 export function useClientName(clientId: string | null | undefined): string {

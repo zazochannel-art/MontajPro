@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Archive,
+  ArchiveRestore,
   CalendarDays,
   Clock,
   MapPin,
@@ -28,7 +30,7 @@ import { JOB_STATUS_LABELS, JOB_TYPE_LABELS } from "@/lib/constants";
 import { JOB_STATUSES } from "@/lib/types";
 import type { Client, Job, JobStatus } from "@/lib/types";
 import type { JobMoney } from "@/lib/calc";
-import { deleteJob, duplicateJob, setJobStatus } from "@/lib/db/actions";
+import { archiveJob, deleteJob, duplicateJob, setJobStatus, unarchiveJob } from "@/lib/db/actions";
 import { formatDate, formatDuration, formatMoney } from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
 import { TaskList } from "@/components/jobs/task-list";
@@ -267,6 +269,25 @@ export function OverviewTab({
           </Button>
         </Confirm>
       </div>
+
+      <Button
+        variant="ghost"
+        className="w-full text-muted-foreground"
+        onClick={async () => {
+          if (job.archived_at) {
+            await unarchiveJob(job.id);
+            toast.success("Lucrarea s-a întors în listă");
+          } else {
+            await archiveJob(job.id);
+            toast.success("Lucrare mutată în arhivă", {
+              description: "Rămâne în rapoarte și la client, dar iese din lista de lucru.",
+            });
+          }
+        }}
+      >
+        {job.archived_at ? <ArchiveRestore /> : <Archive />}
+        {job.archived_at ? "Scoate din arhivă" : "Mută în arhivă"}
+      </Button>
     </div>
   );
 }

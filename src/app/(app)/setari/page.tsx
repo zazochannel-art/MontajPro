@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import {
+  Archive,
   Bell,
   Building2,
   Camera,
@@ -36,11 +37,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { exportData, importData, updateSettings } from "@/lib/db/actions";
+import { archiveOldJobs, exportData, importData, updateSettings } from "@/lib/db/actions";
 import { hasDemoData, removeDemoData, seedDemoData } from "@/lib/db/demo";
 import { PushToggle } from "@/components/settings/push-toggle";
 import { TeamSection } from "@/components/settings/team-section";
-import { useTable } from "@/hooks/use-data";
+import { useArchivedJobs, useTable } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
 import { useInstallPrompt } from "@/hooks/use-install-prompt";
 import {
@@ -84,6 +85,8 @@ export default function SettingsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const priceFileRef = useRef<HTMLInputElement>(null);
   const [newCategory, setNewCategory] = useState("");
+  const [archiveMonths, setArchiveMonths] = useState("12");
+  const archived = useArchivedJobs();
   // Recitim la fiecare schimbare de date, ca butonul demo să fie corect.
   useTable("clients");
   const demoLoaded = hasDemoData();
@@ -666,6 +669,45 @@ export default function SettingsPage() {
             <FlaskConical /> Încarcă date demo
           </Button>
         )}
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+        <h3 className="text-sm font-semibold">Arhivă</h3>
+        <p className="text-xs text-muted-foreground">
+          Scoate din lista de lucrări comenzile terminate și încasate integral.
+          Rămân în rapoarte, la client și în căutare — doar nu-ți mai stau în
+          drum.
+          {archived.length > 0 && ` Ai ${archived.length} în arhivă.`}
+        </p>
+        <Field label="Mai vechi de">
+          <Select value={archiveMonths} onValueChange={setArchiveMonths}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="6">6 luni</SelectItem>
+              <SelectItem value="12">un an</SelectItem>
+              <SelectItem value="24">doi ani</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+        <Confirm
+          title="Arhivezi lucrările vechi?"
+          description="Se mută în arhivă doar lucrările terminate și plătite integral. Cele cu rest de încasat rămân la vedere."
+          confirmLabel="Arhivează"
+          onConfirm={async () => {
+            const count = await archiveOldJobs(Number(archiveMonths));
+            toast.success(
+              count
+                ? `${count} lucrări mutate în arhivă`
+                : "Nimic de arhivat deocamdată",
+            );
+          }}
+        >
+          <Button variant="outline" className="w-full">
+            <Archive /> Arhivează lucrările vechi
+          </Button>
+        </Confirm>
       </section>
 
       <section className="space-y-3 rounded-2xl border border-border bg-card p-4">

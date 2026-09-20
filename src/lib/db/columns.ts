@@ -28,6 +28,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "start_date",
     "end_date",
     "notes",
+    "archived_at",
     "in_portfolio",
     "portfolio_description",
   ],

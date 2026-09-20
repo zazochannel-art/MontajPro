@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AssetImage } from "@/components/photo/asset-image";
-import { useJobs, useTable } from "@/hooks/use-data";
+import { useAllJobs, useTable } from "@/hooks/use-data";
 import { updateJob } from "@/lib/db/actions";
 import { JOB_TYPE_EMOJI, JOB_TYPE_LABELS } from "@/lib/constants";
 import { JOB_TYPES } from "@/lib/types";
@@ -29,7 +29,7 @@ type Filter = JobType | "all";
 
 /** Portofoliul: lucrările finalizate, cu „înainte” și „după”. */
 export default function PortfolioPage() {
-  const jobs = useJobs();
+  const jobs = useAllJobs();
   const photos = useTable("job_photos");
   const [filter, setFilter] = useState<Filter>("all");
   const [editing, setEditing] = useState<Job | null>(null);

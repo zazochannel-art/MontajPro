@@ -874,6 +874,49 @@ export async function duplicateQuote(id: string) {
   return copy;
 }
 
+/* --------------------------- arhiva lucrărilor --------------------- */
+
+export async function archiveJob(id: string) {
+  await store.update("jobs", id, { archived_at: nowISO() });
+  kick();
+}
+
+export async function unarchiveJob(id: string) {
+  await store.update("jobs", id, { archived_at: null });
+  kick();
+}
+
+/**
+ * Curățenia de fond: arhivează lucrările finalizate mai vechi de atâtea luni.
+ *
+ * Doar cele finalizate și doar cele plătite integral: o lucrare cu bani
+ * neîncasați n-are ce căuta în arhivă, oricât de veche ar fi — tocmai aia
+ * trebuie să-ți stea în ochi.
+ */
+export async function archiveOldJobs(months: number): Promise<number> {
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - months);
+  const cutoffKey = cutoff.toISOString().slice(0, 10);
+
+  const paid = new Map<string, number>();
+  for (const payment of store.getTable("payments")) {
+    if (payment.deleted_at || !payment.job_id) continue;
+    paid.set(payment.job_id, (paid.get(payment.job_id) ?? 0) + num(payment.amount));
+  }
+
+  let archived = 0;
+  for (const job of store.getTable("jobs")) {
+    if (job.deleted_at || job.archived_at || job.status !== "done") continue;
+    const ended = job.end_date ?? job.created_at.slice(0, 10);
+    if (ended >= cutoffKey) continue;
+    if (num(job.price_total) - (paid.get(job.id) ?? 0) > 0.5) continue;
+    await store.update("jobs", job.id, { archived_at: nowISO() });
+    archived++;
+  }
+  kick();
+  return archived;
+}
+
 /* --------------------------- scadențar ----------------------------- */
 
 export interface InstallmentInput {
