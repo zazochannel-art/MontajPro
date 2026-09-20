@@ -37,6 +37,7 @@ export function NotificationEngine() {
   const clients = useTable("clients");
   const existing = useTable("notifications");
   const handovers = useTable("handovers");
+  const installments = useTable("installments");
   // Fiecare inserare re-declanșează efectul; fără acest zăvor două rulări
   // paralele ar putea scrie aceeași notificare de două ori.
   const busy = useRef(false);
@@ -149,6 +150,24 @@ export function NotificationEngine() {
           }
         }
 
+        /** Tranșa scadentă: banii nu se cer singuri. */
+        if (prefs.installment_due) {
+          for (const row of installments) {
+            if (row.payment_id || !row.due_date) continue;
+            const days = daysUntil(row.due_date);
+            if (days === null || days > 0) continue;
+            const job = jobs.find((item) => item.id === row.job_id);
+            candidates.push({
+              key: `installment_due:${row.id}`,
+              kind: "installment_due",
+              title: "Tranșă de încasat",
+              body: `${job?.title ?? "Lucrare"} — ${row.label}, scadentă pe ${formatDateShort(row.due_date)}`,
+              job_id: row.job_id,
+              due_date: row.due_date,
+            });
+          }
+        }
+
         /**
          * Revenirea la client.
          *
@@ -250,6 +269,7 @@ export function NotificationEngine() {
     quotes,
     clients,
     handovers,
+    installments,
     existing,
   ]);
 

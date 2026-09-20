@@ -115,6 +115,15 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
   notifications: [...BASE, "kind", "title", "body", "job_id", "due_date", "read_at"],
   job_tasks: [...BASE, "job_id", "title", "done", "done_at", "position"],
   fixed_costs: [...BASE, "name", "amount", "started_at", "ended_at", "notes"],
+  installments: [
+    ...BASE,
+    "job_id",
+    "label",
+    "amount",
+    "due_date",
+    "payment_id",
+    "position",
+  ],
   handovers: [
     ...BASE,
     "job_id",

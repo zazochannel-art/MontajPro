@@ -68,6 +68,7 @@ export const NOTIFICATION_KINDS = [
   "tool_warranty",
   "materials_missing",
   "quote_pending",
+  "installment_due",
   "follow_up",
   "job_warranty",
 ] as const;
@@ -260,6 +261,26 @@ export interface Invoice extends BaseRow {
 }
 
 /**
+ * O tranșă planificată din prețul lucrării.
+ *
+ * Până acum erau doar „avans” și „rest”. În realitate banii vin în trei
+ * momente — la semnare, la comanda materialului, la predare — iar dacă nu sunt
+ * scrise undeva, îți amintești tu de ele. Scadențarul le ține minte și te
+ * anunță.
+ *
+ * `payment_id` leagă tranșa de încasarea reală: planul rămâne plan, banii
+ * rămân bani, iar legătura spune care plan s-a împlinit.
+ */
+export interface Installment extends BaseRow {
+  job_id: ID;
+  label: string;
+  amount: number;
+  due_date: string | null;
+  payment_id: ID | null;
+  position: number;
+}
+
+/**
  * Cheltuiala care vine în fiecare lună, indiferent de lucrări.
  *
  * Chiria la depozit, leasingul, telefonul, asigurarea. Până acum n-aveau unde
@@ -397,6 +418,8 @@ export interface NotificationPrefs {
   tool_warranty: boolean;
   materials_missing: boolean;
   quote_pending: boolean;
+  /** Tranșă de încasat, scadentă. */
+  installment_due: boolean;
   /** Sună clientul la câteva luni după montaj. */
   follow_up: boolean;
   /** Garanția lucrării stă să expire. */
@@ -446,6 +469,7 @@ export interface Tables {
   handovers: Handover;
   job_tasks: JobTask;
   fixed_costs: FixedCost;
+  installments: Installment;
   tools: Tool;
   work_sessions: WorkSession;
   notifications: AppNotification;
@@ -469,6 +493,7 @@ export const TABLE_NAMES: TableName[] = [
   "handovers",
   "job_tasks",
   "fixed_costs",
+  "installments",
   "tools",
   "work_sessions",
   "notifications",

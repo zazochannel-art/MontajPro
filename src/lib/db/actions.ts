@@ -874,6 +874,120 @@ export async function duplicateQuote(id: string) {
   return copy;
 }
 
+/* --------------------------- scadențar ----------------------------- */
+
+export interface InstallmentInput {
+  id?: string;
+  job_id: string;
+  label: string;
+  amount: number;
+  due_date?: string | null;
+}
+
+export async function saveInstallment(input: InstallmentInput) {
+  const existing = store
+    .getTable("installments")
+    .filter((row) => row.job_id === input.job_id && !row.deleted_at);
+  const payload = {
+    job_id: input.job_id,
+    label: input.label.trim() || "Tranșă",
+    amount: num(input.amount),
+    due_date: input.due_date || null,
+  };
+  const row = input.id
+    ? await store.update("installments", input.id, payload)
+    : await store.insert("installments", {
+        ...payload,
+        payment_id: null,
+        position: existing.length
+          ? Math.max(...existing.map((item) => item.position)) + 1
+          : 0,
+      });
+  kick();
+  return row;
+}
+
+export async function deleteInstallment(id: string) {
+  await store.remove("installments", id);
+  kick();
+}
+
+/**
+ * Tranșa s-a încasat.
+ *
+ * Nu marcăm doar un steag: se scrie o plată adevărată, care intră în încasări
+ * și în restul de plată, iar tranșa ține minte care plată a fost. Altfel
+ * scadențarul ar spune „încasat” în timp ce Finanțele n-ar ști nimic.
+ */
+export async function settleInstallment(
+  id: string,
+  input: { method: PaymentMethod; paid_at: string },
+) {
+  const line = store.getTable("installments").find((row) => row.id === id);
+  if (!line || line.payment_id) return null;
+  const job = store.getTable("jobs").find((row) => row.id === line.job_id);
+
+  const payment = await store.insert("payments", {
+    job_id: line.job_id,
+    client_id: job?.client_id ?? null,
+    amount: num(line.amount),
+    kind: line.position === 0 ? ("advance" as const) : ("partial" as const),
+    method: input.method,
+    paid_at: input.paid_at,
+    note: line.label,
+  });
+  await store.update("installments", id, { payment_id: payment.id });
+  kick();
+  return payment;
+}
+
+/** Plata s-a șters sau s-a greșit: tranșa redevine neîncasată. */
+export async function unsettleInstallment(id: string) {
+  const line = store.getTable("installments").find((row) => row.id === id);
+  if (!line?.payment_id) return;
+  await store.remove("payments", line.payment_id);
+  await store.update("installments", id, { payment_id: null });
+  kick();
+}
+
+/**
+ * Împarte prețul lucrării în trei tranșe obișnuite.
+ *
+ * Procentele sunt cele din practică, nu o lege: se editează după. Rotunjirea
+ * merge la ultima tranșă, ca suma să dea fix prețul.
+ */
+export async function planInstallments(jobId: string) {
+  const job = store.getTable("jobs").find((row) => row.id === jobId);
+  if (!job) return 0;
+  const existing = store
+    .getTable("installments")
+    .filter((row) => row.job_id === jobId && !row.deleted_at);
+  if (existing.length) return 0;
+
+  const price = num(job.price_total);
+  const first = Math.round(price * 0.3);
+  const second = Math.round(price * 0.4);
+  const parts = [
+    { label: "Avans la semnare", amount: first },
+    { label: "La comanda materialului", amount: second },
+    { label: "La predare", amount: price - first - second },
+  ];
+
+  let position = 0;
+  for (const part of parts) {
+    await store.insert("installments", {
+      job_id: jobId,
+      label: part.label,
+      amount: part.amount,
+      due_date: null,
+      payment_id: null,
+      position: position++,
+    });
+  }
+  kick();
+  return parts.length;
+}
+
 /* --------------------------- cheltuieli fixe ----------------------- */
 
 export interface FixedCostInput {

@@ -15,8 +15,8 @@ const DB_NAME = "montajpro";
 // Versiunea crește la fiecare tabel nou: altfel, pe telefoanele care au deja
 // baza deschisă, magazinul nou nu s-ar mai crea niciodată.
 // v2: facturi. v3: procese-verbale de predare. v4: pașii lucrării.
-// v5: cheltuieli fixe lunare.
-const DB_VERSION = 5;
+// v5: cheltuieli fixe lunare. v6: scadențarul de plăți.
+const DB_VERSION = 6;
 
 export const OUTBOX_STORE = "__outbox";
 export const META_STORE = "__meta";

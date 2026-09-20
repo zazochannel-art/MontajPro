@@ -64,6 +64,7 @@ const NOTIFICATION_LABELS: Record<keyof NotificationPrefs, string> = {
   tool_warranty: "Garanție sculă",
   materials_missing: "Materiale lipsă",
   quote_pending: "Ofertă neconfirmată",
+  installment_due: "Tranșă scadentă",
   follow_up: "Revino la client",
   job_warranty: "Garanția lucrării",
 };
