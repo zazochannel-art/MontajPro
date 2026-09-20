@@ -8,6 +8,7 @@ import { Confirm } from "@/components/ui/confirm";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MeasurementDialog } from "@/components/measurements/measurement-dialog";
 import { DerivedPanel } from "@/components/measurements/measurement-fields";
+import { PriceFromMeasurement } from "@/components/measurements/price-button";
 import { JOB_TYPE_EMOJI, JOB_TYPE_LABELS } from "@/lib/constants";
 import { deleteMeasurement } from "@/lib/db/actions";
 import { formatDateShort } from "@/lib/format";
@@ -102,6 +103,8 @@ export function MeasurementsTab({
                   {measurement.notes}
                 </p>
               )}
+
+              <PriceFromMeasurement measurement={measurement} className="w-full" />
             </article>
           ))}
           <Button

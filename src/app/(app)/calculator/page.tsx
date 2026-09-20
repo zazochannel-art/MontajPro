@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Calculator, FileText, Hammer, Plus, Save, Settings2, X } from "lucide-react";
@@ -29,7 +29,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useJobs } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
-import { calcTotal, lineTotal, type CalcLine } from "@/lib/calc";
+import { calcTotal, lineTotal, type CalcLine, type CalcSeed } from "@/lib/calc";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { JOB_TYPE_LABELS } from "@/lib/constants";
 import {
@@ -43,7 +43,7 @@ import {
 } from "@/lib/price-list";
 import type { DefaultRates, JobType } from "@/lib/types";
 import { updateJob } from "@/lib/db/actions";
-import { saveCalcDraft } from "@/lib/calc-draft";
+import { clearCalcSeed, peekCalcSeed, saveCalcDraft } from "@/lib/calc-draft";
 import { uid } from "@/lib/utils";
 
 /**
@@ -91,14 +91,39 @@ function presetLines(kind: JobType, positions: Position[]): CalcLine[] {
   );
 }
 
+/** Aceleași poziții, dar cu cantitățile venite dintr-o măsurătoare. */
+function seedLines(seed: CalcSeed, positions: Position[]): CalcLine[] {
+  const lines: CalcLine[] = [];
+  for (const [key, quantity] of Object.entries(seed.quantities)) {
+    const position = findPosition(positions, builtinId(key as keyof DefaultRates));
+    if (position) lines.push(lineFrom(position, Number(quantity) || 0));
+  }
+  if (seed.custom) {
+    lines.push({
+      id: uid(),
+      item_id: CUSTOM_POSITION,
+      description: seed.custom.description,
+      quantity: seed.custom.quantity,
+      unit: seed.custom.unit,
+      unit_price: 0,
+    });
+  }
+  return lines.length ? lines : presetLines(seed.kind, positions);
+}
+
 export default function CalculatorPage() {
   const router = useRouter();
   const { currency, settings } = useApp();
   const jobs = useJobs();
   const positions = useMemo(() => allPositions(settings), [settings]);
 
-  const [kind, setKind] = useState<JobType>("stairs");
-  const [lines, setLines] = useState<CalcLine[]>(() => presetLines("stairs", positions));
+  // Cantitățile venite dintr-o măsurătoare; citite o singură dată, la montare.
+  const [seed] = useState(() => peekCalcSeed());
+
+  const [kind, setKind] = useState<JobType>(seed?.kind ?? "stairs");
+  const [lines, setLines] = useState<CalcLine[]>(() =>
+    seed ? seedLines(seed, positions) : presetLines("stairs", positions),
+  );
   const [saveOpen, setSaveOpen] = useState(false);
   const [targetJob, setTargetJob] = useState<string>("new");
 
@@ -108,6 +133,16 @@ export default function CalculatorPage() {
     [positions, kind],
   );
   const noRates = everyPriceUnset(positions);
+
+  useEffect(() => {
+    if (!seed) return;
+    clearCalcSeed();
+    toast.success(
+      seed.from
+        ? `Cantitățile din „${seed.from}” au fost preluate`
+        : "Cantitățile din măsurătoare au fost preluate",
+    );
+  }, [seed]);
 
   const switchKind = (next: JobType) => {
     setKind(next);

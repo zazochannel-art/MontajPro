@@ -1,4 +1,4 @@
-import type { CalcLine } from "./calc";
+import type { CalcLine, CalcSeed } from "./calc";
 import type { JobType } from "./types";
 
 /**
@@ -42,5 +42,42 @@ export function clearCalcDraft() {
     sessionStorage.removeItem(CALC_DRAFT_KEY);
   } catch {
     // Nimic de făcut — ciorna expiră oricum odată cu sesiunea.
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Cealaltă direcție: măsurătoare → calculator                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Ciorna de mai sus duce prețul din calculator mai departe; asta aduce
+ * cantitățile înspre el. Același mecanism, ca să nu apară un al doilea.
+ */
+export const CALC_SEED_KEY = "montajpro.calc-seed";
+
+export function saveCalcSeed(seed: CalcSeed) {
+  try {
+    sessionStorage.setItem(CALC_SEED_KEY, JSON.stringify(seed));
+  } catch {
+    // Stocarea poate fi blocată — calculatorul pornește pe presetări.
+  }
+}
+
+export function peekCalcSeed(): CalcSeed | null {
+  if (typeof sessionStorage === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(CALC_SEED_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as CalcSeed;
+  } catch {
+    return null;
+  }
+}
+
+export function clearCalcSeed() {
+  try {
+    sessionStorage.removeItem(CALC_SEED_KEY);
+  } catch {
+    // Expiră oricum odată cu sesiunea.
   }
 }

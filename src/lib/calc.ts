@@ -1,5 +1,6 @@
 import { num } from "./utils";
 import type {
+  DefaultRates,
   MeasurementData,
   JobType,
   ParquetMeasurement,
@@ -187,6 +188,61 @@ export function measurementSummary(kind: JobType, data: MeasurementData): string
 /* ------------------------------------------------------------------ */
 /* Calculator de preț                                                  */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Cantitățile cu care pornește calculatorul, pornind de la o măsurătoare.
+ *
+ * `derivedValues` dă text de citit; aici ies cifre de pus în calcul. Sunt
+ * cantități de manoperă, nu de material: parchetul se plătește pe suprafața
+ * montată, nu pe cea comandată cu pierdere cu tot.
+ */
+export interface CalcSeed {
+  kind: JobType;
+  quantities: Partial<Record<keyof DefaultRates, number>>;
+  custom?: { description: string; quantity: number; unit: string } | null;
+  /** De unde vine, pentru confirmarea arătată utilizatorului. */
+  from?: string;
+}
+
+export function measurementToSeed(
+  kind: JobType,
+  data: MeasurementData,
+  from?: string,
+): CalcSeed {
+  if (kind === "stairs") {
+    const m = data as StairsMeasurement;
+    const steps = num(m.steps);
+    return {
+      kind,
+      from,
+      quantities: {
+        stair_step: steps,
+        stair_riser: steps,
+        landing: num(m.landings),
+        railing: 1,
+      },
+    };
+  }
+  if (kind === "parquet") {
+    const m = data as ParquetMeasurement;
+    return { kind, from, quantities: { parquet_m2: num(m.area) } };
+  }
+  if (kind === "plinth") {
+    const m = data as PlinthMeasurement;
+    return { kind, from, quantities: { plinth_m: num(m.linear_meters) } };
+  }
+  const m = data as OtherMeasurement;
+  return {
+    kind,
+    from,
+    quantities: {},
+    custom: {
+      description: m.label || "Serviciu",
+      quantity: num(m.quantity, 1),
+      unit: m.unit || "buc",
+    },
+  };
+}
 
 export interface CalcLine {
   id: string;

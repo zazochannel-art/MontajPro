@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Confirm } from "@/components/ui/confirm";
 import { DerivedPanel } from "@/components/measurements/measurement-fields";
+import { PriceFromMeasurement } from "@/components/measurements/price-button";
 import { useStoreReady, useTable } from "@/hooks/use-data";
 import { deleteMeasurement } from "@/lib/db/actions";
 import { JOB_TYPE_EMOJI, JOB_TYPE_LABELS } from "@/lib/constants";
@@ -115,6 +116,8 @@ export default function MeasurementsPage() {
                     {measurement.notes}
                   </p>
                 )}
+
+                <PriceFromMeasurement measurement={measurement} className="w-full" />
 
                 <div className="flex items-center justify-between gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
                   <span>{formatDateShort(measurement.created_at)}</span>
