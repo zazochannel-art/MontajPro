@@ -1,4 +1,6 @@
-# MontajPro
+# MontCraft
+
+*Custom interior works.*
 
 Aplicație web/PWA pentru montatori de **scări, parchet și plinte**: clienți,
 lucrări, măsurători, fotografii, materiale, oferte, programări și bani — într-un

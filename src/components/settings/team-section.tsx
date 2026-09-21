@@ -226,7 +226,7 @@ export function TeamSection() {
         <Plus /> Invită în echipă
       </Button>
       <p className="text-xs text-muted-foreground">
-        Omul intră cu contul lui de MontajPro, pe același e-mail, și acceptă
+        Omul intră cu contul lui de MontCraft, pe același e-mail, și acceptă
         invitația din Setări.
       </p>
     </section>

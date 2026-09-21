@@ -14,6 +14,14 @@ import { Logo } from "./logo";
 import { NotificationEngine } from "@/components/notifications/engine";
 import { BackupKeeper } from "@/components/backup/backup-keeper";
 
+/*
+ * Cheile de stocare păstrează numele vechi, dinadins.
+ *
+ * Ele nu se văd nicăieri în aplicație, dar sunt adresa la care stau datele pe
+ * telefoanele care au deja MontCraft instalat. Redenumite, aplicația s-ar uita
+ * la un raft gol: în modul local asta înseamnă toate lucrările pierdute.
+ * Numele mărcii s-a schimbat; adresa datelor, nu.
+ */
 const LOCAL_NOTICE_KEY = "montajpro.hide-local-notice";
 
 function localNoticeDismissed(): boolean {

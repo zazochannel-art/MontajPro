@@ -57,7 +57,7 @@ export default function LoginPage() {
     <div className="aurora flex min-h-dvh flex-col items-center justify-center px-5 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <Logo />
+          <Logo tagline />
           <p className="text-balance text-sm text-muted-foreground">
             Lucrări, măsurători, bani și poze — toate în buzunar.
           </p>

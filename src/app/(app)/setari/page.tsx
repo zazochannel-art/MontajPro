@@ -207,7 +207,7 @@ export default function SettingsPage() {
             onBlur={(event) =>
               void updateSettings({ company: event.target.value || null })
             }
-            placeholder="MontajPro SRL"
+            placeholder="MontCraft SRL"
           />
         </Field>
       </section>
@@ -426,7 +426,7 @@ export default function SettingsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() =>
-                  downloadCsv("montajpro-preturi.csv", priceListToCsv(priceList))
+                  downloadCsv("montcraft-preturi.csv", priceListToCsv(priceList))
                 }
               >
                 <Download /> Exportă

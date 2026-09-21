@@ -12,16 +12,16 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "MontajPro — scări, parchet, plinte",
-    template: "%s · MontajPro",
+    default: "MontCraft — scări, parchet, plinte",
+    template: "%s · MontCraft",
   },
   description:
     "Aplicația de lucru pentru montatori: clienți, lucrări, măsurători, oferte, bani și fotografii, într-un singur loc.",
   manifest: "/manifest.webmanifest",
-  applicationName: "MontajPro",
+  applicationName: "MontCraft",
   appleWebApp: {
     capable: true,
-    title: "MontajPro",
+    title: "MontCraft",
     statusBarStyle: "black-translucent",
   },
   formatDetection: { telephone: true },

@@ -1,5 +1,5 @@
 /*
- * Service worker MontajPro.
+ * Service worker MontCraft.
  *
  * Scopul e simplu: aplicația trebuie să pornească și fără semnal, pentru că se
  * folosește pe șantier. Datele sunt oricum în IndexedDB — aici ținem doar
@@ -15,7 +15,7 @@
  * Cererile către Supabase nu sunt atinse: sincronizarea își face treaba singură.
  */
 
-const VERSION = 'montajpro-v3';
+const VERSION = 'montcraft-v4';
 const SHELL_CACHE = VERSION + '-shell';
 const ASSET_CACHE = VERSION + '-assets';
 const OFFLINE_URL = '/offline.html';
@@ -140,12 +140,12 @@ self.addEventListener('push', (event) => {
     payload = { body: event.data ? event.data.text() : '' };
   }
 
-  const title = payload.title || 'MontajPro';
+  const title = payload.title || 'MontCraft';
   const options = {
     body: payload.body || '',
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-192.png',
-    tag: payload.tag || 'montajpro',
+    tag: payload.tag || 'montcraft',
     data: { url: payload.url || '/' },
     // Pe șantier telefonul stă în buzunar: vibrația contează mai mult decât
     // sunetul.

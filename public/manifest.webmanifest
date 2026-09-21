@@ -1,6 +1,6 @@
 {
-  "name": "MontajPro — scări, parchet, plinte",
-  "short_name": "MontajPro",
+  "name": "MontCraft — custom interior works",
+  "short_name": "MontCraft",
   "description": "Lucrări, clienți, măsurători, oferte și bani — pentru montatori.",
   "start_url": "/",
   "scope": "/",
@@ -10,7 +10,11 @@
   "theme_color": "#09090B",
   "lang": "ro",
   "dir": "ltr",
-  "categories": ["business", "productivity", "utilities"],
+  "categories": [
+    "business",
+    "productivity",
+    "utilities"
+  ],
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -36,19 +40,34 @@
       "name": "Lucrare nouă",
       "short_name": "Lucrare",
       "url": "/lucrari/nou",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Măsurătoare rapidă",
       "short_name": "Măsurătoare",
       "url": "/masuratori/nou",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Calculator preț",
       "short_name": "Calculator",
       "url": "/calculator",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }
