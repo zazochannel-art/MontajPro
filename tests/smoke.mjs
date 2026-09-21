@@ -375,12 +375,15 @@ try {
   await page.waitForURL(/\/proiecte\/[0-9a-f-]{36}/, { timeout: 15000 });
   await page.getByRole("combobox", { name: /Alege lucrarea/i }).click();
   await page.getByRole("option", { name: /Montaj scară stejar \(test\)/ }).click();
-  await page.getByText("Montaj scară stejar (test)").first().waitFor({ timeout: 10000 });
+  // Titlul lucrării apare și în opțiunea tocmai apăsată, care se închide cu
+  // animație: așteptăm cardul propriu-zis, care e o legătură, nu o opțiune.
+  await page
+    .getByRole("link", { name: /Montaj scară stejar \(test\)/ })
+    .first()
+    .waitFor({ timeout: 10000 });
   check("lucrarea se mută sub proiect", true);
-  check(
-    "totalul proiectului adună lucrările",
-    (await page.getByText(/12\.000 MDL/).count()) > 0,
-  );
+  await page.getByText(/12\.000 MDL/).first().waitFor({ timeout: 10000 });
+  check("totalul proiectului adună lucrările", true);
 
   /* ----------------------------- mod șantier ----------------------- */
   section("Mod șantier");
