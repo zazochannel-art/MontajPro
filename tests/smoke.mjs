@@ -496,6 +496,14 @@ try {
   await langSelect.filter({ hasText: /Română/ }).waitFor({ timeout: 10000 });
   await langSelect.click();
   await page.getByRole("option", { name: /Русский/ }).click();
+  // Setarea se scrie în IndexedDB înainte ca interfața s-o arate, deci
+  // așteptarea de aici e și garanția că navigarea următoare n-o ia înaintea
+  // scrierii.
+  await page
+    .getByRole("combobox")
+    .nth(1)
+    .filter({ hasText: /Русский/ })
+    .waitFor({ timeout: 10000 });
   await page.goto(`${BASE}/lucrari`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Работы" }).waitFor({ timeout: 10000 });
   check("interfața trece în rusă", true);
@@ -510,6 +518,11 @@ try {
   await backToRo.filter({ hasText: /Русский/ }).waitFor({ timeout: 10000 });
   await backToRo.click();
   await page.getByRole("option", { name: /Română/ }).click();
+  await page
+    .getByRole("combobox")
+    .nth(1)
+    .filter({ hasText: /Română/ })
+    .waitFor({ timeout: 10000 });
   await page.goto(`${BASE}/lucrari`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Lucrări" }).waitFor({ timeout: 10000 });
   check("comutarea înapoi în română merge", true);
