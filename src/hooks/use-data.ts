@@ -139,6 +139,48 @@ export function useArchivedJobs() {
   return useMemo(() => all.filter((job) => job.archived_at), [all]);
 }
 
+/** Proiectele, cele atinse recent primele. */
+export function useProjects() {
+  const projects = useTable("projects");
+  return useMemo(
+    () => [...projects].sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
+    [projects],
+  );
+}
+
+export interface ProjectSummary {
+  jobs: Tables["jobs"][];
+  price: number;
+  paid: number;
+  rest: number;
+  done: number;
+}
+
+/** Lucrările unui proiect și banii lor, la un loc. */
+export function useProjectSummary(projectId: string | null | undefined): ProjectSummary {
+  const all = useTable("jobs");
+  const payments = useTable("payments");
+
+  return useMemo(() => {
+    const jobs = all
+      .filter((job) => job.project_id === projectId)
+      .sort((a, b) => a.title.localeCompare(b.title, "ro"));
+    const ids = new Set(jobs.map((job) => job.id));
+    const paid = payments
+      .filter((payment) => payment.job_id && ids.has(payment.job_id))
+      .reduce((acc, payment) => acc + payment.amount, 0);
+    const price = jobs.reduce((acc, job) => acc + job.price_total, 0);
+
+    return {
+      jobs,
+      price,
+      paid,
+      rest: price - paid,
+      done: jobs.filter((job) => job.status === "done").length,
+    };
+  }, [all, payments, projectId]);
+}
+
 export function useClientName(clientId: string | null | undefined): string {
   const clients = useTable("clients");
   return useMemo(() => {

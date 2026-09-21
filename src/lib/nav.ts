@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Building2,
   Calculator,
   FileCheck,
   HardHat,
@@ -46,6 +47,7 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       { href: "/calendar", label: "Calendar", icon: CalendarDays },
       { href: "/clienti", label: "Clienți", icon: Users },
+      { href: "/proiecte", label: "Proiecte", icon: Building2 },
     ],
   },
   {

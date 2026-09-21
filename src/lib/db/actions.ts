@@ -65,11 +65,49 @@ export async function deleteClient(id: string) {
   kick();
 }
 
+/* -------------------------------- proiecte ------------------------- */
+
+export async function saveProject(input: {
+  id?: string;
+  name: string;
+  client_id?: string | null;
+  address?: string | null;
+  notes?: string | null;
+}) {
+  const payload = {
+    name: input.name.trim(),
+    client_id: input.client_id || null,
+    address: input.address?.trim() || null,
+    notes: input.notes?.trim() || null,
+  };
+  const row = input.id
+    ? await store.update("projects", input.id, payload)
+    : await store.insert("projects", payload);
+  kick();
+  return row;
+}
+
+export async function deleteProject(id: string) {
+  // Proiectul e doar un acoperiș. Când cade, lucrările rămân în picioare —
+  // cu banii, pozele și scadențarele lor cu tot.
+  const jobs = store.getTable("jobs").filter((job) => job.project_id === id);
+  for (const job of jobs) await store.update("jobs", job.id, { project_id: null });
+  await store.remove("projects", id);
+  kick();
+}
+
+/** Mută o lucrare în proiect sau o scoate din el. */
+export async function setJobProject(jobId: string, projectId: string | null) {
+  await store.update("jobs", jobId, { project_id: projectId });
+  kick();
+}
+
 /* -------------------------------- lucrări -------------------------- */
 
 export interface JobInput {
   id?: string;
   client_id: string | null;
+  project_id?: string | null;
   title: string;
   type: JobType;
   status: JobStatus;
@@ -87,6 +125,7 @@ export interface JobInput {
 export async function saveJob(input: JobInput) {
   const payload = {
     client_id: input.client_id,
+    project_id: input.project_id ?? null,
     title: input.title.trim(),
     type: input.type,
     status: input.status,
@@ -1242,6 +1281,8 @@ export async function duplicateJob(id: string) {
 
   const copy = await store.insert("jobs", {
     client_id: source.client_id,
+    // Un apartament duplicat rămâne în aceeași scară de bloc.
+    project_id: source.project_id ?? null,
     title: `${source.title} (copie)`,
     type: source.type,
     status: "quote",

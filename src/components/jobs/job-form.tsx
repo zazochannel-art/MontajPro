@@ -29,16 +29,24 @@ import {
 import { JOB_STATUSES, JOB_TYPES } from "@/lib/types";
 import type { Job, JobStatus, JobType } from "@/lib/types";
 import { useApp } from "@/lib/app-provider";
-import { useClients } from "@/hooks/use-data";
+import { useClients, useProjects } from "@/hooks/use-data";
 import { clearCalcDraft, peekCalcDraft } from "@/lib/calc-draft";
 import { JOB_TYPE_UNIT } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 /** Formularul de lucrare — folosit atât la creare, cât și la editare. */
-export function JobForm({ job }: { job?: Job | null }) {
+export function JobForm({
+  job,
+  projectId,
+}: {
+  job?: Job | null;
+  /** Când vii din pagina unui proiect, lucrarea se naște sub el. */
+  projectId?: string | null;
+}) {
   const router = useRouter();
   const { currency } = useApp();
   const clients = useClients();
+  const projects = useProjects();
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
 
   // Când vii din calculator, tipul și prețul sunt deja calculate.
@@ -49,6 +57,7 @@ export function JobForm({ job }: { job?: Job | null }) {
       job?.title ??
       (draft ? `Montaj ${JOB_TYPE_LABELS[draft.kind].toLowerCase()}` : ""),
     client_id: job?.client_id ?? null,
+    project_id: job?.project_id ?? projectId ?? null,
     type: (job?.type ?? draft?.kind ?? "stairs") as JobType,
     status: (job?.status ?? "quote") as JobStatus,
     address: job?.address ?? "",
@@ -165,6 +174,36 @@ export function JobForm({ job }: { job?: Job | null }) {
               </Button>
             </div>
           </Field>
+
+          {projects.length > 0 && (
+            <Field
+              label="Proiect"
+              htmlFor="job-project"
+              hint="Pentru un bloc cu mai multe apartamente."
+            >
+              <Select
+                value={form.values.project_id ?? "none"}
+                onValueChange={(value) => {
+                  form.set("project_id", value === "none" ? null : value);
+                  const project = projects.find((row) => row.id === value);
+                  if (project?.address && !form.values.address)
+                    form.set("address", project.address);
+                }}
+              >
+                <SelectTrigger id="job-project">
+                  <SelectValue placeholder="Fără proiect" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Fără proiect</SelectItem>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
 
           <Field label="Adresă" htmlFor="job-address">
             <Input

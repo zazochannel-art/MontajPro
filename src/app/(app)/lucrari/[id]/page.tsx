@@ -1,9 +1,11 @@
 "use client";
 
 import { Suspense, use, useEffect, useState } from "react";
+import Link from "next/link";
 import { notFound, useRouter, useSearchParams } from "next/navigation";
 import {
   Activity,
+  Building2,
   Camera,
   Info,
   Package,
@@ -22,7 +24,7 @@ import { PhotosTab } from "@/components/jobs/tabs/photos-tab";
 import { MaterialsTab } from "@/components/jobs/tabs/materials-tab";
 import { FinanceTab } from "@/components/jobs/tabs/finance-tab";
 import { ActivityTab } from "@/components/jobs/tabs/activity-tab";
-import { useJobDetails, useStoreReady } from "@/hooks/use-data";
+import { useJobDetails, useRow, useStoreReady } from "@/hooks/use-data";
 import { startWork, stopWork } from "@/lib/db/actions";
 import { JOB_TYPE_EMOJI, JOB_TYPE_LABELS } from "@/lib/constants";
 import { formatDuration, formatMoney, formatStopwatch } from "@/lib/format";
@@ -43,6 +45,7 @@ function JobDetail({ id }: { id: string }) {
   const searchParams = useSearchParams();
   const { currency } = useApp();
   const details = useJobDetails(id);
+  const project = useRow("projects", details.job?.project_id);
   const [tab, setTab] = useState(searchParams.get("tab") ?? "general");
   const [elapsed, setElapsed] = useState(0);
 
@@ -91,6 +94,14 @@ function JobDetail({ id }: { id: string }) {
                 <span className="text-xs text-amber-300">
                   rest {formatMoney(details.money.rest, currency)}
                 </span>
+              )}
+              {project && (
+                <Link
+                  href={`/proiecte/${project.id}`}
+                  className="inline-flex items-center gap-1 rounded-full bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-300 hover:bg-cyan-500/20"
+                >
+                  <Building2 className="size-3" /> {project.name}
+                </Link>
               )}
               {job.archived_at && (
                 <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">

@@ -9,6 +9,13 @@ const optionalText = z
   .optional()
   .transform((value) => (value ? value : null));
 
+export const projectSchema = z.object({
+  name: z.string().trim().min(2, "Numele trebuie să aibă cel puțin 2 caractere"),
+  client_id: z.string().nullable().optional(),
+  address: optionalText,
+  notes: optionalText,
+});
+
 export const clientSchema = z.object({
   name: z.string().trim().min(2, "Numele trebuie să aibă cel puțin 2 caractere"),
   phone: optionalText,
@@ -25,6 +32,7 @@ export const clientSchema = z.object({
 export const jobSchema = z.object({
   title: z.string().trim().min(2, "Adaugă un titlu pentru lucrare"),
   client_id: z.string().nullable(),
+  project_id: z.string().nullable().optional(),
   type: z.enum(JOB_TYPES),
   status: z.enum(JOB_STATUSES),
   address: optionalText,

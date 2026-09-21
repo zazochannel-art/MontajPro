@@ -17,6 +17,7 @@ import type { TableName, Tables } from "./types";
 /** Tabelele care merită arătate ca „lucrul șters”; restul sunt copii. */
 const HEADLINE: TableName[] = [
   "jobs",
+  "projects",
   "clients",
   "quotes",
   "invoices",
@@ -31,6 +32,7 @@ const HEADLINE: TableName[] = [
 
 export const TRASH_LABELS: Partial<Record<TableName, string>> = {
   jobs: "Lucrare",
+  projects: "Proiect",
   clients: "Client",
   quotes: "Ofertă",
   invoices: "Factură",

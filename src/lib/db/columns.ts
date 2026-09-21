@@ -13,9 +13,11 @@ const BASE = ["id", "user_id", "created_at", "updated_at", "deleted_at"] as cons
 
 export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
   clients: [...BASE, "name", "phone", "email", "address", "notes"],
+  projects: [...BASE, "name", "client_id", "address", "notes"],
   jobs: [
     ...BASE,
     "client_id",
+    "project_id",
     "title",
     "type",
     "status",
