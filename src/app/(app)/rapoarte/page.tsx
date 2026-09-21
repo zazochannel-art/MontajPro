@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { BarChart3, Clock, Hammer, TrendingUp, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Segmented } from "@/components/ui/segmented";
@@ -18,7 +19,12 @@ import {
   totals,
   UNIT_LABELS,
 } from "@/lib/reports";
-import { JOB_TYPE_EMOJI, JOB_TYPE_LABELS } from "@/lib/constants";
+import {
+  CLIENT_SOURCE_LABELS,
+  JOB_TYPE_EMOJI,
+  JOB_TYPE_LABELS,
+} from "@/lib/constants";
+import { topReferrers, totalsBySource } from "@/lib/sources";
 import { formatMoney, formatNumber, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +47,26 @@ export default function ReportsPage() {
   const measurements = useTable("job_measurements");
   const clients = useTable("clients");
 
+  const payments = useTable("payments");
+
   const [period, setPeriod] = useState<Period>("12");
+
+  /*
+   * „De unde vine treaba" nu ține de perioada aleasă mai sus: un om care te-a
+   * recomandat acum doi ani îți aduce clienți și azi, iar tăiat la douăsprezece
+   * luni răspunsul ar fi altul în fiecare lună.
+   */
+  const sourceRows = useMemo(
+    () =>
+      totalsBySource(clients, jobs, payments).filter(
+        (row) => row.earned > 0 || row.jobs > 0,
+      ),
+    [clients, jobs, payments],
+  );
+  const referrers = useMemo(
+    () => topReferrers(clients, jobs, payments),
+    [clients, jobs, payments],
+  );
 
   const report = useMemo(() => {
     const cutoff =
@@ -285,6 +310,69 @@ export default function ReportsPage() {
               ))}
             </div>
           </section>
+
+          {/*
+            * De unde vine treaba. Apare doar după ce s-a notat măcar o sursă:
+            * un tabel plin de „nu știu” n-ar spune nimic nimănui.
+            */}
+          {sourceRows.length > 0 && (
+            <section className="space-y-2.5">
+              <h2 className="text-sm font-semibold">De unde vine treaba</h2>
+              <div className="divide-y divide-border overflow-hidden rounded-2xl surface">
+                {sourceRows.map((row) => (
+                  <div
+                    key={row.source}
+                    className="flex items-center justify-between gap-3 p-3.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">
+                        {row.source === "unknown"
+                          ? "Nu s-a notat"
+                          : CLIENT_SOURCE_LABELS[row.source]}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {row.clients} {row.clients === 1 ? "client" : "clienți"} ·{" "}
+                        {row.jobs} {row.jobs === 1 ? "lucrare" : "lucrări"}
+                      </p>
+                    </div>
+                    <p className="shrink-0 font-semibold tabular-nums">
+                      {formatMoney(row.earned, currency)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {referrers.length > 0 && (
+            <section className="space-y-2.5">
+              <h2 className="text-sm font-semibold">Cine te recomandă</h2>
+              <p className="text-xs text-muted-foreground">
+                Banii sunt cei aduși de oamenii pe care i-au trimis, nu cei
+                plătiți de ei.
+              </p>
+              <div className="divide-y divide-border overflow-hidden rounded-2xl surface">
+                {referrers.slice(0, 10).map((row) => (
+                  <Link
+                    key={row.client_id}
+                    href={`/clienti/${row.client_id}`}
+                    className="flex items-center justify-between gap-3 p-3.5 transition-colors hover:bg-accent"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{row.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        a trimis {row.sent}{" "}
+                        {row.sent === 1 ? "client" : "clienți"}
+                      </p>
+                    </div>
+                    <p className="shrink-0 font-semibold tabular-nums">
+                      {formatMoney(row.earned, currency)}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
         </>
       )}
     </div>

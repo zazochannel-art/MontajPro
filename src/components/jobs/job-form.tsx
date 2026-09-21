@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, Check, Plus } from "lucide-react";
+import { CalendarClock, Check, Gauge, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,12 @@ import {
 import { JOB_STATUSES, JOB_TYPES } from "@/lib/types";
 import type { Job, JobStatus, JobType } from "@/lib/types";
 import { useApp } from "@/lib/app-provider";
-import { useClients, useProjects, useTable } from "@/hooks/use-data";
+import {
+  useClients,
+  usePaceEstimate,
+  useProjects,
+  useTable,
+} from "@/hooks/use-data";
 import { dayLoad } from "@/lib/route";
 import { formatDuration } from "@/lib/format";
 import { clearCalcDraft, peekCalcDraft } from "@/lib/calc-draft";
@@ -80,6 +85,9 @@ export function JobForm({
             .join("\n")
         : ""),
   });
+
+  // Ritmul tău, aplicat pe măsurătorile lucrării ăsteia.
+  const paceEstimate = usePaceEstimate(job?.id ?? null, form.values.type);
 
   useEffect(() => {
     if (!draft) return;
@@ -277,6 +285,26 @@ export function JobForm({
               step={0.5}
               suffix="ore"
             />
+            {/*
+              * Propunerea vine din lucrările tale de același fel, nu dintr-un
+              * tabel de normare. Se oferă, nu se impune: cifra intră în câmp
+              * doar dacă omul o apasă.
+              */}
+            {paceEstimate && paceEstimate.hours !== form.values.estimated_hours && (
+              <button
+                type="button"
+                onClick={() => form.set("estimated_hours", paceEstimate.hours)}
+                className="mt-2 flex w-full items-start gap-2 rounded-xl border border-primary/25 bg-primary/8 px-3 py-2 text-left text-xs text-primary-soft transition-colors hover:bg-primary/15"
+              >
+                <Gauge className="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                  {paceEstimate.text}{" "}
+                  <span className="font-semibold underline underline-offset-2">
+                    Pune {paceEstimate.hours} ore
+                  </span>
+                </span>
+              </button>
+            )}
           </Field>
 
           <Field label="Status">

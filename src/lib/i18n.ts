@@ -46,6 +46,7 @@ const RU: Record<string, string> = {
   Rapoarte: "Отчёты",
   Facturi: "Счета",
   "Procese-verbale": "Акты приёмки",
+  Garanții: "Гарантии",
   Materiale: "Материалы",
   Scule: "Инструменты",
   Portofoliu: "Портфолио",

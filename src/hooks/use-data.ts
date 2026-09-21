@@ -3,10 +3,12 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { store } from "@/lib/db/store";
 import { trashItems, type TrashItem } from "@/lib/trash";
-import type { TableName, Tables } from "@/lib/types";
+import type { JobType, TableName, Tables } from "@/lib/types";
 import { jobMoney, totalWorkedMinutes } from "@/lib/calc";
 import { buildForecast } from "@/lib/forecast";
 import { todayKey, toDateKey } from "@/lib/format";
+import { estimateHours, measurementSize, paceFor } from "@/lib/pace";
+import type { PaceEstimate } from "@/lib/pace";
 
 /**
  * Selectori peste store. Toate returnează rânduri „vii” (fără cele șterse
@@ -386,4 +388,54 @@ export function useDashboardData() {
     paymentIndex,
     now,
   ]);
+}
+
+/**
+ * Cât ți-ar lua lucrarea asta, la ritmul tău.
+ *
+ * Se uită la măsurătorile lucrării și la ritmul scos din lucrările tale de
+ * același fel. Întoarce `null` când nu există încă destulă istorie sau când
+ * lucrarea n-are măsurătoare — și atunci interfața nu arată nimic, în loc să
+ * arate o cifră inventată.
+ */
+export function usePaceEstimate(
+  jobId: string | null | undefined,
+  kind: JobType,
+): PaceEstimate | null {
+  const jobs = useAllJobs();
+  const measurements = useTable("job_measurements");
+  const sessions = useTable("work_sessions");
+
+  return useMemo(() => {
+    if (!jobId) return null;
+
+    const size = measurements
+      .filter((row) => !row.deleted_at && row.job_id === jobId && row.kind === kind)
+      .reduce((total, row) => total + measurementSize(kind, row.data), 0);
+    if (size <= 0) return null;
+
+    // Ritmul se învață din celelalte lucrări, nu din asta: altfel cifra
+    // propusă ar fi trasă chiar de lucrarea pe care încearcă s-o estimeze.
+    const others = jobs.filter((job) => job.id !== jobId);
+    return estimateHours(size, paceFor(kind, others, measurements, sessions));
+  }, [jobId, kind, jobs, measurements, sessions]);
+}
+
+/**
+ * Lucrarea asta are deja o poză „înainte”?
+ *
+ * Întrebarea se pune o singură dată pe lucrare: odată ce există una, nu mai
+ * are rost să fie cerută la fiecare pornire de cronometru.
+ */
+export function useHasBeforePhoto(jobId: string | null | undefined): boolean {
+  const photos = useTable("job_photos");
+  return useMemo(
+    () =>
+      !!jobId &&
+      photos.some(
+        (photo) =>
+          !photo.deleted_at && photo.job_id === jobId && photo.stage === "before",
+      ),
+    [photos, jobId],
+  );
 }

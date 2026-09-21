@@ -6,6 +6,7 @@
  * pe furnizor și scrisă ca text, devine o comandă pe care o trimiți.
  */
 import { formatNumber } from "./format";
+import { packPlan, packPlanText } from "./packs";
 import type { JobMaterial } from "./types";
 
 /** Cum îi spunem grupului când materialul n-are furnizor știut. */
@@ -15,6 +16,8 @@ export interface OrderLine {
   name: string;
   quantity: number;
   unit: string;
+  /** Cât are un pachet, dacă materialul se vinde așa. Gol = la bucată. */
+  packSize: number | null;
 }
 
 export interface SupplierOrder {
@@ -29,19 +32,35 @@ export interface SupplierOrder {
  * livrează metri, nu lucrări.
  */
 export function groupBySupplier(
-  items: { material: JobMaterial; supplier: string | null }[],
+  items: {
+    material: JobMaterial;
+    supplier: string | null;
+    /** Din materialul din inventar, nu de pe lucrare. */
+    packSize?: number | null;
+  }[],
 ): SupplierOrder[] {
   const groups = new Map<string, Map<string, OrderLine>>();
 
-  for (const { material, supplier } of items) {
+  for (const { material, supplier, packSize } of items) {
     const key = (supplier ?? "").trim() || NO_SUPPLIER;
     const lines = groups.get(key) ?? new Map<string, OrderLine>();
     const name = material.name.trim() || "Material";
     const unit = material.unit || "buc";
     const lineKey = `${name.toLowerCase()}|${unit.toLowerCase()}`;
     const existing = lines.get(lineKey);
-    if (existing) existing.quantity += Number(material.quantity) || 0;
-    else lines.set(lineKey, { name, unit, quantity: Number(material.quantity) || 0 });
+    if (existing) {
+      existing.quantity += Number(material.quantity) || 0;
+      // Liniile care se adună sunt același material din inventar; dacă una
+      // știe mărimea pachetului, o știe pentru toate.
+      existing.packSize = existing.packSize ?? packSize ?? null;
+    } else {
+      lines.set(lineKey, {
+        name,
+        unit,
+        quantity: Number(material.quantity) || 0,
+        packSize: packSize ?? null,
+      });
+    }
     groups.set(key, lines);
   }
 
@@ -62,9 +81,13 @@ export function groupBySupplier(
 export function orderText(order: SupplierOrder, from?: string | null): string {
   const head =
     order.supplier === NO_SUPPLIER ? "Comandă materiale" : `Comandă — ${order.supplier}`;
-  const lines = order.lines.map(
-    (line) => `• ${line.name} — ${formatNumber(line.quantity)} ${line.unit}`,
-  );
+  const lines = order.lines.map((line) => {
+    const base = `• ${line.name} — ${formatNumber(line.quantity)} ${line.unit}`;
+    // Depozitul livrează pachete, nu metri pătrați: scriem și cifra pe care
+    // o poate onora, ca să nu se facă împărțirea la tejghea.
+    const plan = packPlan(line.quantity, line.packSize);
+    return plan ? `${base} → ${packPlanText(plan, line.unit)}` : base;
+  });
   const signature = from?.trim() ? [`\n${from.trim()}`] : [];
   return [head, "", ...lines, ...signature].join("\n");
 }

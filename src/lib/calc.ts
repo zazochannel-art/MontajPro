@@ -376,10 +376,19 @@ export function warrantyEndDate(
   return date;
 }
 
-export function daysUntil(date: Date | string | null): number | null {
+/**
+ * Câte zile mai sunt până la o dată.
+ *
+ * `from` există ca să se poată testa: fără el, răspunsul s-ar schimba în
+ * fiecare zi și niciun test n-ar mai însemna ceva.
+ */
+export function daysUntil(
+  date: Date | string | null,
+  from: Date = new Date(),
+): number | null {
   if (!date) return null;
   const target = typeof date === "string" ? new Date(date) : date;
   if (Number.isNaN(target.getTime())) return null;
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  return Math.round((startOfDay(target) - startOfDay(new Date())) / 86_400_000);
+  return Math.round((startOfDay(target) - startOfDay(from)) / 86_400_000);
 }

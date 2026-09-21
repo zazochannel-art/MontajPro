@@ -24,7 +24,7 @@ const DB_NAME = "montajpro";
 // baza deschisă, magazinul nou nu s-ar mai crea niciodată.
 // v2: facturi. v3: procese-verbale de predare. v4: pașii lucrării.
 // v5: cheltuieli fixe lunare. v6: scadențarul de plăți. v7: proiecte.
-const DB_VERSION = 7;
+const DB_VERSION = 8;
 
 export const OUTBOX_STORE = "__outbox";
 export const META_STORE = "__meta";

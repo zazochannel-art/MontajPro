@@ -66,10 +66,16 @@ function MaterialForm({
     price: material?.price ?? 0,
     supplier: material?.supplier ?? "",
     notes: material?.notes ?? "",
+    pack_size: material?.pack_size ?? 0,
   });
 
   const onSubmit = form.handleSubmit(async (data) => {
-    await saveMaterial({ id: material?.id, ...data });
+    await saveMaterial({
+      ...data,
+      id: material?.id,
+      // Câmpul gol vine ca 0; în baza de date asta înseamnă „la bucată”.
+      pack_size: data.pack_size && data.pack_size > 0 ? data.pack_size : null,
+    });
     toast.success(material ? "Material actualizat" : "Material adăugat");
     onOpenChange(false);
   });
@@ -133,6 +139,18 @@ function MaterialForm({
           <NumberInput
             value={form.values.quantity}
             onChange={(value) => form.set("quantity", value)}
+            suffix={form.values.unit}
+          />
+        </Field>
+
+        <Field
+          label="Cât are un pachet"
+          hint="Parchetul se vinde în pachete, nu la metru. Lasă gol dacă se ia la bucată."
+          error={form.errors.pack_size}
+        >
+          <NumberInput
+            value={form.values.pack_size ?? 0}
+            onChange={(value) => form.set("pack_size", value)}
             suffix={form.values.unit}
           />
         </Field>

@@ -24,8 +24,14 @@ import { PhotosTab } from "@/components/jobs/tabs/photos-tab";
 import { MaterialsTab } from "@/components/jobs/tabs/materials-tab";
 import { FinanceTab } from "@/components/jobs/tabs/finance-tab";
 import { ActivityTab } from "@/components/jobs/tabs/activity-tab";
-import { useJobDetails, useRow, useStoreReady } from "@/hooks/use-data";
+import {
+  useHasBeforePhoto,
+  useJobDetails,
+  useRow,
+  useStoreReady,
+} from "@/hooks/use-data";
 import { startWork, stopWork } from "@/lib/db/actions";
+import { BeforePhotoPrompt } from "@/components/photo/before-photo-prompt";
 import { JOB_TYPE_EMOJI, JOB_TYPE_LABELS } from "@/lib/constants";
 import { formatDuration, formatMoney, formatStopwatch } from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
@@ -48,6 +54,8 @@ function JobDetail({ id }: { id: string }) {
   const project = useRow("projects", details.job?.project_id);
   const [tab, setTab] = useState(searchParams.get("tab") ?? "general");
   const [elapsed, setElapsed] = useState(0);
+  const hasBefore = useHasBeforePhoto(id);
+  const [askPhoto, setAskPhoto] = useState(false);
 
   const session = details.activeSession;
 
@@ -144,6 +152,8 @@ function JobDetail({ id }: { id: string }) {
               onClick={async () => {
                 await startWork(job.id);
                 toast.success("Cronometru pornit");
+                // Cerută abia după pornire: cronometrul nu așteaptă o poză.
+                if (!hasBefore) setAskPhoto(true);
               }}
               className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-emerald-500 text-base font-bold text-emerald-950 transition-transform active:scale-[0.98]"
             >
@@ -210,6 +220,8 @@ function JobDetail({ id }: { id: string }) {
           />
         </TabsContent>
       </Tabs>
+
+      <BeforePhotoPrompt jobId={id} open={askPhoto} onOpenChange={setAskPhoto} />
     </div>
   );
 }

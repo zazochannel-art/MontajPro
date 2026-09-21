@@ -1,10 +1,13 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
+import { Check, Sparkles, TriangleAlert } from "lucide-react";
 import { Field, FieldRow } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { derivedValues } from "@/lib/calc";
+import { stairComfort } from "@/lib/stairs";
+import type { StairComfort } from "@/lib/stairs";
+import { useApp } from "@/lib/app-provider";
 import type { JobType, MeasurementData } from "@/lib/types";
 import type {
   OtherMeasurement,
@@ -286,10 +289,31 @@ export function DerivedPanel({
   kind: JobType;
   data: MeasurementData;
 }) {
+  const { settings } = useApp();
   const values = derivedValues(kind, data);
-  if (!values.length) return null;
+
+  /*
+   * Verdictul asupra treptei. Se pune deasupra cifrelor, nu sub ele: cifrele
+   * se citesc când ai timp, iar „treptele ies prea înalte” trebuie văzut
+   * înainte de a tăia lemnul.
+   */
+  const stairs = kind === "stairs" ? (data as StairsMeasurement) : null;
+  const comfort = stairs
+    ? stairComfort(
+        { riser: stairs.height, tread: stairs.depth, steps: stairs.steps },
+        settings?.stair_limits && Object.keys(settings.stair_limits).length
+          ? settings.stair_limits
+          : undefined,
+      )
+    : null;
+  const showComfort = comfort && comfort.stepSum !== null;
+
+  if (!values.length && !showComfort) return null;
 
   return (
+    <div className="space-y-3">
+      {showComfort && <ComfortNote comfort={comfort} />}
+      {values.length > 0 && (
     <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4">
       <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
         <Sparkles className="size-3.5" /> Calculat automat
@@ -307,6 +331,70 @@ export function DerivedPanel({
           </div>
         ))}
       </dl>
+    </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Semaforul treptei.
+ *
+ * Roșu oprește, galben atrage atenția, verde confirmă. Textul e în cuvinte, nu
+ * în formule: omul de pe șantier n-are nevoie să afle cum se cheamă regula, ci
+ * ce are de schimbat.
+ */
+function ComfortNote({ comfort }: { comfort: StairComfort }) {
+  const tone =
+    comfort.level === "bad"
+      ? {
+          box: "border-red-500/30 bg-red-500/10",
+          text: "text-red-200",
+          icon: TriangleAlert,
+          title: "Treptele nu se vor urca bine",
+        }
+      : comfort.level === "warn"
+        ? {
+            box: "border-amber-500/30 bg-amber-500/10",
+            text: "text-amber-200",
+            icon: TriangleAlert,
+            title: "Merge, dar se simte",
+          }
+        : {
+            box: "border-emerald-500/30 bg-emerald-500/10",
+            text: "text-emerald-200",
+            icon: Check,
+            title: "Treptele se urcă bine",
+          };
+  const Icon = tone.icon;
+
+  return (
+    <div className={`rounded-2xl border p-4 ${tone.box}`}>
+      <p className={`flex items-center gap-2 text-sm font-semibold ${tone.text}`}>
+        <Icon className="size-4 shrink-0" />
+        {tone.title}
+      </p>
+
+      {comfort.problems.length > 0 && (
+        <ul className={`mt-2 space-y-1.5 text-xs ${tone.text}`}>
+          {comfort.problems.map((problem) => (
+            <li key={problem}>{problem}</li>
+          ))}
+        </ul>
+      )}
+
+      {comfort.suggestion && (
+        <p className="mt-2.5 rounded-xl bg-black/20 px-3 py-2 text-xs text-foreground">
+          {comfort.suggestion.text}
+        </p>
+      )}
+
+      {comfort.stepSum !== null && (
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Pasul: 2 × înălțime + adâncime = {comfort.stepSum} cm. Un om urcă cel
+          mai comod pe la 63 cm.
+        </p>
+      )}
     </div>
   );
 }

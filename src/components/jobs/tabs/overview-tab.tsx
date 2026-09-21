@@ -13,6 +13,7 @@ import {
   Navigation,
   Pencil,
   Phone,
+  ShieldCheck,
   Trash2,
   User,
 } from "lucide-react";
@@ -30,10 +31,18 @@ import { JOB_STATUS_LABELS, JOB_TYPE_LABELS } from "@/lib/constants";
 import { JOB_STATUSES } from "@/lib/types";
 import type { Client, Job, JobStatus } from "@/lib/types";
 import type { JobMoney } from "@/lib/calc";
-import { archiveJob, deleteJob, duplicateJob, setJobStatus, unarchiveJob } from "@/lib/db/actions";
+import {
+  archiveJob,
+  createWarrantyCallback,
+  deleteJob,
+  duplicateJob,
+  setJobStatus,
+  unarchiveJob,
+} from "@/lib/db/actions";
 import { formatDate, formatDuration, formatMoney } from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
 import { TaskList } from "@/components/jobs/task-list";
+import { AcclimatizationCard } from "@/components/jobs/acclimatization-card";
 import { mapsHref, telHref } from "@/lib/utils";
 
 /** Rezumatul lucrării: cine, unde, când, cât. */
@@ -59,6 +68,8 @@ export function OverviewTab({
   return (
     <div className="space-y-4">
       <TaskList job={job} />
+
+      <AcclimatizationCard job={job} />
 
       <section className="rounded-2xl surface p-4">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -235,6 +246,39 @@ export function OverviewTab({
           </p>
           <p className="whitespace-pre-wrap text-sm">{job.notes}</p>
         </section>
+      )}
+
+      {/*
+        * Revenirea apare doar pe lucrările predate — și doar pe cele care nu
+        * sunt ele însele o revenire, ca să nu se facă lanț.
+        */}
+      {job.status === "done" && !job.warranty_of_job_id && (
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={async () => {
+            const callback = await createWarrantyCallback(job.id);
+            if (callback) {
+              toast.success("Revenire creată, cu prețul zero");
+              router.push(`/lucrari/${callback.id}`);
+            }
+          }}
+        >
+          <ShieldCheck /> Revenire în garanție
+        </Button>
+      )}
+
+      {job.warranty_of_job_id && (
+        <Link
+          href={`/lucrari/${job.warranty_of_job_id}`}
+          className="surface card-hover flex items-center gap-2.5 rounded-2xl p-3.5 text-sm"
+        >
+          <ShieldCheck className="size-4 shrink-0 text-emerald-300" />
+          <span className="min-w-0 flex-1">
+            E o revenire la o lucrare mai veche.{" "}
+            <span className="text-primary underline-offset-4">Deschide-o</span>
+          </span>
+        </Link>
       )}
 
       <div className="flex gap-2">
