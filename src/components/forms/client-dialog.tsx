@@ -69,8 +69,17 @@ function ClientForm({
     notes: client?.notes ?? "",
   });
 
-  // Dacă omul e deja în agendă, mai bine îl deschizi decât să-l adaugi încă
-  // o dată: pe a doua fișă nu se vede nimic din ce ți-a plătit pe prima.
+  /*
+   * Dacă omul e deja în agendă, mai bine îl folosești decât să-l adaugi încă o
+   * dată: pe a doua fișă nu se vede nimic din ce ți-a plătit pe prima.
+   *
+   * Ce se întâmplă la apăsare depinde de unde s-a deschis fereastra, și asta
+   * ne-o spune `onSaved`. Dacă cineva așteaptă un client — formularul unei
+   * lucrări sau al unei oferte —, îl alegem pe cel găsit și închidem: omul era
+   * în mijlocul unei lucrări, iar o plimbare la fișa clientului i-ar arunca la
+   * gunoi titlul și prețul pe care tocmai le scrisese. Dacă fereastra s-a
+   * deschis singură, din agendă, nu se pierde nimic și îi deschidem fișa.
+   */
   const duplicates = findDuplicates(clients, {
     name: form.values.name,
     phone: form.values.phone,
@@ -137,6 +146,34 @@ function ClientForm({
           </Field>
         </div>
 
+        {duplicates.length > 0 && (
+          <div className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+            <p className="flex items-start gap-2 text-xs text-amber-200">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+              {duplicates[0].by === "phone"
+                ? "Numărul ăsta e deja în agendă."
+                : "Ai deja un client cu numele ăsta."}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {duplicates.slice(0, 3).map(({ client: match }) => (
+                <Button
+                  key={match.id}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    onOpenChange(false);
+                    if (onSaved) onSaved(match.id);
+                    else router.push(`/clienti/${match.id}`);
+                  }}
+                >
+                  {onSaved ? `Alege pe ${match.name}` : `Deschide ${match.name}`}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <Field
           label="Adresă"
           htmlFor="client-address"
@@ -158,33 +195,6 @@ function ClientForm({
             placeholder="Preferă lucrul în weekend, are câine în curte..."
           />
         </Field>
-
-        {duplicates.length > 0 && (
-          <div className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
-            <p className="flex items-start gap-2 text-xs text-amber-200">
-              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-              {duplicates[0].by === "phone"
-                ? "Numărul ăsta e deja în agendă."
-                : "Ai deja un client cu numele ăsta."}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {duplicates.slice(0, 3).map(({ client: match }) => (
-                <Button
-                  key={match.id}
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    onOpenChange(false);
-                    router.push(`/clienti/${match.id}`);
-                  }}
-                >
-                  Deschide {match.name}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
 
         <DialogFooter>
           <Button
