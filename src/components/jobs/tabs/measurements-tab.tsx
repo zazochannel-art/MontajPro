@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus, Ruler, Trash2 } from "lucide-react";
+import { PenLine, Pencil, Plus, Ruler, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Confirm } from "@/components/ui/confirm";
@@ -10,7 +10,10 @@ import { MeasurementDialog } from "@/components/measurements/measurement-dialog"
 import { DerivedPanel } from "@/components/measurements/measurement-fields";
 import { PriceFromMeasurement } from "@/components/measurements/price-button";
 import { JOB_TYPE_EMOJI, JOB_TYPE_LABELS } from "@/lib/constants";
-import { deleteMeasurement } from "@/lib/db/actions";
+import { SketchDialog } from "@/components/photo/sketch-dialog";
+import { AssetImage } from "@/components/photo/asset-image";
+import { useTable } from "@/hooks/use-data";
+import { deleteMeasurement, deletePhoto } from "@/lib/db/actions";
 import { formatDateShort } from "@/lib/format";
 import type { Job, JobMeasurement } from "@/lib/types";
 
@@ -23,6 +26,8 @@ export function MeasurementsTab({
 }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<JobMeasurement | null>(null);
+  const [sketching, setSketching] = useState<JobMeasurement | null>(null);
+  const photos = useTable("job_photos");
 
   const openNew = () => {
     setEditing(null);
@@ -53,6 +58,14 @@ export function MeasurementsTab({
                   </div>
                 </div>
                 <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Schiță pentru ${measurement.label || JOB_TYPE_LABELS[measurement.kind]}`}
+                    onClick={() => setSketching(measurement)}
+                  >
+                    <PenLine />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon-sm"
@@ -98,6 +111,42 @@ export function MeasurementsTab({
 
               <DerivedPanel kind={measurement.kind} data={measurement.data} />
 
+              {(() => {
+                const sketches = photos.filter(
+                  (photo) => photo.measurement_id === measurement.id,
+                );
+                if (!sketches.length) return null;
+                return (
+                  <div className="grid grid-cols-3 gap-2">
+                    {sketches.map((photo) => (
+                      <div key={photo.id} className="relative">
+                        <AssetImage
+                          storagePath={photo.storage_path}
+                          localKey={photo.local_key}
+                          alt={photo.caption ?? "Schiță"}
+                          className="aspect-square w-full rounded-xl object-cover"
+                        />
+                        <Confirm
+                          title="Ștergi schița?"
+                          onConfirm={async () => {
+                            await deletePhoto(photo.id);
+                            toast.success("Schiță ștearsă");
+                          }}
+                        >
+                          <button
+                            type="button"
+                            aria-label="Șterge schița"
+                            className="absolute right-1 top-1 rounded-full bg-background/80 p-1 text-red-400"
+                          >
+                            <X className="size-3.5" />
+                          </button>
+                        </Confirm>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
               {measurement.notes && (
                 <p className="whitespace-pre-wrap rounded-xl bg-background p-3 text-sm text-muted-foreground">
                   {measurement.notes}
@@ -128,6 +177,13 @@ export function MeasurementsTab({
           }
         />
       )}
+
+      <SketchDialog
+        open={Boolean(sketching)}
+        onOpenChange={(value) => !value && setSketching(null)}
+        jobId={job.id}
+        measurementId={sketching?.id ?? null}
+      />
 
       <MeasurementDialog
         open={open}
