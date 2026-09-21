@@ -58,6 +58,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           position="top-center"
           richColors
           theme="dark"
+          offset={{ top: "calc(env(safe-area-inset-top) + 24px)" }}
+          mobileOffset={{ top: "calc(env(safe-area-inset-top) + 16px)" }}
           toastOptions={{
             style: {
               background: "#18181B",

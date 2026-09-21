@@ -15,7 +15,7 @@
  * Cererile către Supabase nu sunt atinse: sincronizarea își face treaba singură.
  */
 
-const VERSION = 'montcraft-v4';
+const VERSION = 'montcraft-v5';
 const SHELL_CACHE = VERSION + '-shell';
 const ASSET_CACHE = VERSION + '-assets';
 const OFFLINE_URL = '/offline.html';

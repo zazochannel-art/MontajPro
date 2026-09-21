@@ -28,7 +28,7 @@ export function Sidebar({ onQuickAdd }: { onQuickAdd: () => void }) {
   };
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border bg-card lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border bg-card pt-[env(safe-area-inset-top)] lg:flex">
       <div className="flex h-16 items-center px-5">
         <Logo />
       </div>

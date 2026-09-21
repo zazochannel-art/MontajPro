@@ -44,7 +44,14 @@ export function AppHeader({ title }: { title?: string }) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-lg">
+      {/*
+       * `pt-[env(safe-area-inset-top)]` este motivul pentru care antetul se
+       * vede pe telefon. Aplicația instalată desenează pagina până sub bara
+       * de stare (ceas, semnal, baterie); fără marginea asta, logoul și
+       * butoanele ajung dedesubtul ei. Fundalul antetului urcă în spatele
+       * barei, conținutul rămâne sub ea. În browser marginea e 0.
+       */}
+      <header className="sticky top-0 z-30 border-b border-border bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur-lg">
         <div className="flex h-14 items-center gap-2 px-3 sm:px-4 lg:h-16 lg:px-8">
           {isRoot ? (
             <div className="lg:hidden">
