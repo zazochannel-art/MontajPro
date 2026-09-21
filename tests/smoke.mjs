@@ -362,6 +362,45 @@ try {
   await page.getByText("Montaj scară stejar (test)").first().waitFor({ timeout: 10000 });
   check("lucrarea supraviețuiește reîncărcării (IndexedDB)", true);
 
+  /* ----------------------------- proiect --------------------------- */
+  section("Proiecte");
+  await page.goto(`${BASE}/proiecte`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: /Proiect nou/i }).first().click();
+  await page.getByPlaceholder("Bloc Ismail 45, scara 2").fill("Bloc test, scara 2");
+  await page.getByRole("button", { name: /Creează proiectul/i }).click();
+  await page.getByText("Bloc test, scara 2").first().waitFor({ timeout: 10000 });
+  check("proiectul apare în listă", true);
+
+  await page.getByText("Bloc test, scara 2").first().click();
+  await page.waitForURL(/\/proiecte\/[0-9a-f-]{36}/, { timeout: 15000 });
+  await page.getByRole("combobox", { name: /Alege lucrarea/i }).click();
+  await page.getByRole("option", { name: /Montaj scară stejar \(test\)/ }).click();
+  await page.getByText("Montaj scară stejar (test)").first().waitFor({ timeout: 10000 });
+  check("lucrarea se mută sub proiect", true);
+  check(
+    "totalul proiectului adună lucrările",
+    (await page.getByText(/12\.000 MDL/).count()) > 0,
+  );
+
+  /* ----------------------------- mod șantier ----------------------- */
+  section("Mod șantier");
+  await page.goto(`${BASE}/setari`, { waitUntil: "networkidle" });
+  await page.getByRole("switch", { name: /Mod șantier/i }).click();
+  await page.getByRole("button", { name: /^Șantier$/ }).waitFor({ timeout: 10000 });
+  check("modul șantier se aprinde", true);
+
+  await page.goto(`${BASE}/lucrari`, { waitUntil: "networkidle" });
+  await page.getByText(/prețurile sunt ascunse/i).first().waitFor({ timeout: 10000 });
+  check(
+    "prețurile dispar de pe cardurile de lucrări",
+    (await page.getByText(/12\.000 MDL/).count()) === 0,
+  );
+
+  // Pastila din antet le aduce înapoi dintr-o apăsare.
+  await page.getByRole("button", { name: /^Șantier$/ }).click();
+  await page.getByText(/12\.000 MDL/).first().waitFor({ timeout: 10000 });
+  check("o apăsare pe pastilă aduce cifrele înapoi", true);
+
   /* ----------------------------- primii pași ----------------------- */
   section("Primii pași");
   await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
