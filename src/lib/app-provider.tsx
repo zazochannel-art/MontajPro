@@ -327,6 +327,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     void metaSet(SITE_MODE_KEY, value);
   }, []);
 
+  // Limba aleasă ajunge și pe <html>: de acolo o iau browserul, corectorul
+  // ortografic și cititoarele de ecran.
+  const language = settings?.language === "ru" ? "ru" : "ro";
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
+
   const signOut = useCallback(async () => {
     const supabase = getSupabase();
     writeStorage(LOCAL_MODE_KEY, null);

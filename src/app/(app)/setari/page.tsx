@@ -54,6 +54,7 @@ import {
   JOB_TYPE_LABELS,
 } from "@/lib/constants";
 import { JOB_TYPES } from "@/lib/types";
+import { LANGUAGES } from "@/lib/i18n";
 import { parsePriceList, priceListToCsv } from "@/lib/price-import";
 import { downloadCsv } from "@/lib/export";
 import { BUILTIN_POSITIONS } from "@/lib/price-list";
@@ -229,6 +230,23 @@ export default function SettingsPage() {
               </SelectTrigger>
               <SelectContent>
                 {CURRENCIES.map((item) => (
+                  <SelectItem key={item.code} value={item.code}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Limbă">
+            <Select
+              value={settings.language === "ru" ? "ru" : "ro"}
+              onValueChange={(value) => void updateSettings({ language: value })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map((item) => (
                   <SelectItem key={item.code} value={item.code}>
                     {item.label}
                   </SelectItem>

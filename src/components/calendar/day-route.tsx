@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { dayLoad, routeHref } from "@/lib/route";
 import { formatDuration } from "@/lib/format";
 import type { Job } from "@/lib/types";
+import { useT } from "@/hooks/use-t";
 
 /**
  * Ziua, ca drum și ca încărcare.
@@ -14,6 +15,7 @@ import type { Job } from "@/lib/types";
  * singură lucrare n-are nevoie de o rută.
  */
 export function DayRoute({ jobs, className }: { jobs: Job[]; className?: string }) {
+  const t = useT();
   const load = dayLoad(jobs);
   const href = routeHref(load.stops.map((stop) => stop.address));
   const hasRoute = load.stops.length > 1;
@@ -53,12 +55,12 @@ export function DayRoute({ jobs, className }: { jobs: Job[]; className?: string 
         <>
           <div className="flex items-center justify-between gap-2">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <Navigation className="size-4 text-primary" /> Ruta zilei
+              <Navigation className="size-4 text-primary" /> {t("Ruta zilei")}
             </h3>
             {href && (
               <Button asChild size="sm" variant="outline">
                 <a href={href} target="_blank" rel="noopener noreferrer">
-                  Deschide în hartă
+                  {t("Deschide în hartă")}
                 </a>
               </Button>
             )}

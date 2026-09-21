@@ -489,6 +489,31 @@ try {
   await backToMDL.click();
   await page.getByRole("option", { name: /Leu moldovenesc/ }).click();
 
+  /* ----------------------------- rusă ------------------------------ */
+  section("Limba");
+  await page.goto(`${BASE}/setari`, { waitUntil: "networkidle" });
+  const langSelect = page.getByRole("combobox").nth(1);
+  await langSelect.filter({ hasText: /Română/ }).waitFor({ timeout: 10000 });
+  await langSelect.click();
+  await page.getByRole("option", { name: /Русский/ }).click();
+  await page.goto(`${BASE}/lucrari`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Работы" }).waitFor({ timeout: 10000 });
+  check("interfața trece în rusă", true);
+  check(
+    "ce n-are traducere rămâne în română, nu dispare",
+    (await page.getByText("Montaj scară stejar (test)").count()) > 0,
+  );
+
+  // Înapoi la română, ca rularea următoare să pornească din aceleași condiții.
+  await page.goto(`${BASE}/setari`, { waitUntil: "networkidle" });
+  const backToRo = page.getByRole("combobox").nth(1);
+  await backToRo.filter({ hasText: /Русский/ }).waitFor({ timeout: 10000 });
+  await backToRo.click();
+  await page.getByRole("option", { name: /Română/ }).click();
+  await page.goto(`${BASE}/lucrari`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Lucrări" }).waitFor({ timeout: 10000 });
+  check("comutarea înapoi în română merge", true);
+
   /* ----------------------------- PWA ------------------------------- */
   section("PWA");
   const manifest = await page.request.get(`${BASE}/manifest.webmanifest`);

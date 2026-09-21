@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Phone, Plus, Search, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { useT } from "@/hooks/use-t";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -19,6 +20,7 @@ export default function ClientsPage() {
   const clients = useClients();
   const jobs = useAllJobs();
   const { currency } = useApp();
+  const t = useT();
   const [query, setQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -48,11 +50,11 @@ export default function ClientsPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Clienți"
+        title={t("Clienți")}
         description={`${clients.length} clienți în agendă`}
         action={
           <Button className="hidden sm:inline-flex" onClick={() => setDialogOpen(true)}>
-            <Plus /> Client nou
+            <Plus /> {t("Client nou")}
           </Button>
         }
       />
@@ -124,7 +126,7 @@ export default function ClientsPage() {
           }
           action={
             <Button onClick={() => setDialogOpen(true)}>
-              <Plus /> Client nou
+              <Plus /> {t("Client nou")}
             </Button>
           }
         />

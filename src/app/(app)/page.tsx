@@ -25,6 +25,7 @@ import { BackupReminder } from "@/components/backup/backup-reminder";
 import { DayRoute } from "@/components/calendar/day-route";
 import { FirstRun } from "@/components/onboarding/first-run";
 import { useDashboardData } from "@/hooks/use-data";
+import { useT } from "@/hooks/use-t";
 import { useApp } from "@/lib/app-provider";
 import {
   formatDuration,
@@ -36,6 +37,7 @@ import {
 /** Dashboard-ul: ce se întâmplă azi, cât ai de încasat, cum stai luna asta. */
 export default function DashboardPage() {
   const { currency, settings, siteMode } = useApp();
+  const t = useT();
   const data = useDashboardData();
   const today = new Date();
   const firstName = settings?.full_name?.split(" ")[0];
@@ -47,7 +49,7 @@ export default function DashboardPage() {
           {weekdayName(today)}, {today.getDate()} {monthName(today.getMonth())}
         </p>
         <h2 className="text-2xl font-bold tracking-tight">
-          {firstName ? `Salut, ${firstName}` : "Salut"} 👋
+          {firstName ? `${t("Salut")}, ${firstName}` : t("Salut")} 👋
         </h2>
       </header>
 
@@ -56,7 +58,7 @@ export default function DashboardPage() {
 
       <section className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
         <StatCard
-          label="Lucrări active"
+          label={t("Lucrări active")}
           value={String(data.activeJobs.length)}
           icon={Hammer}
           tone="primary"
@@ -66,7 +68,7 @@ export default function DashboardPage() {
         {!siteMode && (
           <>
             <StatCard
-              label="Bani de încasat"
+              label={t("Bani de încasat")}
               value={formatMoney(data.receivable, currency, { compact: true })}
               icon={Wallet}
               tone="warning"
@@ -78,14 +80,14 @@ export default function DashboardPage() {
               )} în 30 de zile`}
             />
             <StatCard
-              label="Încasări luna asta"
+              label={t("Încasări luna asta")}
               value={formatMoney(data.monthIncome, currency, { compact: true })}
               icon={TrendingUp}
               tone="success"
               href="/finante"
             />
             <StatCard
-              label="Cheltuieli luna asta"
+              label={t("Cheltuieli luna asta")}
               value={formatMoney(data.monthExpenses, currency, {
                 compact: true,
               })}
@@ -94,7 +96,7 @@ export default function DashboardPage() {
               href="/finante"
             />
             <StatCard
-              label="Profit estimat"
+              label={t("Profit estimat")}
               value={formatMoney(data.monthProfit, currency, { compact: true })}
               icon={Receipt}
               tone={data.monthProfit >= 0 ? "success" : "danger"}
@@ -103,14 +105,14 @@ export default function DashboardPage() {
           </>
         )}
         <StatCard
-          label="Ore lucrate"
+          label={t("Ore lucrate")}
           value={formatDuration(data.monthMinutes)}
           icon={Clock}
           tone="secondary"
           hint="luna aceasta"
         />
         <StatCard
-          label="Materiale necesare"
+          label={t("Materiale necesare")}
           value={String(data.neededMaterials.length)}
           icon={Package}
           tone={data.neededMaterials.length ? "warning" : "default"}
@@ -118,7 +120,7 @@ export default function DashboardPage() {
           hint="de cumpărat"
         />
         <StatCard
-          label="Oferte trimise"
+          label={t("Oferte trimise")}
           value={String(data.pendingQuotes.length)}
           icon={FileText}
           tone="secondary"
@@ -130,7 +132,7 @@ export default function DashboardPage() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-lg font-semibold">
-            <CalendarCheck className="size-5 text-primary" /> Astăzi
+            <CalendarCheck className="size-5 text-primary" /> {t("Astăzi")}
           </h3>
           <Link
             href="/calendar"
@@ -150,13 +152,13 @@ export default function DashboardPage() {
         ) : (
           <EmptyState
             icon={CalendarCheck}
-            title="Nicio lucrare programată azi"
+            title={t("Nicio lucrare programată azi")}
             description="Zi liberă sau încă neplanificată. Poți adăuga o lucrare sau face o măsurătoare."
             action={
               <div className="flex flex-wrap justify-center gap-2">
                 <Button asChild>
                   <Link href="/lucrari/nou">
-                    <Plus /> Lucrare nouă
+                    <Plus /> {t("Lucrare nouă")}
                   </Link>
                 </Button>
                 <Button asChild variant="outline">
@@ -217,7 +219,7 @@ export default function DashboardPage() {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Lucrări recente</h3>
+          <h3 className="text-lg font-semibold">{t("Lucrări recente")}</h3>
           <Link
             href="/lucrari"
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -240,7 +242,7 @@ export default function DashboardPage() {
             action={
               <Button asChild>
                 <Link href="/lucrari/nou">
-                  <Plus /> Lucrare nouă
+                  <Plus /> {t("Lucrare nouă")}
                 </Link>
               </Button>
             }

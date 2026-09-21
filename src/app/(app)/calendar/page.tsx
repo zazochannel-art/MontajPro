@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Move } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/page-header";
+import { useT } from "@/hooks/use-t";
 import { DayRoute } from "@/components/calendar/day-route";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +52,7 @@ export default function CalendarPage() {
   const jobs = useJobs();
   const clients = useTable("clients");
   const { currency } = useApp();
+  const t = useT();
   const [view, setView] = useState<View>("month");
   const [cursor, setCursor] = useState(() => new Date());
   const [selected, setSelected] = useState<string>(todayKey());
@@ -101,7 +103,7 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Calendar" description="Programul tău pe zile" />
+      <PageHeader title={t("Calendar")} description={t("Programul tău pe zile")} />
 
       <div className="flex items-center gap-2">
         <Button variant="outline" size="icon" aria-label="Înapoi" onClick={() => shift(-1)}>
