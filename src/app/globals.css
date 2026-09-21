@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 
 /*
- * MontajPro — design tokens.
+ * MontCraft — design tokens.
  * Paleta este fixată în `:root` (aplicația este dark-first, ca uneltele SaaS
  * moderne) și expusă în Tailwind prin `@theme inline`.
  */
@@ -32,6 +32,16 @@
   --ring: #06b6d4;
   --radius: 0.875rem;
 
+  /*
+   * Culorile mărcii: lemnul și betonul din logo.
+   *
+   * Nu înlocuiesc paleta interfeței — apar doar acolo unde apare marca, ca
+   * aplicația să arate a ea însăși fără să-și schimbe limbajul de culoare.
+   */
+  --wood: #d29158;
+  --wood-light: #e0a570;
+  --concrete: #eeeeee;
+
   /* Înălțimile barelor fixe — folosite pentru padding-ul conținutului. */
   --bottom-nav-h: 4.25rem;
 }
@@ -57,6 +67,9 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-wood: var(--wood);
+  --color-wood-light: var(--wood-light);
+  --color-concrete: var(--concrete);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

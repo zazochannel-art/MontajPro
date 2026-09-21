@@ -8,6 +8,14 @@ import type { JobType } from "./types";
  * refresh și să nu umplem adresa cu date. Citirea este separată de ștergere:
  * pagina care preia ciorna o citește la montare și o curăță într-un efect.
  */
+/*
+ * Cheile de stocare păstrează numele vechi, dinadins.
+ *
+ * Ele nu se văd nicăieri în aplicație, dar sunt adresa la care stau datele pe
+ * telefoanele care au deja MontCraft instalat. Redenumite, aplicația s-ar uita
+ * la un raft gol: în modul local asta înseamnă toate lucrările pierdute.
+ * Numele mărcii s-a schimbat; adresa datelor, nu.
+ */
 export const CALC_DRAFT_KEY = "montajpro.calc-draft";
 
 export interface CalcDraft {

@@ -1,5 +1,5 @@
 /**
- * Test de fum pentru MontajPro.
+ * Test de fum pentru MontCraft.
  *
  * Pornește un browser mobil (viewport de iPhone), parcurge fluxul real —
  * client nou, lucrare nouă, cronometru, plată, măsurătoare, ofertă — și verifică

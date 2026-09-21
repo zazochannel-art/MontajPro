@@ -26,6 +26,14 @@ import { EXPENSE_CATEGORIES } from "./types";
 import type { Settings } from "./types";
 import { uid } from "./utils";
 
+/*
+ * Cheile de stocare păstrează numele vechi, dinadins.
+ *
+ * Ele nu se văd nicăieri în aplicație, dar sunt adresa la care stau datele pe
+ * telefoanele care au deja MontCraft instalat. Redenumite, aplicația s-ar uita
+ * la un raft gol: în modul local asta înseamnă toate lucrările pierdute.
+ * Numele mărcii s-a schimbat; adresa datelor, nu.
+ */
 const LOCAL_USER_KEY = "montajpro.local-user";
 const LOCAL_MODE_KEY = "montajpro.local-mode";
 const SYNC_INTERVAL_MS = 60_000;

@@ -110,7 +110,7 @@ export async function downloadBackup(): Promise<string> {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `montajpro-backup-${payload.exported_at.slice(0, 10)}.json`;
+  link.download = `montcraft-backup-${payload.exported_at.slice(0, 10)}.json`;
   link.click();
   URL.revokeObjectURL(url);
   await markDownloaded(payload.exported_at);

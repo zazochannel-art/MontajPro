@@ -128,7 +128,7 @@ function QuoteDocument({
             )}
           </div>
           <div className="text-right text-sm">
-            <p className="font-semibold">{quote.issuer.name || "MontajPro"}</p>
+            <p className="font-semibold">{quote.issuer.name || "MontCraft"}</p>
             {quote.issuer.phone && (
               <a
                 href={`tel:${quote.issuer.phone.replace(/[^\d+]/g, "")}`}

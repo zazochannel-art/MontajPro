@@ -102,7 +102,7 @@ export function PushToggle() {
           variant="outline"
           size="sm"
           onClick={() =>
-            new Notification("MontajPro", {
+            new Notification("MontCraft", {
               body: "Așa arată o notificare. Mâine dimineață primești programul zilei.",
               icon: "/icons/icon-192.png",
             })

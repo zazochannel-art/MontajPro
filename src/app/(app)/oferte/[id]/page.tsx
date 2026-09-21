@@ -182,7 +182,7 @@ export default function QuotePage({
           </div>
           <div className="text-right text-sm">
             <p className="font-semibold">
-              {settings?.company || settings?.full_name || "MontajPro"}
+              {settings?.company || settings?.full_name || "MontCraft"}
             </p>
             {settings?.phone && (
               <p className="text-muted-foreground">{settings.phone}</p>

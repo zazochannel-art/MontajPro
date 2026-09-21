@@ -790,7 +790,7 @@ export async function updateSettings(patch: Partial<Settings>) {
 export function exportData() {
   const state = store.getState();
   return {
-    app: "MontajPro",
+    app: "MontCraft",
     version: 1,
     exported_at: nowISO(),
     data: state,
