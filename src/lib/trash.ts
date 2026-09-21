@@ -55,7 +55,8 @@ export interface TrashItem {
   count: number;
 }
 
-function titleOf(table: TableName, row: Tables[TableName]): string {
+/** Numele sub care se recunoaște un rând, oricare i-ar fi tabelul. */
+export function titleOf(table: TableName, row: Tables[TableName]): string {
   const value = row as unknown as Record<string, unknown>;
   for (const key of ["title", "name", "label", "client_name"]) {
     const candidate = value[key];

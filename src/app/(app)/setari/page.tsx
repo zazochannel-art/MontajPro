@@ -41,6 +41,7 @@ import {
 import { archiveOldJobs, updateSettings } from "@/lib/db/actions";
 import { hasDemoData, removeDemoData, seedDemoData } from "@/lib/db/demo";
 import { BackupSection } from "@/components/settings/backup-section";
+import { ConflictsSection } from "@/components/settings/conflicts-section";
 import { PushToggle } from "@/components/settings/push-toggle";
 import { TeamSection } from "@/components/settings/team-section";
 import { useArchivedJobs, useTable } from "@/hooks/use-data";
@@ -650,6 +651,8 @@ export default function SettingsPage() {
           </Button>
         )}
       </section>
+
+      <ConflictsSection />
 
       <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
         <div className="flex items-start justify-between gap-3">

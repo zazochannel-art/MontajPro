@@ -275,16 +275,39 @@ export class Store {
    * Aplică rânduri venite de la server. Rândurile aflate încă în outbox nu se
    * suprascriu: modificarea locală este mai nouă și urmează să fie trimisă.
    */
+  /**
+   * Cine este anunțat când o versiune de pe server e lăsată deoparte.
+   *
+   * Un apel înapoi, nu un import: store-ul stă sub tot, iar jurnalul de
+   * ciocniri îl folosește la rândul lui — un import direct ar face un cerc.
+   */
+  onRemoteDiscarded:
+    | ((table: TableName, remote: BaseRow, local: BaseRow | undefined) => void)
+    | null = null;
+
   async applyRemote<K extends TableName>(table: K, remoteRows: Tables[K][]) {
     if (!remoteRows.length) return;
+    const onDiscarded = this.onRemoteDiscarded;
     const rows = this.state[table] as BaseRow[];
     const byId = new Map(rows.map((row) => [row.id, row]));
     const toStore: BaseRow[] = [];
 
     for (const remote of remoteRows as unknown as BaseRow[]) {
-      if (this.outbox.has(`${table}:${remote.id}`)) continue;
       const local = byId.get(remote.id);
-      if (local && new Date(local.updated_at) > new Date(remote.updated_at)) continue;
+
+      // Rândul are modificări netrimise: ele câștigă, ca să nu se șteargă de
+      // la distanță ce tocmai ai scris. Dar versiunea de pe server n-are voie
+      // să dispară în tăcere — o punem deoparte, ca omul s-o poată lua.
+      if (this.outbox.has(`${table}:${remote.id}`)) {
+        void onDiscarded?.(table, remote, local);
+        continue;
+      }
+
+      if (local && new Date(local.updated_at) > new Date(remote.updated_at)) {
+        void onDiscarded?.(table, remote, local);
+        continue;
+      }
+
       byId.set(remote.id, remote);
       toStore.push(remote);
     }
