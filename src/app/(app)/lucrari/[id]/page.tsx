@@ -92,6 +92,11 @@ function JobDetail({ id }: { id: string }) {
                   rest {formatMoney(details.money.rest, currency)}
                 </span>
               )}
+              {job.archived_at && (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                  arhivată
+                </span>
+              )}
             </div>
           </div>
         </div>

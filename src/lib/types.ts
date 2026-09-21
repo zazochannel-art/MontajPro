@@ -103,6 +103,13 @@ export interface Job extends BaseRow {
   start_date: string | null;
   end_date: string | null;
   notes: string | null;
+  /**
+   * Scoasă din vederile de zi cu zi.
+   *
+   * Nu e o ștergere: lucrarea rămâne în rapoarte și în căutare, fiindcă
+   * istoria banilor n-are voie să dispară. Doar nu-ți mai stă în listă.
+   */
+  archived_at: string | null;
   /** Vizibil în portofoliu (doar lucrări finalizate). */
   in_portfolio: boolean;
   portfolio_description: string | null;

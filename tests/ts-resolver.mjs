@@ -1,31 +1,43 @@
 /**
- * Rezolvarea importurilor fără extensie, pentru testele care rulează codul
- * TypeScript direct.
+ * Rezolvarea importurilor pentru testele care rulează codul TypeScript direct.
  *
- * Aplicația scrie `./idb`, cum se obișnuiește într-un proiect cu bundler;
- * Node-ul, în schimb, cere calea completă. Hook-ul încearcă întâi `.ts`, apoi
- * lasă rezolvarea implicită să-și facă treaba.
+ * Două lucruri pe care bundler-ul le face din oficiu, iar Node-ul nu:
+ * importurile fără extensie (`./idb`) și aliasul `@/` către `src/`. Fără ele
+ * ar trebui ca modulele testate să-și scrie importurile altfel decât restul
+ * aplicației — adică să testăm alt cod decât cel care ajunge pe telefon.
  */
 import { register } from "node:module";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { dirname, resolve as resolvePath } from "node:path";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const srcURL = pathToFileURL(resolvePath(here, "..", "src") + "/").href;
 
 register(
   "data:text/javascript," +
     encodeURIComponent(`
+      const SRC = ${JSON.stringify(srcURL)};
+
       export async function resolve(specifier, context, next) {
-        const relative = specifier.startsWith('./') || specifier.startsWith('../');
-        const hasExtension = /\\.[a-zA-Z0-9]+$/.test(specifier);
+        let target = specifier;
+        if (target.startsWith('@/')) {
+          target = SRC + target.slice(2);
+        }
+        const relative =
+          target.startsWith('./') || target.startsWith('../') || target.startsWith('file:');
+        const hasExtension = /\\.[a-zA-Z0-9]+$/.test(target);
         if (relative && !hasExtension) {
           try {
-            return await next(specifier + '.ts', context);
+            return await next(target + '.ts', context);
           } catch {
             try {
-              return await next(specifier + '/index.ts', context);
+              return await next(target + '/index.ts', context);
             } catch {
               // cădem pe rezolvarea implicită
             }
           }
         }
-        return next(specifier, context);
+        return next(target, context);
       }
     `),
   import.meta.url,

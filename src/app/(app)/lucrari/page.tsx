@@ -11,40 +11,44 @@ import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useClients, useJobs, useStoreReady } from "@/hooks/use-data";
+import { useArchivedJobs, useClients, useJobs, useStoreReady } from "@/hooks/use-data";
 import { JOB_STATUS_LABELS } from "@/lib/constants";
 import { JOB_STATUSES } from "@/lib/types";
 import type { JobStatus } from "@/lib/types";
 import { formatMoney } from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
 
-type Filter = JobStatus | "all";
+type Filter = JobStatus | "all" | "archived";
 
 function JobsList() {
   const searchParams = useSearchParams();
   const ready = useStoreReady();
-  const jobs = useJobs();
+  const live = useJobs();
+  const archived = useArchivedJobs();
   const clients = useClients();
   const { currency } = useApp();
 
   const initialFilter = (searchParams.get("filtru") as Filter) || "all";
-  const [filter, setFilter] = useState<Filter>(
-    JOB_STATUSES.includes(initialFilter as JobStatus) ? initialFilter : "all",
+  const [filter, setFilter] = useState<Filter>(() =>
+    JOB_STATUSES.includes(initialFilter as JobStatus) || initialFilter === "archived"
+      ? initialFilter
+      : "all",
   );
   const [query, setQuery] = useState("");
 
   const counts = useMemo(() => {
-    const result = { all: jobs.length } as Record<Filter, number>;
+    const result = { all: live.length, archived: archived.length } as Record<Filter, number>;
     for (const status of JOB_STATUSES) {
-      result[status] = jobs.filter((job) => job.status === status).length;
+      result[status] = live.filter((job) => job.status === status).length;
     }
     return result;
-  }, [jobs]);
+  }, [live, archived]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return jobs.filter((job) => {
-      if (filter !== "all" && job.status !== filter) return false;
+    const source = filter === "archived" ? archived : live;
+    return source.filter((job) => {
+      if (filter !== "all" && filter !== "archived" && job.status !== filter) return false;
       if (!needle) return true;
       const clientName =
         clients.find((client) => client.id === job.client_id)?.name.toLowerCase() ?? "";
@@ -54,7 +58,7 @@ function JobsList() {
         (job.address ?? "").toLowerCase().includes(needle)
       );
     });
-  }, [jobs, clients, filter, query]);
+  }, [live, archived, clients, filter, query]);
 
   const totals = useMemo(
     () => filtered.reduce((acc, job) => acc + job.price_total, 0),
@@ -100,6 +104,9 @@ function JobsList() {
             label: JOB_STATUS_LABELS[status],
             count: counts[status],
           })),
+          ...(archived.length
+            ? [{ value: "archived" as Filter, label: "Arhivă", count: counts.archived }]
+            : []),
         ]}
       />
 
@@ -120,9 +127,11 @@ function JobsList() {
           icon={Hammer}
           title={query || filter !== "all" ? "Nicio lucrare găsită" : "Nicio lucrare încă"}
           description={
-            query || filter !== "all"
-              ? "Încearcă alt filtru sau altă căutare."
-              : "Adaugă prima lucrare și ține totul într-un singur loc."
+            filter === "archived"
+              ? "Arhiva e goală. Lucrările vechi și plătite ajung aici din Setări."
+              : query || filter !== "all"
+                ? "Încearcă alt filtru sau altă căutare."
+                : "Adaugă prima lucrare și ține totul într-un singur loc."
           }
           action={
             <Button asChild>

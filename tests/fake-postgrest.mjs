@@ -13,6 +13,8 @@ export function createFakeBackend() {
   const tables = new Map();
   /** Tabele care trebuie să refuze scrierea (pentru testul de izolare). */
   const rejecting = new Set();
+  /** Tabele care refuză citirea, ca să se poată testa izolarea la pull. */
+  const rejectingReads = new Set();
   const uploads = [];
   let clock = 0;
 
@@ -55,6 +57,10 @@ export function createFakeBackend() {
     const match = url.pathname.match(/^\/rest\/v1\/([a-z_]+)$/);
     if (!match) return send(404, { message: "necunoscut" });
     const name = match[1];
+
+    if (request.method === "GET" && rejectingReads.has(name)) {
+      return send(500, { message: `citire refuzată pentru ${name}` });
+    }
 
     if (request.method === "POST") {
       if (rejecting.has(name)) {
@@ -129,6 +135,8 @@ export function createFakeBackend() {
     seed: (name, row) => tableOf(name).set(row.id, { ...row, synced_at: nextStamp() }),
     reject: (name) => rejecting.add(name),
     allow: (name) => rejecting.delete(name),
+    rejectReads: (name) => rejectingReads.add(name),
+    allowReads: (name) => rejectingReads.delete(name),
     listen: () =>
       new Promise((resolve) => {
         server.listen(0, "127.0.0.1", () =>

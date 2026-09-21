@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import {
+  Archive,
   Bell,
   Building2,
   Camera,
@@ -36,11 +37,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { exportData, importData, updateSettings } from "@/lib/db/actions";
+import { archiveOldJobs, updateSettings } from "@/lib/db/actions";
 import { hasDemoData, removeDemoData, seedDemoData } from "@/lib/db/demo";
+import { BackupSection } from "@/components/settings/backup-section";
 import { PushToggle } from "@/components/settings/push-toggle";
 import { TeamSection } from "@/components/settings/team-section";
-import { useTable } from "@/hooks/use-data";
+import { useArchivedJobs, useTable } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
 import { useInstallPrompt } from "@/hooks/use-install-prompt";
 import {
@@ -81,9 +83,10 @@ export default function SettingsPage() {
     pendingChanges,
   } = useApp();
   const { canInstall, installed, isIOS, install } = useInstallPrompt();
-  const fileRef = useRef<HTMLInputElement>(null);
   const priceFileRef = useRef<HTMLInputElement>(null);
   const [newCategory, setNewCategory] = useState("");
+  const [archiveMonths, setArchiveMonths] = useState("12");
+  const archived = useArchivedJobs();
   // Recitim la fiecare schimbare de date, ca butonul demo să fie corect.
   useTable("clients");
   const demoLoaded = hasDemoData();
@@ -150,30 +153,6 @@ export default function SettingsPage() {
   const categories = settings.material_categories?.length
     ? settings.material_categories
     : DEFAULT_MATERIAL_CATEGORIES;
-
-  const download = () => {
-    const payload = exportData();
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `montajpro-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success("Backup descărcat");
-  };
-
-  const upload = async (file: File) => {
-    try {
-      const text = await file.text();
-      const count = await importData(JSON.parse(text));
-      toast.success(`${count} înregistrări importate`);
-    } catch {
-      toast.error("Fișierul nu a putut fi citit");
-    }
-  };
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -669,31 +648,45 @@ export default function SettingsPage() {
       </section>
 
       <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
-        <h3 className="text-sm font-semibold">Backup</h3>
+        <h3 className="text-sm font-semibold">Arhivă</h3>
         <p className="text-xs text-muted-foreground">
-          Descarcă toate datele într-un fișier, ca să le poți păstra sau muta pe
-          alt telefon.
+          Scoate din lista de lucrări comenzile terminate și încasate integral.
+          Rămân în rapoarte, la client și în căutare — doar nu-ți mai stau în
+          drum.
+          {archived.length > 0 && ` Ai ${archived.length} în arhivă.`}
         </p>
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" onClick={download}>
-            <Download /> Export
-          </Button>
-          <Button variant="outline" onClick={() => fileRef.current?.click()}>
-            <Upload /> Import
-          </Button>
-        </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json"
-          className="hidden"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) void upload(file);
-            event.target.value = "";
+        <Field label="Mai vechi de">
+          <Select value={archiveMonths} onValueChange={setArchiveMonths}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="6">6 luni</SelectItem>
+              <SelectItem value="12">un an</SelectItem>
+              <SelectItem value="24">doi ani</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+        <Confirm
+          title="Arhivezi lucrările vechi?"
+          description="Se mută în arhivă doar lucrările terminate și plătite integral. Cele cu rest de încasat rămân la vedere."
+          confirmLabel="Arhivează"
+          onConfirm={async () => {
+            const count = await archiveOldJobs(Number(archiveMonths));
+            toast.success(
+              count
+                ? `${count} lucrări mutate în arhivă`
+                : "Nimic de arhivat deocamdată",
+            );
           }}
-        />
+        >
+          <Button variant="outline" className="w-full">
+            <Archive /> Arhivează lucrările vechi
+          </Button>
+        </Confirm>
       </section>
+
+      <BackupSection />
 
       <Confirm
         title="Ieși din cont?"

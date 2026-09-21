@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClientDialog } from "@/components/forms/client-dialog";
-import { useClients, useJobs, useStoreReady } from "@/hooks/use-data";
+import { useClients, useAllJobs, useStoreReady } from "@/hooks/use-data";
 import { formatMoney } from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
 import { initials, telHref } from "@/lib/utils";
@@ -17,7 +17,7 @@ import { initials, telHref } from "@/lib/utils";
 export default function ClientsPage() {
   const ready = useStoreReady();
   const clients = useClients();
-  const jobs = useJobs();
+  const jobs = useAllJobs();
   const { currency } = useApp();
   const [query, setQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);

@@ -26,7 +26,7 @@ import { ExpenseDialog } from "@/components/forms/expense-dialog";
 import { PaymentDialog } from "@/components/forms/payment-dialog";
 import {
   useJobPaymentIndex,
-  useJobs,
+  useAllJobs,
   useMinuteTick,
   useTable,
 } from "@/hooks/use-data";
@@ -56,7 +56,7 @@ export default function FinancePage() {
   const sessions = useTable("work_sessions");
   const fixedCosts = useTable("fixed_costs");
   const now = useMinuteTick();
-  const jobs = useJobs();
+  const jobs = useAllJobs();
   const paymentIndex = useJobPaymentIndex();
   const clients = useClients();
 

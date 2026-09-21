@@ -130,6 +130,39 @@ async function dedupeSettings(): Promise<void> {
   }
 }
 
+/**
+ * Câte tabele se cer deodată.
+ *
+ * Nouăsprezece drumuri la server, unul după altul, însemnau nouăsprezece
+ * dus-întorsuri legate în serie — exact tiparul cel mai prost pe un internet
+ * de șantier. Patru deodată taie așteptarea de câteva ori fără să înece o
+ * conexiune slabă cu o rafală de cereri.
+ */
+const PULL_CONCURRENCY = 4;
+
+/**
+ * Aduce toate tabelele, în valuri.
+ *
+ * Un tabel care eșuează nu le oprește pe celelalte, ca la push: datele de pe
+ * alt dispozitiv n-au de ce să aștepte un tabel supărat.
+ */
+async function pullAll(): Promise<string[]> {
+  const problems: string[] = [];
+  for (let index = 0; index < TABLE_NAMES.length; index += PULL_CONCURRENCY) {
+    const wave = TABLE_NAMES.slice(index, index + PULL_CONCURRENCY);
+    const results = await Promise.allSettled(wave.map(pullTable));
+    results.forEach((result, position) => {
+      if (result.status === "rejected") {
+        const reason = result.reason;
+        problems.push(
+          `${wave[position]}: ${reason instanceof Error ? reason.message : "eroare la citire"}`,
+        );
+      }
+    });
+  }
+  return problems;
+}
+
 async function pullTable(table: TableName): Promise<void> {
   const supabase = getSupabase();
   if (!supabase) return;
@@ -197,7 +230,7 @@ export function syncNow(): Promise<void> {
 
       // Pull-ul rulează chiar dacă o parte din push a eșuat: datele venite de
       // pe alt dispozitiv nu au de ce să aștepte un rând problematic.
-      for (const table of TABLE_NAMES) await pullTable(table);
+      problems.push(...(await pullAll()));
       await dedupeSettings();
 
       if (problems.length) store.setSyncStatus("error", problems.join(" · "));

@@ -149,6 +149,10 @@ export async function metaSet(key: string, value: unknown): Promise<void> {
   await idbPut(META_STORE, value, key);
 }
 
+export async function metaDelete(key: string): Promise<void> {
+  await idbDelete(META_STORE, key);
+}
+
 /* --------------------------- blob-uri (poze offline) ---------------- */
 
 export async function blobPut(key: string, blob: Blob): Promise<void> {

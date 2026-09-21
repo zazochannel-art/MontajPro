@@ -61,6 +61,8 @@ const INITIAL_SYNC_STATE: SyncState = {
 
 export class Store {
   private state: State = emptyState();
+  /** Crește la fiecare schimbare; ecranele fără o felie proprie se uită la el. */
+  revision = 0;
   private listeners = new Set<() => void>();
   private outbox = new Map<string, OutboxEntry>();
 
@@ -91,6 +93,7 @@ export class Store {
   }
 
   private emit() {
+    this.revision++;
     for (const listener of this.listeners) listener();
   }
 
@@ -192,13 +195,60 @@ export class Store {
   }
 
   /** Ștergere logică — rândul rămâne local până la sincronizare. */
-  async remove<K extends TableName>(table: K, id: string): Promise<void> {
-    await this.update(table, id, { deleted_at: nowISO() } as Partial<Tables[K]>);
+  /**
+   * Clipa unei ștergeri, garantat nefolosită.
+   *
+   * Două ștergeri separate la aceeași milisecundă ar primi același moment, iar
+   * restaurarea uneia le-ar readuce pe amândouă — inclusiv una pe care omul a
+   * vrut-o ștearsă. Ceasul se împinge cu o milisecundă până iese un moment
+   * nou; o cascadă întreagă îl cere o singură dată, deci rămâne un grup.
+   */
+  private lastDeleteStamp = "";
+
+  private nextDeleteStamp(): string {
+    let stamp = nowISO();
+    if (stamp <= this.lastDeleteStamp) {
+      stamp = new Date(new Date(this.lastDeleteStamp).getTime() + 1).toISOString();
+    }
+    this.lastDeleteStamp = stamp;
+    return stamp;
+  }
+
+  /**
+   * Ștergere logică.
+   *
+   * Momentul se poate da din afară, ca o lucrare și tot ce atârnă de ea să
+   * poarte exact aceeași clipă. Așa, restaurarea știe fără echivoc ce a fost
+   * șters împreună — fără ferestre de toleranță și fără ghicit.
+   */
+  async remove<K extends TableName>(
+    table: K,
+    id: string,
+    at?: string,
+  ): Promise<void> {
+    const stamp = at ?? this.nextDeleteStamp();
+    await this.update(table, id, { deleted_at: stamp } as Partial<Tables[K]>);
   }
 
   /** Șterge mai multe rânduri (ex. lucrarea și tot ce atârnă de ea). */
   async removeMany(entries: { table: TableName; id: string }[]): Promise<void> {
-    for (const entry of entries) await this.remove(entry.table, entry.id);
+    const at = this.nextDeleteStamp();
+    for (const entry of entries) await this.remove(entry.table, entry.id, at);
+  }
+
+  /** Readuce la viață tot ce a fost șters în aceeași clipă. */
+  async restoreBatch(at: string): Promise<number> {
+    let restored = 0;
+    for (const table of TABLE_NAMES) {
+      const rows = this.getTable(table).filter((row) => row.deleted_at === at);
+      for (const row of rows) {
+        await this.update(table, row.id, {
+          deleted_at: null,
+        } as Partial<Tables[TableName]>);
+        restored++;
+      }
+    }
+    return restored;
   }
 
   /* ------------------------- sincronizare --------------------------- */

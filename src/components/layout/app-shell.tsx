@@ -12,6 +12,7 @@ import { QuickAdd } from "./quick-add";
 import { ActiveWorkBar } from "./active-work-bar";
 import { Logo } from "./logo";
 import { NotificationEngine } from "@/components/notifications/engine";
+import { BackupKeeper } from "@/components/backup/backup-keeper";
 
 const LOCAL_NOTICE_KEY = "montajpro.hide-local-notice";
 
@@ -111,6 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <BottomNav onQuickAdd={() => setQuickAddOpen(true)} />
       <QuickAdd open={quickAddOpen} onOpenChange={setQuickAddOpen} />
       <NotificationEngine />
+      <BackupKeeper />
     </div>
   );
 }

@@ -37,7 +37,11 @@ schimba din Setări (MDL, RON, EUR, USD, UAH, GBP).
 | **Echipă** | Al doilea om vede lucrarea, bifează pași, pornește cronometrul și pune poze — fără să vadă un leu, și fără să aibă nevoie de semnal |
 | **Scadențar** | Tranșele lucrării (la semnare, la material, la predare) cu termen și memento; „am luat” scrie o încasare adevărată |
 | **Cheltuieli fixe** | Chirie, leasing, telefon — se scad din profitul lunii, ca cifra să nu fie mai mare decât adevărul |
-| **Setări** | Profil, monedă, unități, tarife și poziții proprii (cu import/export), pașii pe tip, categorii, notificări, echipă, backup, date demo |
+| **Coș de gunoi** | Tot ce se șterge stă 30 de zile deoparte; o lucrare restaurată se întoarce cu măsurătorile, pozele și plățile ei |
+| **Arhivă** | Lucrările vechi și încasate ies din lista de zi cu zi, dar rămân în rapoarte, la client și în căutare |
+| **Backup** | Copie locală luată singură zilnic (și înainte de orice import), plus un memento pentru fișierul descărcat — singurul care supraviețuiește telefonului pierdut |
+| **Primii pași** | Pe un cont nou, patru pași bifați din date, nu din „am înțeles”: datele tale, tarifele, primul client, prima lucrare |
+| **Setări** | Profil, monedă, unități, tarife și poziții proprii (cu import/export), pașii pe tip, categorii, notificări, echipă, arhivare, backup, date demo |
 
 ## Stack
 
@@ -228,10 +232,18 @@ fum n-o atinge:
 - pozele rămase locale se urcă la prima sincronizare;
 - ștergerea logică ajunge pe server.
 
+Alături de ele rulează testele care apără datele acolo unde greșeala nu are
+drum înapoi: `trash.test.ts` (tot ce se șterge împreună poartă aceeași clipă,
+altfel restaurarea aduce o lucrare fără plățile ei), `archive.test.ts` (nimic
+cu rest de încasat nu se arhivează automat), `backup.test.ts` (o copie din
+listă chiar se poate citi înapoi) și `team.test.ts` (ce bifează al doilea om
+fără semnal ajunge pe server la prima bară de semnal).
+
 Testul de fum pornește un Chromium cu viewport de iPhone și parcurge fluxul
 real: mod local → client nou → lucrare nouă → cronometru → măsurătoare cu
 calcule → materiale → plată → calculator → ofertă → toate paginile →
-persistență după reload → schimbarea monedei → fișierele PWA.
+persistență după reload → primii pași → arhivă → backup → schimbarea monedei →
+fișierele PWA.
 
 ```bash
 npm run build && npm run start -- -p 3100   # într-un terminal
@@ -252,10 +264,14 @@ src/
     layout/           sidebar, bară de jos, FAB, antet, cronometru activ
     forms/            dialoguri de adăugare/editare
     jobs/ quotes/ measurements/ photo/ dashboard/ notifications/
+    backup/           copia locală luată singură + mementoul de pe dashboard
+    onboarding/       primii pași pe un cont nou
   lib/
     db/               store local, IndexedDB, sincronizare, acțiuni, date demo
     supabase/         clientul de browser
     calc.ts           calcule pentru măsurători, prețuri și finanțe
+    backup.ts         copii locale, restaurare, mementoul de backup
+    trash.ts          ce s-a șters în ultimele 30 de zile, grupat pe operație
     export.ts         CSV pentru contabilitate
     push.ts           abonarea la notificări push
     format.ts         formatarea sumelor, datelor și duratelor (ro-RO)
@@ -264,6 +280,7 @@ supabase/migrations/  schema + RLS + Storage + funcții publice + cron
 supabase/functions/   funcția Edge care trimite notificările
 tests/smoke.mjs       test de fum în browser
 tests/sync.test.ts    testele sincronizării, cu PostgREST fals
+tests/*.test.ts       coș, arhivă, backup, echipă, rapoarte, import de prețuri
 ```
 
 ## Date demo

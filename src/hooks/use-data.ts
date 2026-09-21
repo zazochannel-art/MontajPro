@@ -2,6 +2,7 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 import { store } from "@/lib/db/store";
+import { trashItems, type TrashItem } from "@/lib/trash";
 import type { TableName, Tables } from "@/lib/types";
 import { jobMoney, totalWorkedMinutes } from "@/lib/calc";
 import { todayKey, toDateKey } from "@/lib/format";
@@ -52,6 +53,38 @@ export function useRow<K extends TableName>(
   );
 }
 
+/**
+ * Coșul de gunoi.
+ *
+ * Se uită la rândurile pe care `useTable` le ascunde, deci n-are o felie a
+ * lui. Rezultatul se ține într-un cache legat de numărul de revizie:
+ * `useSyncExternalStore` cere ca două citiri fără schimbări să întoarcă exact
+ * același obiect, altfel randează la nesfârșit.
+ */
+let trashCache: { revision: number; days: number; value: TrashItem[] } | null =
+  null;
+
+export function useTrash(days = 30): TrashItem[] {
+  return useSyncExternalStore(
+    store.subscribe,
+    () => {
+      if (
+        !trashCache ||
+        trashCache.revision !== store.revision ||
+        trashCache.days !== days
+      ) {
+        trashCache = {
+          revision: store.revision,
+          days,
+          value: trashItems(days),
+        };
+      }
+      return trashCache.value;
+    },
+    () => EMPTY as unknown as TrashItem[],
+  );
+}
+
 export function useStoreReady(): boolean {
   return useSyncExternalStore(
     store.subscribe,
@@ -73,18 +106,36 @@ export function useClients() {
 }
 
 /** Lucrările, cele mai recente / apropiate primele. */
+function sortJobs(jobs: Tables["jobs"][]): Tables["jobs"][] {
+  return [...jobs].sort((a, b) => {
+    const aKey = a.scheduled_date || a.created_at.slice(0, 10);
+    const bKey = b.scheduled_date || b.created_at.slice(0, 10);
+    if (aKey === bKey) return b.created_at.localeCompare(a.created_at);
+    return bKey.localeCompare(aKey);
+  });
+}
+
+/**
+ * Toate lucrările, arhiva inclusă.
+ *
+ * Rapoartele, istoricul clientului și portofoliul se uită aici: banii de anul
+ * trecut n-au voie să dispară odată cu curățenia din lista de lucru.
+ */
+export function useAllJobs() {
+  const all = useTable("jobs");
+  return useMemo(() => sortJobs(all), [all]);
+}
+
+/** Lucrările de zi cu zi: fără cele arhivate. */
 export function useJobs() {
-  const jobs = useTable("jobs");
-  return useMemo(
-    () =>
-      [...jobs].sort((a, b) => {
-        const aKey = a.scheduled_date || a.created_at.slice(0, 10);
-        const bKey = b.scheduled_date || b.created_at.slice(0, 10);
-        if (aKey === bKey) return b.created_at.localeCompare(a.created_at);
-        return bKey.localeCompare(aKey);
-      }),
-    [jobs],
-  );
+  const all = useAllJobs();
+  return useMemo(() => all.filter((job) => !job.archived_at), [all]);
+}
+
+/** Doar arhiva — lucrările vechi, scoase din drum. */
+export function useArchivedJobs() {
+  const all = useAllJobs();
+  return useMemo(() => all.filter((job) => job.archived_at), [all]);
 }
 
 export function useClientName(clientId: string | null | undefined): string {
