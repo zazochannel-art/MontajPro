@@ -75,3 +75,28 @@ export function whatsappHref(text: string, phone?: string | null): string {
   const base = digits ? `https://wa.me/${digits}` : "https://wa.me/";
   return `${base}?text=${encodeURIComponent(text)}`;
 }
+
+/**
+ * Mementoul trimis clientului pentru o ofertă neconfirmată.
+ *
+ * Scurt și fără reproș: omul n-a uitat din rea-voință, iar o ofertă care
+ * sună a somație se închide, nu se semnează.
+ */
+export function reminderText(input: {
+  clientName: string | null;
+  number: string;
+  title: string;
+  url: string;
+  from: string | null;
+}): string {
+  const hello = input.clientName?.trim()
+    ? `Bună ziua, ${input.clientName.trim()}!`
+    : "Bună ziua!";
+  const signature = input.from?.trim() ? `\n\n${input.from.trim()}` : "";
+  return (
+    `${hello}\n\n` +
+    `Vă scriu în legătură cu oferta ${input.number} — ${input.title}. ` +
+    `O puteți vedea aici:\n${input.url}\n\n` +
+    `Rămân la dispoziție dacă aveți întrebări.${signature}`
+  );
+}

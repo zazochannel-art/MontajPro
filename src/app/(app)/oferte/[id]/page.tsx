@@ -14,6 +14,7 @@ import {
   Share2,
   Trash2,
   XCircle,
+  MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -28,9 +29,11 @@ import {
   duplicateQuote,
   ensureQuoteLink,
   quoteTotal,
+  markQuoteReminded,
   setQuoteStatus,
 } from "@/lib/db/actions";
 import { publicQuoteUrl } from "@/lib/supabase/public-quote";
+import { reminderText, whatsappHref } from "@/lib/order";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { QUOTE_STATUS_CLASSES, QUOTE_STATUS_LABELS } from "@/lib/constants";
 import {
@@ -325,6 +328,37 @@ export default function QuotePage({
             }}
           >
             Copiază
+          </Button>
+        </div>
+      )}
+
+      {quote.status === "sent" && quote.public_token && (
+        <div className="no-print space-y-2 rounded-xl border border-border bg-card p-3">
+          <p className="text-xs text-muted-foreground">
+            {quote.reminder_sent_at
+              ? `I-ai dat ghes ultima dată pe ${formatDate(quote.reminder_sent_at)}.`
+              : "Tu primești notificare că oferta stă neconfirmată; clientul nu primește nimic."}
+          </p>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={async () => {
+              const text = reminderText({
+                clientName: client?.name ?? null,
+                number: formatQuoteNumber(quote.number),
+                title: quote.title,
+                url: publicQuoteUrl(quote.public_token!),
+                from: settings?.company || settings?.full_name || null,
+              });
+              window.open(
+                whatsappHref(text, client?.phone),
+                "_blank",
+                "noopener,noreferrer",
+              );
+              await markQuoteReminded(quote.id);
+            }}
+          >
+            <MessageCircle /> Trimite un memento
           </Button>
         </div>
       )}

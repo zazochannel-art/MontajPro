@@ -12,6 +12,7 @@ import {
   NO_SUPPLIER,
   groupBySupplier,
   orderText,
+  reminderText,
   whatsappHref,
 } from "../src/lib/order.ts";
 import type { JobMaterial } from "../src/lib/types.ts";
@@ -77,4 +78,32 @@ test("linkul de WhatsApp duce textul cu el", () => {
 
   const withoutPhone = whatsappHref("Salut");
   assert.ok(withoutPhone.startsWith("https://wa.me/?text="));
+});
+
+test("mementoul sună a om, nu a somație", () => {
+  const text = reminderText({
+    clientName: "Ion Popescu",
+    number: "OF-0007",
+    title: "Montaj scară stejar",
+    url: "https://exemplu.md/oferta/abc",
+    from: "Meșterul SRL",
+  });
+
+  assert.ok(text.startsWith("Bună ziua, Ion Popescu!"));
+  assert.ok(text.includes("OF-0007"));
+  assert.ok(text.includes("https://exemplu.md/oferta/abc"));
+  assert.ok(text.trimEnd().endsWith("Meșterul SRL"));
+  // Nimic care să semene a reproș.
+  assert.ok(!/urgent|imediat|nu ați|încă nu/i.test(text));
+});
+
+test("fără numele clientului, salutul rămâne întreg", () => {
+  const text = reminderText({
+    clientName: null,
+    number: "OF-0001",
+    title: "Parchet",
+    url: "https://exemplu.md/oferta/x",
+    from: null,
+  });
+  assert.ok(text.startsWith("Bună ziua!"));
 });
