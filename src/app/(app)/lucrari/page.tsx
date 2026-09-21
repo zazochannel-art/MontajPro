@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Hammer, Plus, Search } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { useT } from "@/hooks/use-t";
 import { JobCard } from "@/components/jobs/job-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ function JobsList() {
   const archived = useArchivedJobs();
   const clients = useClients();
   const { currency } = useApp();
+  const t = useT();
 
   const initialFilter = (searchParams.get("filtru") as Filter) || "all";
   const [filter, setFilter] = useState<Filter>(() =>
@@ -68,16 +70,16 @@ function JobsList() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Lucrări"
+        title={t("Lucrări")}
         description={
           filtered.length
             ? `${filtered.length} lucrări · ${formatMoney(totals, currency)}`
-            : "Toate comenzile tale"
+            : t("Toate comenzile tale")
         }
         action={
           <Button asChild className="hidden sm:inline-flex">
             <Link href="/lucrari/nou">
-              <Plus /> Lucrare nouă
+              <Plus /> {t("Lucrare nouă")}
             </Link>
           </Button>
         }
@@ -98,14 +100,14 @@ function JobsList() {
         value={filter}
         onChange={setFilter}
         options={[
-          { value: "all", label: "Toate", count: counts.all },
+          { value: "all", label: t("Toate"), count: counts.all },
           ...JOB_STATUSES.map((status) => ({
             value: status as Filter,
-            label: JOB_STATUS_LABELS[status],
+            label: t(JOB_STATUS_LABELS[status]),
             count: counts[status],
           })),
           ...(archived.length
-            ? [{ value: "archived" as Filter, label: "Arhivă", count: counts.archived }]
+            ? [{ value: "archived" as Filter, label: t("Arhivă"), count: counts.archived }]
             : []),
         ]}
       />
@@ -136,7 +138,7 @@ function JobsList() {
           action={
             <Button asChild>
               <Link href="/lucrari/nou">
-                <Plus /> Lucrare nouă
+                <Plus /> {t("Lucrare nouă")}
               </Link>
             </Button>
           }

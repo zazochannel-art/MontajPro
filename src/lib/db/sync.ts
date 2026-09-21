@@ -6,7 +6,9 @@
  * `updated_at` mai nou decât cursorul salvat local.
  *
  * Conflictele se rezolvă „last write wins” pe `updated_at`, iar rândurile încă
- * nesincronizate au prioritate (vezi `store.applyRemote`).
+ * nesincronizate au prioritate (vezi `store.applyRemote`). Versiunea lăsată
+ * deoparte nu se pierde: ajunge în jurnalul de ciocniri, de unde poate fi
+ * luată înapoi cu o apăsare.
  */
 import { getSupabase } from "../supabase/client";
 import { retryUpload } from "../storage";
@@ -14,6 +16,7 @@ import { metaGet, metaSet } from "./idb";
 import { store } from "./store";
 import { toPayload } from "./columns";
 import { flushQueue } from "../team";
+import { recordConflict } from "../conflicts";
 import { TABLE_NAMES } from "../types";
 import type { BaseRow, TableName } from "../types";
 
@@ -21,6 +24,12 @@ const PAGE_SIZE = 500;
 const EPOCH = "1970-01-01T00:00:00.000Z";
 
 let inFlight: Promise<void> | null = null;
+
+// Store-ul stă sub tot și n-are voie să știe de jurnalul de ciocniri; legătura
+// se face aici, o singură dată, în sus.
+store.onRemoteDiscarded = (table, remote, local) => {
+  void recordConflict(table, remote, local);
+};
 
 function isOnline(): boolean {
   return typeof navigator === "undefined" ? true : navigator.onLine !== false;

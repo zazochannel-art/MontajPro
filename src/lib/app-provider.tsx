@@ -152,6 +152,8 @@ function defaultSettings(userId: string): Settings {
     material_categories: [...DEFAULT_MATERIAL_CATEGORIES],
     notification_prefs: { ...DEFAULT_NOTIFICATION_PREFS },
     vat_percent: 0,
+    tax_percent: 0,
+    language: "ro",
     quote_terms: null,
     photo_stamp: true,
   };
@@ -324,6 +326,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSiteModeState(value);
     void metaSet(SITE_MODE_KEY, value);
   }, []);
+
+  // Limba aleasă ajunge și pe <html>: de acolo o iau browserul, corectorul
+  // ortografic și cititoarele de ecran.
+  const language = settings?.language === "ru" ? "ru" : "ro";
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   const signOut = useCallback(async () => {
     const supabase = getSupabase();

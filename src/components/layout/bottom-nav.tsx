@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { isActivePath, visibleBottomNav, type NavItem } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import { useApp } from "@/lib/app-provider";
+import { useT } from "@/hooks/use-t";
 
 /**
  * Navigația de jos + butonul flotant „+”, montate într-o singură bară ca să nu
@@ -14,6 +15,7 @@ import { useApp } from "@/lib/app-provider";
 export function BottomNav({ onQuickAdd }: { onQuickAdd: () => void }) {
   const pathname = usePathname();
   const { siteMode } = useApp();
+  const t = useT();
   const items = visibleBottomNav(siteMode);
   const [left, right] = [items.slice(0, 2), items.slice(2)];
 
@@ -35,7 +37,7 @@ export function BottomNav({ onQuickAdd }: { onQuickAdd: () => void }) {
             active && "drop-shadow-[0_0_8px_var(--primary)]",
           )}
         />
-        <span className="text-[11px] font-medium">{item.label}</span>
+        <span className="text-[11px] font-medium">{t(item.label)}</span>
       </Link>
     );
   };
@@ -49,7 +51,7 @@ export function BottomNav({ onQuickAdd }: { onQuickAdd: () => void }) {
           <button
             type="button"
             onClick={onQuickAdd}
-            aria-label="Adaugă"
+            aria-label={t("Adaugă")}
             className="-mt-6 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-secondary text-black shadow-xl shadow-primary/30 transition-transform active:scale-95"
           >
             <Plus className="size-7" strokeWidth={2.5} />

@@ -5,6 +5,7 @@ import { CalendarDays, ChevronRight, MapPin, User } from "lucide-react";
 import { JOB_TYPE_EMOJI, JOB_TYPE_LABELS } from "@/lib/constants";
 import { formatDateShort, formatMoney, relativeDay } from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
+import { useT } from "@/hooks/use-t";
 import { useClientName, useJobPaymentIndex } from "@/hooks/use-data";
 import type { Job } from "@/lib/types";
 import { StatusBadge } from "./status-badge";
@@ -15,6 +16,7 @@ import { StatusBadge } from "./status-badge";
  */
 export function JobCard({ job }: { job: Job }) {
   const { currency, siteMode } = useApp();
+  const t = useT();
   const clientName = useClientName(job.client_id);
   const payments = useJobPaymentIndex();
   const money = payments[job.id];
@@ -58,13 +60,13 @@ export function JobCard({ job }: { job: Job }) {
             <div className="grid grid-cols-3 gap-3 text-xs">
               {siteMode && (
                 <p className="col-span-3 text-muted-foreground">
-                  Mod șantier — prețurile sunt ascunse
+                  {t("Mod șantier")} — {t("prețurile sunt ascunse")}
                 </p>
               )}
               {!siteMode && (
                 <>
                   <div>
-                    <p className="text-muted-foreground">Preț</p>
+                    <p className="text-muted-foreground">{t("Preț")}</p>
                     <p className="font-semibold tabular-nums">
                       {formatMoney(job.price_total, currency, {
                         compact: true,
@@ -72,7 +74,7 @@ export function JobCard({ job }: { job: Job }) {
                     </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Avans</p>
+                    <p className="text-muted-foreground">{t("Avans")}</p>
                     <p className="font-semibold tabular-nums text-emerald-300">
                       {formatMoney(money?.advance ?? 0, currency, {
                         compact: true,
@@ -80,7 +82,7 @@ export function JobCard({ job }: { job: Job }) {
                     </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Rest</p>
+                    <p className="text-muted-foreground">{t("Rest")}</p>
                     <p
                       className={`font-semibold tabular-nums ${
                         (money?.rest ?? 0) > 0
@@ -100,7 +102,7 @@ export function JobCard({ job }: { job: Job }) {
           </div>
         </div>
       </div>
-      <span className="sr-only">{JOB_TYPE_LABELS[job.type]}</span>
+      <span className="sr-only">{t(JOB_TYPE_LABELS[job.type])}</span>
     </Link>
   );
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
 import { isActivePath, visibleSections } from "@/lib/nav";
+import { useT } from "@/hooks/use-t";
 import { cn, initials } from "@/lib/utils";
 import { useApp } from "@/lib/app-provider";
 import { useTable } from "@/hooks/use-data";
@@ -15,6 +16,7 @@ export function Sidebar({ onQuickAdd }: { onQuickAdd: () => void }) {
   const pathname = usePathname();
   const { settings, email, mode, siteMode } = useApp();
   const sections = visibleSections(siteMode);
+  const t = useT();
   const notifications = useTable("notifications");
   const jobs = useTable("jobs");
 
@@ -41,7 +43,7 @@ export function Sidebar({ onQuickAdd }: { onQuickAdd: () => void }) {
         {sections.map((section) => (
           <div key={section.title}>
             <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {section.title}
+              {t(section.title)}
             </p>
             <ul className="space-y-0.5">
               {section.items.map((item) => {
@@ -59,7 +61,7 @@ export function Sidebar({ onQuickAdd }: { onQuickAdd: () => void }) {
                       )}
                     >
                       <item.icon className="size-[18px]" />
-                      <span className="flex-1">{item.label}</span>
+                      <span className="flex-1">{t(item.label)}</span>
                       {count > 0 && (
                         <span
                           className={cn(

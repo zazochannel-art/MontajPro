@@ -41,6 +41,7 @@ import {
 import { archiveOldJobs, updateSettings } from "@/lib/db/actions";
 import { hasDemoData, removeDemoData, seedDemoData } from "@/lib/db/demo";
 import { BackupSection } from "@/components/settings/backup-section";
+import { ConflictsSection } from "@/components/settings/conflicts-section";
 import { PushToggle } from "@/components/settings/push-toggle";
 import { TeamSection } from "@/components/settings/team-section";
 import { useArchivedJobs, useTable } from "@/hooks/use-data";
@@ -53,6 +54,7 @@ import {
   JOB_TYPE_LABELS,
 } from "@/lib/constants";
 import { JOB_TYPES } from "@/lib/types";
+import { LANGUAGES } from "@/lib/i18n";
 import { parsePriceList, priceListToCsv } from "@/lib/price-import";
 import { downloadCsv } from "@/lib/export";
 import { BUILTIN_POSITIONS } from "@/lib/price-list";
@@ -235,6 +237,23 @@ export default function SettingsPage() {
               </SelectContent>
             </Select>
           </Field>
+          <Field label="Limbă">
+            <Select
+              value={settings.language === "ru" ? "ru" : "ro"}
+              onValueChange={(value) => void updateSettings({ language: value })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map((item) => (
+                  <SelectItem key={item.code} value={item.code}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
           <Field label="Unități">
             <Select
               value={settings.units}
@@ -252,14 +271,27 @@ export default function SettingsPage() {
             </Select>
           </Field>
         </FieldRow>
-        <Field label="TVA" hint="0 dacă nu lucrezi cu TVA">
-          <NumberInput
-            value={settings.vat_percent}
-            onChange={(value) => void updateSettings({ vat_percent: value })}
-            suffix="%"
-            step={1}
-          />
-        </Field>
+        <FieldRow>
+          <Field label="TVA" hint="0 dacă nu lucrezi cu TVA">
+            <NumberInput
+              value={settings.vat_percent}
+              onChange={(value) => void updateSettings({ vat_percent: value })}
+              suffix="%"
+              step={1}
+            />
+          </Field>
+          <Field
+            label="Impozit"
+            hint="Cât pui deoparte din fiecare încasare"
+          >
+            <NumberInput
+              value={settings.tax_percent}
+              onChange={(value) => void updateSettings({ tax_percent: value })}
+              suffix="%"
+              step={1}
+            />
+          </Field>
+        </FieldRow>
       </section>
 
       <section className="space-y-3.5 rounded-2xl border border-border bg-card p-4">
@@ -650,6 +682,8 @@ export default function SettingsPage() {
           </Button>
         )}
       </section>
+
+      <ConflictsSection />
 
       <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
         <div className="flex items-start justify-between gap-3">

@@ -30,6 +30,7 @@ export interface PublicQuote {
   accepted_at: string | null;
   accepted_by_client_at: string | null;
   client_signature: string | null;
+  client_signature_image: string | null;
   currency: string;
   client: { name: string; address: string | null } | null;
   issuer: { name: string | null; phone: string | null; email: string | null };
@@ -56,11 +57,16 @@ export async function fetchPublicQuote(token: string): Promise<PublicQuoteResult
 export async function acceptPublicQuote(
   token: string,
   signer: string,
+  signature?: string | null,
 ): Promise<PublicQuoteResult> {
   const supabase = getSupabase();
   if (!supabase) return { state: "no-backend" };
 
-  const { data, error } = await supabase.rpc("accept_quote", { token, signer });
+  const { data, error } = await supabase.rpc("accept_quote", {
+    token,
+    signer,
+    signature: signature ?? null,
+  });
   if (error) return { state: "error", message: error.message };
   if (!data) return { state: "not-found" };
   return { state: "ok", quote: data as PublicQuote };

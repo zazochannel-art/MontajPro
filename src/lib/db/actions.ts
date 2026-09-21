@@ -698,6 +698,12 @@ export async function setQuoteStatus(id: string, status: Quote["status"]) {
   kick();
 }
 
+/** Ține minte că i-ai dat ghes clientului pentru oferta asta. */
+export async function markQuoteReminded(id: string) {
+  await store.update("quotes", id, { reminder_sent_at: nowISO() });
+  kick();
+}
+
 export async function deleteQuote(id: string) {
   const items = store
     .getTable("quote_items")

@@ -99,6 +99,8 @@ export interface TypeReport {
   perHour: number | null;
   units: number;
   pricePerUnit: number | null;
+  /** Câte lucrări au stat la baza mediei pe unitate. */
+  measuredJobs: number;
 }
 
 export function byType(rows: JobReportRow[]): TypeReport[] {
@@ -128,6 +130,7 @@ export function byType(rows: JobReportRow[]): TypeReport[] {
         perHour: hours >= 0.25 ? profit / hours : null,
         units,
         pricePerUnit: units > 0 ? measuredPrice / units : null,
+        measuredJobs: measured.length,
       };
     })
     .sort((a, b) => b.profit - a.profit);
@@ -175,6 +178,28 @@ export function totals(rows: JobReportRow[]): ReportTotals {
     profit,
     hours,
     perHour: hours >= 0.25 ? profit / hours : null,
+  };
+}
+
+/**
+ * Media pe unitate din lucrările finalizate, pe tip.
+ *
+ * Rapoartele o calculau deja, dar o vedeai o dată pe lună, dacă intrai
+ * acolo. Cifra asta e utilă exact într-o clipă: când scrii prețul. Numărul
+ * minim de lucrări nu e un moft — o medie din două scări nu e o medie, e o
+ * coincidență.
+ */
+export function priceHistory(
+  rows: JobReportRow[],
+  kind: JobType,
+  minJobs = 3,
+): { perUnit: number; jobs: number; unit: string } | null {
+  const report = byType(rows).find((entry) => entry.kind === kind);
+  if (!report?.pricePerUnit || report.measuredJobs < minJobs) return null;
+  return {
+    perUnit: report.pricePerUnit,
+    jobs: report.measuredJobs,
+    unit: UNIT_LABELS[kind] || "unitate",
   };
 }
 

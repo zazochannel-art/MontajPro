@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SignaturePad } from "@/components/ui/signature-pad";
 
 /**
  * Pagina pe care o deschide clientul.
@@ -45,15 +46,18 @@ export default function PublicQuotePage({
     };
   }, [token]);
 
-  const accept = useCallback(async () => {
-    setAccepting(true);
-    try {
-      const next = await acceptPublicQuote(token, signer);
-      setResult(next);
-    } finally {
-      setAccepting(false);
-    }
-  }, [token, signer]);
+  const accept = useCallback(
+    async (signature?: string | null) => {
+      setAccepting(true);
+      try {
+        const next = await acceptPublicQuote(token, signer, signature);
+        setResult(next);
+      } finally {
+        setAccepting(false);
+      }
+    },
+    [token, signer],
+  );
 
   if (!result) {
     return (
@@ -96,7 +100,7 @@ function QuoteDocument({
   quote: PublicQuote;
   signer: string;
   onSigner: (value: string) => void;
-  onAccept: () => void;
+  onAccept: (signature?: string | null) => void;
   accepting: boolean;
 }) {
   const currency = quote.currency;
@@ -217,6 +221,14 @@ function QuoteDocument({
               {quote.client_signature ? `Confirmată de ${quote.client_signature}` : "Confirmată"}
               {quote.accepted_by_client_at && ` · ${formatDate(quote.accepted_by_client_at)}`}
             </p>
+            {quote.client_signature_image && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={quote.client_signature_image}
+                alt="Semnătura clientului"
+                className="mt-2 h-16 rounded-lg bg-white p-1"
+              />
+            )}
             <p className="mt-1 text-emerald-200/70">
               Montatorul a fost anunțat. Te va contacta pentru programare.
             </p>
@@ -236,14 +248,22 @@ function QuoteDocument({
               autoComplete="name"
             />
           </Field>
+          {signer.trim().length >= 3 && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">
+                Semnează cu degetul (opțional):
+              </p>
+              <SignaturePad busy={accepting} onDone={(dataUrl) => onAccept(dataUrl)} />
+            </div>
+          )}
           <Button
             size="xl"
             className="w-full"
-            onClick={onAccept}
+            onClick={() => onAccept(null)}
             disabled={accepting || signer.trim().length < 3}
           >
             {accepting ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
-            Accept oferta
+            Accept fără semnătură
           </Button>
           <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
             <ShieldCheck className="size-3.5" />
