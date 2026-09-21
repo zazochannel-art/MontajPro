@@ -250,6 +250,8 @@ export interface Quote extends BaseRow {
   accepted_by_client_at: string | null;
   /** Numele scris de client la acceptare. */
   client_signature: string | null;
+  /** Semnătura trasă cu degetul, PNG ca data URL. */
+  client_signature_image: string | null;
   /**
    * Prima dată când cineva a deschis linkul public.
    *

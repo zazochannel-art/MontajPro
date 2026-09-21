@@ -307,6 +307,14 @@ export default function QuotePage({
             {quote.client_signature
               ? ` — ${quote.client_signature}`
               : ""} pe {formatDate(quote.accepted_by_client_at)}
+            {quote.client_signature_image && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={quote.client_signature_image}
+                alt="Semnătura clientului"
+                className="mx-auto mt-2 h-16 rounded-lg bg-white p-1"
+              />
+            )}
           </p>
         )}
       </article>
