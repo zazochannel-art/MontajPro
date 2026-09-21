@@ -10,7 +10,9 @@
 import { store } from "./store";
 import { syncNow } from "./sync";
 import { deleteAsset } from "../storage";
+import { CLIENT_TABLES } from "../clients";
 import type {
+  Client,
   ExpenseCategory,
   Job,
   JobStatus,
@@ -54,6 +56,46 @@ export async function saveClient(input: {
     : await store.insert("clients", payload);
   kick();
   return row;
+}
+
+/**
+ * Unește doi clienți: tot ce e al lui `fromId` trece la `intoId`.
+ *
+ * Nu se pierde nimic. Lucrările, plățile, ofertele, facturile,
+ * procesele-verbale, măsurătorile și proiectele își schimbă doar stăpânul,
+ * iar câmpurile goale ale celui rămas se completează din cel care pleacă —
+ * telefonul scris o singură dată, la dublură, n-are de ce să dispară.
+ *
+ * Dublura pleacă în coș, deci unirea greșită are drum înapoi.
+ */
+export async function mergeClients(fromId: string, intoId: string): Promise<number> {
+  if (fromId === intoId) return 0;
+  const from = store.getTable("clients").find((row) => row.id === fromId);
+  const into = store.getTable("clients").find((row) => row.id === intoId);
+  if (!from || !into) return 0;
+
+  let moved = 0;
+  for (const table of CLIENT_TABLES) {
+    for (const row of store.getTable(table)) {
+      const owner = (row as { client_id?: string | null }).client_id;
+      if (row.deleted_at || owner !== fromId) continue;
+      await store.update(table, row.id, { client_id: intoId } as never);
+      moved++;
+    }
+  }
+
+  const patch: Partial<Client> = {};
+  if (!into.phone && from.phone) patch.phone = from.phone;
+  if (!into.email && from.email) patch.email = from.email;
+  if (!into.address && from.address) patch.address = from.address;
+  if (from.notes) {
+    patch.notes = into.notes ? `${into.notes}\n${from.notes}` : from.notes;
+  }
+  if (Object.keys(patch).length) await store.update("clients", intoId, patch);
+
+  await store.remove("clients", fromId);
+  kick();
+  return moved;
 }
 
 export async function deleteClient(id: string) {
