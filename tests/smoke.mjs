@@ -362,6 +362,69 @@ try {
   await page.getByText("Montaj scară stejar (test)").first().waitFor({ timeout: 10000 });
   check("lucrarea supraviețuiește reîncărcării (IndexedDB)", true);
 
+  /* ----------------------------- primii pași ----------------------- */
+  section("Primii pași");
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: /Hai să pornim/i }).waitFor({ timeout: 10000 });
+  check("cardul primilor pași apare pe contul nou", true);
+  // Până aici verificările au pus tariful, au adăugat clientul și au deschis
+  // lucrarea — trei pași din listă. Al patrulea, datele de pe ofertă, nu.
+  const progress = page.getByText(/din [45] — durează/).first();
+  await progress.waitFor({ timeout: 10000 });
+  await page
+    .waitForFunction(() => /3 din \d/.test(document.body.innerText), null, {
+      timeout: 10000,
+    })
+    .catch(() => {});
+  const progressText = await progress.innerText();
+  check(
+    "pașii deja făcuți se bifează singuri",
+    /^3 din/.test(progressText),
+    progressText,
+  );
+  check(
+    "pasul rămas e cel nefăcut",
+    (await page.getByText("Completează-ți datele").count()) > 0,
+  );
+  await page.getByRole("button", { name: /Ascunde primii pași/i }).click();
+  await page
+    .getByRole("heading", { name: /Hai să pornim/i })
+    .waitFor({ state: "detached", timeout: 10000 });
+  check("cardul primilor pași se poate închide", true);
+
+  /* ----------------------------- arhivă ---------------------------- */
+  section("Arhiva lucrărilor");
+  await page.goto(jobUrl, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: /Mută în arhivă/i }).click();
+  await page.getByText("arhivată", { exact: true }).waitFor({ timeout: 10000 });
+  check("lucrarea se poate arhiva", true);
+
+  await page.goto(`${BASE}/lucrari`, { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: /Arhivă/ }).waitFor({ timeout: 10000 });
+  check(
+    "lucrarea arhivată iese din lista de zi cu zi",
+    (await page.getByText("Montaj scară stejar (test)").count()) === 0,
+  );
+  await page.getByRole("tab", { name: /Arhivă/ }).click();
+  await page.getByText("Montaj scară stejar (test)").first().waitFor({ timeout: 10000 });
+  check("filtrul Arhivă o arată", true);
+
+  // O scoatem înapoi: restul verificărilor lucrează cu ea.
+  await page.goto(jobUrl, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: /Scoate din arhivă/i }).click();
+  await page.getByRole("button", { name: /Mută în arhivă/i }).waitFor({ timeout: 10000 });
+  check("lucrarea se poate scoate din arhivă", true);
+
+  /* ----------------------------- backup ---------------------------- */
+  section("Backup");
+  await page.goto(`${BASE}/setari`, { waitUntil: "networkidle" });
+  await page.getByText(/Copii locale/i).waitFor({ timeout: 10000 });
+  check("setările arată copiile locale", true);
+  check(
+    "arhivarea în masă are butonul ei",
+    (await page.getByRole("button", { name: /Arhivează lucrările vechi/i }).count()) > 0,
+  );
+
   /* ----------------------------- setări ---------------------------- */
   section("Schimbarea monedei");
   await page.goto(`${BASE}/setari`, { waitUntil: "networkidle" });
