@@ -253,14 +253,27 @@ export default function SettingsPage() {
             </Select>
           </Field>
         </FieldRow>
-        <Field label="TVA" hint="0 dacă nu lucrezi cu TVA">
-          <NumberInput
-            value={settings.vat_percent}
-            onChange={(value) => void updateSettings({ vat_percent: value })}
-            suffix="%"
-            step={1}
-          />
-        </Field>
+        <FieldRow>
+          <Field label="TVA" hint="0 dacă nu lucrezi cu TVA">
+            <NumberInput
+              value={settings.vat_percent}
+              onChange={(value) => void updateSettings({ vat_percent: value })}
+              suffix="%"
+              step={1}
+            />
+          </Field>
+          <Field
+            label="Impozit"
+            hint="Cât pui deoparte din fiecare încasare"
+          >
+            <NumberInput
+              value={settings.tax_percent}
+              onChange={(value) => void updateSettings({ tax_percent: value })}
+              suffix="%"
+              step={1}
+            />
+          </Field>
+        </FieldRow>
       </section>
 
       <section className="space-y-3.5 rounded-2xl border border-border bg-card p-4">

@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Clock,
   FileSpreadsheet,
+  Landmark,
   Plus,
   Receipt,
   Trash2,
@@ -51,7 +52,7 @@ import type { Expense } from "@/lib/types";
 
 /** Tabloul de bord financiar, pe luni. */
 export default function FinancePage() {
-  const { currency } = useApp();
+  const { currency, settings } = useApp();
   const payments = useTable("payments");
   const expenses = useTable("expenses");
   const sessions = useTable("work_sessions");
@@ -115,6 +116,14 @@ export default function FinancePage() {
     const fixed = fixedCostsForMonth(fixedCosts, monthKey);
     const profit = income - spent - fixed;
 
+    // Banii statului: din fiecare încasare, o parte nu e a ta. Aplicația nu-i
+    // mută nicăieri — doar îi numără, ca în aprilie să nu apară dintr-o dată.
+    const taxRate = Math.max(0, Number(settings?.tax_percent) || 0) / 100;
+    const setAside = income * taxRate;
+    const yearIncome = payments
+      .filter((payment) => payment.paid_at.slice(0, 4) === monthKey.slice(0, 4))
+      .reduce((acc, payment) => acc + payment.amount, 0);
+
     return {
       monthPayments,
       monthExpenses,
@@ -126,9 +135,22 @@ export default function FinancePage() {
       receivable,
       hours,
       perHour: hours >= 0.25 ? profit / hours : null,
+      taxRate,
+      setAside,
+      yearSetAside: yearIncome * taxRate,
       byCategory: Object.entries(byCategory).sort((a, b) => b[1] - a[1]),
     };
-  }, [payments, expenses, sessions, fixedCosts, now, jobs, paymentIndex, monthKey]);
+  }, [
+    payments,
+    expenses,
+    sessions,
+    fixedCosts,
+    now,
+    jobs,
+    paymentIndex,
+    monthKey,
+    settings,
+  ]);
 
   const jobTitle = (jobId: string | null) =>
     jobId
@@ -207,6 +229,15 @@ export default function FinancePage() {
           icon={Wallet}
           tone="secondary"
         />
+        {data.taxRate > 0 && (
+          <StatCard
+            label="De pus deoparte"
+            value={formatMoney(data.setAside, currency, { compact: true })}
+            icon={Landmark}
+            tone="warning"
+            hint={`${formatMoney(data.yearSetAside, currency, { compact: true })} anul ăsta`}
+          />
+        )}
         <StatCard
           label="Câștig pe oră"
           value={

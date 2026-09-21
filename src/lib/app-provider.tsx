@@ -152,6 +152,8 @@ function defaultSettings(userId: string): Settings {
     material_categories: [...DEFAULT_MATERIAL_CATEGORIES],
     notification_prefs: { ...DEFAULT_NOTIFICATION_PREFS },
     vat_percent: 0,
+    tax_percent: 0,
+    language: "ro",
     quote_terms: null,
     photo_stamp: true,
   };

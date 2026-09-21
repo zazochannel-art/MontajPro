@@ -261,6 +261,8 @@ export interface Quote extends BaseRow {
   viewed_at: string | null;
   last_viewed_at: string | null;
   view_count: number;
+  /** Când i-ai dat ultima oară ghes clientului pentru oferta asta. */
+  reminder_sent_at: string | null;
 }
 
 export interface Invoice extends BaseRow {
@@ -475,6 +477,15 @@ export interface Settings extends BaseRow {
   material_categories: string[];
   notification_prefs: NotificationPrefs;
   vat_percent: number;
+  /**
+   * Cât din fiecare încasare nu e al tău.
+   *
+   * Impozit, taxe — banii care pleacă mai târziu, întregi și dintr-o dată.
+   * Aplicația nu-i mută nicăieri; doar îi numără, ca să nu fie o surpriză.
+   */
+  tax_percent: number;
+  /** Limba interfeței: „ro" sau „ru". Ține de om, deci merge cu contul. */
+  language: string;
   quote_terms: string | null;
   /** Scrie data peste pozele făcute din aplicație. */
   photo_stamp: boolean;
