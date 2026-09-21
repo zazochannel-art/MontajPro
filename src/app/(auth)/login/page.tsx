@@ -54,7 +54,7 @@ export default function LoginPage() {
   });
 
   return (
-    <div className="aurora flex min-h-dvh flex-col items-center justify-center px-5 py-10">
+    <div className="aurora flex min-h-dvh flex-col items-center justify-center px-5 pb-10 pt-[calc(env(safe-area-inset-top)+2.5rem)]">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <Logo tagline />

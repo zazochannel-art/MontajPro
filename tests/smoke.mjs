@@ -527,6 +527,70 @@ try {
   await page.getByRole("heading", { name: "Lucrări" }).waitFor({ timeout: 10000 });
   check("comutarea înapoi în română merge", true);
 
+  /* ----------------------------- zona sigură ----------------------- */
+  section("Zona sigură (telefon cu aplicația instalată)");
+
+  // Aplicația instalată desenează pagina până sub bara de stare și sub bara de
+  // gesturi. Emulăm marginile astea prin CDP — altfel `env(safe-area-inset-*)`
+  // e mereu 0 în browserul de test și n-am verifica nimic.
+  const INSET_TOP = 48;
+  const INSET_BOTTOM = 34;
+  const safeContext = await browser.newContext({
+    ...devices["iPhone 13"],
+    locale: "ro-RO",
+  });
+  const safePage = await safeContext.newPage();
+  let safeEmulated = false;
+  try {
+    const cdp = await safeContext.newCDPSession(safePage);
+    await cdp.send("Emulation.setSafeAreaInsetsOverride", {
+      insets: { top: INSET_TOP, left: 0, right: 0, bottom: INSET_BOTTOM },
+    });
+    safeEmulated = true;
+  } catch (error) {
+    console.log(`  ! emularea zonei sigure nu e disponibilă în acest Chromium: ${error.message.split("\n")[0]}`);
+  }
+
+  if (safeEmulated) {
+    await safePage.goto(`${BASE}/login`, { waitUntil: "networkidle" });
+    const loginPadding = await safePage.evaluate(
+      () => parseFloat(getComputedStyle(document.querySelector(".aurora")).paddingTop) || 0,
+    );
+    check(
+      "ecranul de autentificare coboară sub bara de stare",
+      loginPadding >= INSET_TOP,
+      `padding-top=${loginPadding}px, bara are ${INSET_TOP}px`,
+    );
+
+    await safePage.getByRole("button", { name: /Continuă în mod local/i }).click();
+    await safePage.waitForURL(`${BASE}/`, { timeout: 15000 });
+    await safePage.locator("header").first().waitFor({ timeout: 15000 });
+
+    const headerBox = await safePage.locator("header").first().boundingBox();
+    const firstControl = await safePage.locator("header svg").first().boundingBox();
+    check(
+      "antetul acoperă bara de stare",
+      headerBox.y <= 0.5 && headerBox.height > INSET_TOP,
+      `y=${headerBox?.y}, h=${headerBox?.height}`,
+    );
+    check(
+      "conținutul antetului rămâne sub bara de stare",
+      firstControl.y >= INSET_TOP,
+      `primul element la y=${firstControl?.y}, bara are ${INSET_TOP}px`,
+    );
+
+    // `nav:visible` = bara de jos; bara laterală e tot un `nav`, dar ascuns pe telefon.
+    const viewportHeight = safePage.viewportSize().height;
+    const navLabel = await safePage.locator("nav:visible a span").last().boundingBox();
+    const navBottom = navLabel.y + navLabel.height;
+    check(
+      "bara de jos rămâne deasupra barei de gesturi",
+      navBottom <= viewportHeight - INSET_BOTTOM,
+      `text până la y=${navBottom}, ecranul are ${viewportHeight}px, bara ${INSET_BOTTOM}px`,
+    );
+  }
+  await safeContext.close();
+
   /* ----------------------------- PWA ------------------------------- */
   section("PWA");
   const manifest = await page.request.get(`${BASE}/manifest.webmanifest`);

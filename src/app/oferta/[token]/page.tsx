@@ -69,7 +69,7 @@ export default function PublicQuotePage({
 
   if (result.state !== "ok") {
     return (
-      <main className="flex min-h-dvh items-center justify-center p-6">
+      <main className="flex min-h-dvh items-center justify-center p-6 pt-[calc(env(safe-area-inset-top)+1.5rem)]">
         <div className="max-w-sm text-center">
           <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-muted">
             <FileText className="size-6 text-muted-foreground" />
@@ -113,7 +113,7 @@ function QuoteDocument({
   const accepted = quote.status === "accepted";
 
   return (
-    <main className="mx-auto min-h-dvh max-w-2xl p-4 sm:p-6">
+    <main className="mx-auto min-h-dvh max-w-2xl p-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:p-6 sm:pt-[calc(env(safe-area-inset-top)+1.5rem)]">
       <article className="print-surface space-y-5 rounded-2xl border border-border bg-card p-5 sm:p-7">
         <header className="flex items-start justify-between gap-4 border-b border-border pb-4">
           <div>
