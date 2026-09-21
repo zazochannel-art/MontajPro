@@ -71,6 +71,7 @@ export const NOTIFICATION_KINDS = [
   "installment_due",
   "follow_up",
   "job_warranty",
+  "quote_viewed",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
@@ -247,6 +248,17 @@ export interface Quote extends BaseRow {
   accepted_by_client_at: string | null;
   /** Numele scris de client la acceptare. */
   client_signature: string | null;
+  /**
+   * Prima dată când cineva a deschis linkul public.
+   *
+   * Se scrie doar pe server, din pagina publică. De aceea cele trei coloane
+   * lipsesc din lista de trimitere (`TABLE_COLUMNS`): se trag la
+   * sincronizare, dar nu se împing niciodată înapoi, ca o copie locală veche
+   * să nu șteargă o vizită pe care telefonul n-a văzut-o încă.
+   */
+  viewed_at: string | null;
+  last_viewed_at: string | null;
+  view_count: number;
 }
 
 export interface Invoice extends BaseRow {
@@ -429,6 +441,7 @@ export interface NotificationPrefs {
   installment_due: boolean;
   /** Sună clientul la câteva luni după montaj. */
   follow_up: boolean;
+  quote_viewed: boolean;
   /** Garanția lucrării stă să expire. */
   job_warranty: boolean;
 }

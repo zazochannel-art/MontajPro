@@ -167,6 +167,7 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   installment_due: true,
   follow_up: true,
   job_warranty: true,
+  quote_viewed: true,
 };
 
 export const DEFAULT_MATERIAL_CATEGORIES = [

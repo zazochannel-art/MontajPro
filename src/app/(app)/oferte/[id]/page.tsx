@@ -35,6 +35,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { QUOTE_STATUS_CLASSES, QUOTE_STATUS_LABELS } from "@/lib/constants";
 import {
   formatDate,
+  formatDateTime,
   formatMoney,
   formatNumber,
   formatQuoteNumber,
@@ -282,7 +283,18 @@ export default function QuotePage({
 
         {quote.status === "sent" && (
           <p className="rounded-xl bg-background p-3 text-center text-sm text-muted-foreground">
-            Status: În așteptarea confirmării
+            {quote.viewed_at ? (
+              <>
+                Clientul a deschis oferta
+                {(quote.view_count ?? 1) > 1 ? ` de ${quote.view_count} ori` : ""}
+                {quote.last_viewed_at
+                  ? `, ultima dată ${formatDateTime(quote.last_viewed_at)}`
+                  : ""}
+                , dar n-a confirmat încă.
+              </>
+            ) : (
+              "Status: În așteptarea confirmării"
+            )}
           </p>
         )}
 

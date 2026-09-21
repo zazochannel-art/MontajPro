@@ -69,6 +69,7 @@ const NOTIFICATION_LABELS: Record<keyof NotificationPrefs, string> = {
   installment_due: "Tranșă scadentă",
   follow_up: "Revino la client",
   job_warranty: "Garanția lucrării",
+  quote_viewed: "Clientul a deschis oferta",
 };
 
 export default function SettingsPage() {

@@ -7,6 +7,7 @@ import {
   BellOff,
   CalendarClock,
   CheckCheck,
+  Eye,
   FileText,
   Package,
   PhoneCall,
@@ -35,6 +36,7 @@ const ICONS: Record<NotificationKind, LucideIcon> = {
   installment_due: Wallet,
   follow_up: PhoneCall,
   job_warranty: ShieldAlert,
+  quote_viewed: Eye,
 };
 
 const TONES: Record<NotificationKind, string> = {
@@ -47,6 +49,7 @@ const TONES: Record<NotificationKind, string> = {
   installment_due: "bg-amber-500/10 text-amber-300",
   follow_up: "bg-emerald-500/10 text-emerald-300",
   job_warranty: "bg-red-500/10 text-red-300",
+  quote_viewed: "bg-emerald-500/10 text-emerald-300",
 };
 
 export default function NotificationsPage() {

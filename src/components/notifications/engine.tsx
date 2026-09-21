@@ -230,6 +230,23 @@ export function NotificationEngine() {
           }
         }
 
+        if (prefs.quote_viewed) {
+          for (const quote of quotes) {
+            // Doar cât timp e încă în joc: după „Accept" vestea e alta.
+            if (quote.status !== "sent" || !quote.viewed_at) continue;
+            // Numărul de deschideri nu intră în text: ar face o notificare
+            // nouă la fiecare reîncărcare. Se vede în lista de oferte.
+            candidates.push({
+              key: `quote_viewed:${quote.id}`,
+              kind: "quote_viewed",
+              title: "Clientul ți-a deschis oferta",
+              body: `${quote.title} — ${clientName(quote.client_id)}`,
+              job_id: quote.job_id,
+              due_date: quote.viewed_at.slice(0, 10),
+            });
+          }
+        }
+
         // Cheia stă în `body` prin combinația kind+job+due_date; comparăm direct.
         const known = new Set(
           existing.map(

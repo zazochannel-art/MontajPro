@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, FileText, Plus } from "lucide-react";
+import { ChevronRight, Eye, FileText, Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
@@ -104,6 +104,14 @@ export default function QuotesPage() {
                     >
                       {QUOTE_STATUS_LABELS[quote.status]}
                     </span>
+                    {quote.status === "sent" && quote.viewed_at && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-emerald-300">
+                        <Eye className="size-3" />
+                        {(quote.view_count ?? 1) > 1
+                          ? `văzută de ${quote.view_count} ori`
+                          : "văzută"}
+                      </span>
+                    )}
                   </div>
                   <p className="truncate font-medium">{quote.title}</p>
                   <p className="truncate text-xs text-muted-foreground">

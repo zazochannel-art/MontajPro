@@ -5,6 +5,7 @@ import { CheckCircle2, FileText, Loader2, Phone, ShieldCheck } from "lucide-reac
 import {
   acceptPublicQuote,
   fetchPublicQuote,
+  markQuoteViewed,
   type PublicQuote,
   type PublicQuoteResult,
 } from "@/lib/supabase/public-quote";
@@ -35,6 +36,9 @@ export default function PublicQuotePage({
     let cancelled = false;
     void fetchPublicQuote(token).then((next) => {
       if (!cancelled) setResult(next);
+      // Abia după ce oferta chiar s-a încărcat: altfel am număra și linkurile
+      // greșite drept vizite.
+      if (next.state === "ok") void markQuoteViewed(token);
     });
     return () => {
       cancelled = true;
