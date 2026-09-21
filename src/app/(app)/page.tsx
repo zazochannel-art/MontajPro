@@ -63,6 +63,11 @@ export default function DashboardPage() {
           icon={Wallet}
           tone="warning"
           href="/finante"
+          hint={`${data.forecastNet >= 0 ? "+" : "−"}${formatMoney(
+            Math.abs(data.forecastNet),
+            currency,
+            { compact: true },
+          )} în 30 de zile`}
         />
         <StatCard
           label="Încasări luna asta"

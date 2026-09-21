@@ -5,6 +5,7 @@ import { store } from "@/lib/db/store";
 import { trashItems, type TrashItem } from "@/lib/trash";
 import type { TableName, Tables } from "@/lib/types";
 import { jobMoney, totalWorkedMinutes } from "@/lib/calc";
+import { buildForecast } from "@/lib/forecast";
 import { todayKey, toDateKey } from "@/lib/format";
 
 /**
@@ -264,6 +265,8 @@ export function useDashboardData() {
   const materials = useTable("job_materials");
   const sessions = useTable("work_sessions");
   const quotes = useTable("quotes");
+  const installments = useTable("installments");
+  const fixedCosts = useTable("fixed_costs");
   const paymentIndex = useJobPaymentIndex();
 
   return useMemo(() => {
@@ -320,6 +323,25 @@ export function useDashboardData() {
       monthMinutes,
       neededMaterials,
       pendingQuotes,
+      // Cât rămâne în următoarele patru săptămâni, cu ce se știe azi.
+      forecastNet: buildForecast({
+        jobs,
+        payments,
+        installments,
+        fixedCosts,
+        materials,
+      }).net,
     };
-  }, [jobs, payments, expenses, materials, sessions, quotes, paymentIndex, now]);
+  }, [
+    jobs,
+    payments,
+    expenses,
+    materials,
+    sessions,
+    quotes,
+    installments,
+    fixedCosts,
+    paymentIndex,
+    now,
+  ]);
 }
