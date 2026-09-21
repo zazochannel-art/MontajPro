@@ -2,7 +2,15 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Package, Pencil, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
+import {
+  Package,
+  Pencil,
+  Plus,
+  Search,
+  Send,
+  ShoppingCart,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -14,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MaterialDialog } from "@/components/forms/material-dialog";
 import { useJobs, useTable } from "@/hooks/use-data";
 import { deleteMaterial, toggleJobMaterial } from "@/lib/db/actions";
+import { groupBySupplier, orderText, whatsappHref } from "@/lib/order";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
 import type { Material } from "@/lib/types";
@@ -21,7 +30,7 @@ import { sum } from "@/lib/utils";
 
 /** Inventarul propriu + lista de cumpărături generată din lucrări. */
 export default function MaterialsPage() {
-  const { currency } = useApp();
+  const { currency, settings } = useApp();
   const materials = useTable("materials");
   const jobMaterials = useTable("job_materials");
   const jobs = useJobs();
@@ -64,8 +73,15 @@ export default function MaterialsPage() {
         inStock: material.material_id
           ? (stockById.get(material.material_id)?.quantity ?? 0)
           : 0,
+        // Furnizorul se știe doar prin legătura cu depozitul; un material
+        // scris de mână pe o lucrare n-are de unde.
+        supplier: material.material_id
+          ? (stockById.get(material.material_id)?.supplier ?? null)
+          : null,
       }));
   }, [jobMaterials, jobs, materials]);
+
+  const orders = useMemo(() => groupBySupplier(shoppingList), [shoppingList]);
 
   const stockValue = sum(filtered, (material) => material.quantity * material.price);
   const shoppingTotal = sum(
@@ -217,6 +233,40 @@ export default function MaterialsPage() {
                   {formatMoney(shoppingTotal, currency)}
                 </span>
               </div>
+
+              {orders.length > 0 && (
+                <div className="space-y-2 rounded-2xl border border-border bg-card p-3.5">
+                  <p className="text-xs text-muted-foreground">
+                    Trimite comanda, grupată pe furnizor:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {orders.map((order) => (
+                      <Button
+                        key={order.supplier}
+                        asChild
+                        size="sm"
+                        variant="outline"
+                      >
+                        <a
+                          href={whatsappHref(
+                            orderText(
+                              order,
+                              settings?.company || settings?.full_name,
+                            ),
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Send /> {order.supplier}
+                          <span className="text-muted-foreground">
+                            ({order.lines.length})
+                          </span>
+                        </a>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <ul className="space-y-2">
                 {shoppingList.map(({ material, job, inStock }) => (
