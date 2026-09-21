@@ -3,7 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Calculator, FileText, Hammer, Plus, Save, Settings2, X } from "lucide-react";
+import {
+  Calculator,
+  FileText,
+  Hammer,
+  History,
+  Plus,
+  Save,
+  Settings2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -27,7 +36,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useJobs } from "@/hooks/use-data";
+import { useJobs, useTable } from "@/hooks/use-data";
+import { buildJobRows, priceHistory } from "@/lib/reports";
 import { useApp } from "@/lib/app-provider";
 import { calcTotal, lineTotal, type CalcLine, type CalcSeed } from "@/lib/calc";
 import { formatMoney, formatNumber } from "@/lib/format";
@@ -116,6 +126,10 @@ export default function CalculatorPage() {
   const router = useRouter();
   const { currency, settings } = useApp();
   const jobs = useJobs();
+  const allJobs = useTable("jobs");
+  const materials = useTable("job_materials");
+  const expenses = useTable("expenses");
+  const measurements = useTable("job_measurements");
   const positions = useMemo(() => allPositions(settings), [settings]);
 
   // Cantitățile venite dintr-o măsurătoare; citite o singură dată, la montare.
@@ -127,6 +141,23 @@ export default function CalculatorPage() {
   );
   const [saveOpen, setSaveOpen] = useState(false);
   const [targetJob, setTargetJob] = useState<string>("new");
+
+  // Cât ai luat de fapt pe unitate, la lucrările terminate de același tip.
+  // Cifra exista în Rapoarte; aici stă în clipa în care chiar contează.
+  const history = useMemo(
+    () =>
+      priceHistory(
+        buildJobRows({
+          jobs: allJobs,
+          materials,
+          expenses,
+          sessions: [],
+          measurements,
+        }),
+        kind,
+      ),
+    [allJobs, materials, expenses, measurements, kind],
+  );
 
   const total = useMemo(() => calcTotal(lines), [lines]);
   const { matching, rest } = useMemo(
@@ -243,6 +274,19 @@ export default function CalculatorPage() {
 
         <TabsContent value={kind}>
           <div className="space-y-3">
+            {history && (
+              <p className="flex items-start gap-2 rounded-xl bg-muted/50 p-2.5 text-xs text-muted-foreground">
+                <History className="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                  La ultimele {history.jobs} lucrări de acest fel ai luat în
+                  medie{" "}
+                  <strong className="text-foreground">
+                    {formatMoney(history.perUnit, currency)}
+                  </strong>{" "}
+                  pe {history.unit}.
+                </span>
+              </p>
+            )}
             {lines.map((line) => (
               <div key={line.id} className="rounded-2xl border border-border bg-card p-3.5">
                 <div className="flex items-center gap-2">

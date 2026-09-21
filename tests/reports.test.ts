@@ -18,6 +18,7 @@ import {
   measurementUnits,
   normalizeUnit,
   plannedUnits,
+  priceHistory,
   totals,
 } from "../src/lib/reports.ts";
 import type { Job, JobMaterial, JobMeasurement, WorkSession } from "../src/lib/types.ts";
@@ -337,4 +338,28 @@ test("pierderea se adună pe tip de lucrare", () => {
   assert.equal(plinth?.extraPercent, 4);
   // Cea mai costisitoare pierdere stă prima.
   assert.equal(report[0].kind, "parquet");
+});
+
+test("media pe unitate apare doar când e o medie, nu o coincidență", () => {
+  const rows = buildJobRows({
+    jobs: [
+      job({ id: "a", type: "parquet", price_total: 10000 }),
+      job({ id: "b", type: "parquet", price_total: 12000 }),
+    ],
+    materials: [],
+    expenses: [],
+    sessions: [],
+    measurements: [
+      measurement("a", "parquet", { area: 100 }),
+      measurement("b", "parquet", { area: 100 }),
+    ],
+  });
+
+  // Două lucrări nu fac o medie.
+  assert.equal(priceHistory(rows, "parquet"), null);
+  assert.equal(priceHistory(rows, "parquet", 2)?.perUnit, 110);
+  assert.equal(priceHistory(rows, "parquet", 2)?.jobs, 2);
+  assert.equal(priceHistory(rows, "parquet", 2)?.unit, "m²");
+  // Un tip fără lucrări măsurate n-are ce medie să dea.
+  assert.equal(priceHistory(rows, "stairs", 1), null);
 });
