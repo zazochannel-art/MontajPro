@@ -10,10 +10,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fixedCostsForMonth } from "../src/lib/calc.ts";
 import {
+  buildConsumption,
   buildJobRows,
   byClient,
   byType,
+  consumptionByType,
   measurementUnits,
+  normalizeUnit,
+  plannedUnits,
   totals,
 } from "../src/lib/reports.ts";
 import type { Job, JobMaterial, JobMeasurement, WorkSession } from "../src/lib/types.ts";
@@ -207,4 +211,130 @@ test("cheltuielile fixe se numără doar în lunile în care au curs", () => {
   assert.equal(fixedCostsForMonth(costs, "2026-05"), 2000);
   // Decembrie 2025: nimic nu începuse încă.
   assert.equal(fixedCostsForMonth(costs, "2025-12"), 0);
+});
+
+/* ------------------------------------------------------------------ */
+/* Consumul real față de estimat                                       */
+/* ------------------------------------------------------------------ */
+
+/** Material cu unitate — cel de sus n-o are, iar aici unitatea e totul. */
+function stock(
+  jobId: string,
+  quantity: number,
+  unit: string,
+  id = `${jobId}-${unit}-${quantity}`,
+): JobMaterial {
+  return {
+    id,
+    user_id: "u",
+    created_at: "2026-01-10T08:00:00.000Z",
+    updated_at: "2026-01-10T08:00:00.000Z",
+    deleted_at: null,
+    job_id: jobId,
+    name: "Material",
+    quantity,
+    unit,
+    unit_price: 0,
+  } as unknown as JobMaterial;
+}
+
+test("unitățile scrise altfel sunt aceeași unitate", () => {
+  assert.equal(normalizeUnit("M2"), "m²");
+  assert.equal(normalizeUnit("mp"), "m²");
+  assert.equal(normalizeUnit("m 2"), "m²");
+  assert.equal(normalizeUnit("ML"), "m");
+  assert.equal(normalizeUnit("Bucăți"), "buc");
+  assert.equal(normalizeUnit(null), "");
+});
+
+test("estimatul la parchet include pierderea prevăzută", () => {
+  assert.equal(plannedUnits("parquet", { area: 100, waste_percent: 10 }), 110);
+  assert.equal(plannedUnits("parquet", { area: 100 }), 100);
+  assert.equal(plannedUnits("stairs", { steps: 15 }), 15);
+});
+
+test("consumul peste estimat se vede în procente", () => {
+  const rows = buildConsumption({
+    jobs: [job({ id: "a", type: "parquet" })],
+    measurements: [measurement("a", "parquet", { area: 100, waste_percent: 10 })],
+    materials: [stock("a", 121, "m²")],
+  });
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].planned, 110);
+  assert.equal(rows[0].used, 121);
+  assert.equal(Math.round(rows[0].extraPercent ?? 0), 10);
+});
+
+test("materialele în altă unitate nu intră în comparație", () => {
+  const rows = buildConsumption({
+    jobs: [job({ id: "a", type: "parquet" })],
+    measurements: [measurement("a", "parquet", { area: 100 })],
+    materials: [stock("a", 100, "m²"), stock("a", 40, "buc"), stock("a", 5, "l")],
+  });
+
+  assert.equal(rows[0].used, 100);
+  assert.equal(rows[0].extra, 0);
+});
+
+test("fără măsurătoare sau fără materiale nu e o comparație", () => {
+  assert.equal(
+    buildConsumption({
+      jobs: [job({ id: "a", type: "parquet" })],
+      measurements: [],
+      materials: [stock("a", 100, "m²")],
+    }).length,
+    0,
+  );
+  assert.equal(
+    buildConsumption({
+      jobs: [job({ id: "a", type: "parquet" })],
+      measurements: [measurement("a", "parquet", { area: 100 })],
+      materials: [],
+    }).length,
+    0,
+  );
+});
+
+test("„altceva” n-are unitate fixă, deci nu se compară", () => {
+  const rows = buildConsumption({
+    jobs: [job({ id: "a", type: "other" })],
+    measurements: [measurement("a", "other", { quantity: 10, unit: "buc" })],
+    materials: [stock("a", 12, "buc")],
+  });
+  assert.equal(rows.length, 0);
+});
+
+test("pierderea se adună pe tip de lucrare", () => {
+  const rows = buildConsumption({
+    jobs: [
+      job({ id: "a", type: "parquet" }),
+      job({ id: "b", type: "parquet" }),
+      job({ id: "c", type: "plinth" }),
+    ],
+    measurements: [
+      measurement("a", "parquet", { area: 100 }),
+      measurement("b", "parquet", { area: 100 }),
+      measurement("c", "plinth", { linear_meters: 50 }),
+    ],
+    materials: [
+      stock("a", 110, "m²"),
+      stock("b", 130, "m²"),
+      stock("c", 52, "m"),
+    ],
+  });
+
+  const report = consumptionByType(rows);
+  const parquet = report.find((entry) => entry.kind === "parquet");
+  assert.ok(parquet);
+  assert.equal(parquet.jobs, 2);
+  assert.equal(parquet.planned, 200);
+  assert.equal(parquet.used, 240);
+  assert.equal(parquet.extraPercent, 20);
+  assert.equal(parquet.unit, "m²");
+
+  const plinth = report.find((entry) => entry.kind === "plinth");
+  assert.equal(plinth?.extraPercent, 4);
+  // Cea mai costisitoare pierdere stă prima.
+  assert.equal(report[0].kind, "parquet");
 });

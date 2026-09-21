@@ -166,7 +166,11 @@ function JobDetail({ id }: { id: string }) {
           <PhotosTab job={job} photos={details.photos} />
         </TabsContent>
         <TabsContent value="materiale">
-          <MaterialsTab jobId={job.id} materials={details.materials} />
+          <MaterialsTab
+            job={job}
+            materials={details.materials}
+            measurements={details.measurements}
+          />
         </TabsContent>
         <TabsContent value="finante">
           <FinanceTab

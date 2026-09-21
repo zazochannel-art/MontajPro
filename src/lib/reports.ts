@@ -177,3 +177,134 @@ export function totals(rows: JobReportRow[]): ReportTotals {
     perHour: hours >= 0.25 ? profit / hours : null,
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* Consumul real față de estimat                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Măsurătoarea spune cât ar trebui. Materialele spun cât a intrat.
+ *
+ * Diferența dintre ele sunt bani care se pierd tăcut: parchetul tăiat greșit,
+ * plinta prinsă scurt, treapta crăpată la montaj. Nimeni nu-i vede, fiindcă
+ * fiecare lucrare în parte pare în regulă — abia adunate pe un an arată cât
+ * costă de fapt „mai luăm doi metri, să fie".
+ */
+
+/** Unitatea în care se măsoară consumul, pe tip de lucrare. */
+const CONSUMPTION_UNITS: Record<JobType, string | null> = {
+  stairs: "buc",
+  parquet: "m²",
+  plinth: "m",
+  // „Altceva” n-are o unitate fixă, deci n-are cu ce fi comparat.
+  other: null,
+};
+
+/** „M2”, „m 2”, „mp” și „m²” sunt același lucru scris de mâini diferite. */
+export function normalizeUnit(unit: string | null | undefined): string {
+  const value = (unit ?? "").toLowerCase().replace(/\s+/g, "");
+  if (value === "m2" || value === "mp") return "m²";
+  if (value === "m3") return "m³";
+  if (value === "bucati" || value === "bucăți" || value === "buc.") return "buc";
+  if (value === "ml") return "m";
+  return value;
+}
+
+/** Cât ar fi trebuit să intre, după măsurătoare — cu pierderea prevăzută. */
+export function plannedUnits(kind: JobType, data: MeasurementData): number {
+  if (kind === "parquet") {
+    const parquet = data as ParquetMeasurement;
+    const area = num(parquet.area);
+    if (!area) return 0;
+    const waste = num(parquet.waste_percent);
+    // Rotunjim la trei zecimale: altfel 100 m² cu 10% pierdere ies
+    // 110.00000000000001, iar comparațiile de mai jos moștenesc coada.
+    return Math.round(area * (1 + waste / 100) * 1000) / 1000;
+  }
+  return measurementUnits(kind, data) ?? 0;
+}
+
+export interface ConsumptionRow {
+  job: Job;
+  unit: string;
+  planned: number;
+  used: number;
+  extra: number;
+  /** Cu cât s-a depășit, în procente. `null` când n-are sens împărțirea. */
+  extraPercent: number | null;
+}
+
+export function buildConsumption(input: {
+  jobs: Job[];
+  materials: JobMaterial[];
+  measurements: JobMeasurement[];
+}): ConsumptionRow[] {
+  const rows: ConsumptionRow[] = [];
+
+  for (const job of input.jobs) {
+    if (job.deleted_at) continue;
+    const unit = CONSUMPTION_UNITS[job.type];
+    if (!unit) continue;
+
+    const planned = input.measurements
+      .filter((row) => !row.deleted_at && row.job_id === job.id && row.kind === job.type)
+      .reduce((acc, row) => acc + plannedUnits(row.kind, row.data), 0);
+
+    const used = input.materials
+      .filter(
+        (row) =>
+          !row.deleted_at &&
+          row.job_id === job.id &&
+          normalizeUnit(row.unit) === unit,
+      )
+      .reduce((acc, row) => acc + num(row.quantity), 0);
+
+    // Fără ambele jumătăți nu e o comparație, e o jumătate de poveste.
+    if (planned <= 0 || used <= 0) continue;
+
+    const extra = used - planned;
+    rows.push({
+      job,
+      unit,
+      planned,
+      used,
+      extra,
+      extraPercent: (extra / planned) * 100,
+    });
+  }
+
+  return rows.sort((a, b) => (b.extraPercent ?? 0) - (a.extraPercent ?? 0));
+}
+
+export interface ConsumptionReport {
+  kind: JobType;
+  unit: string;
+  jobs: number;
+  planned: number;
+  used: number;
+  extra: number;
+  extraPercent: number | null;
+}
+
+export function consumptionByType(rows: ConsumptionRow[]): ConsumptionReport[] {
+  const groups = new Map<JobType, ConsumptionRow[]>();
+  for (const row of rows) {
+    groups.set(row.job.type, [...(groups.get(row.job.type) ?? []), row]);
+  }
+
+  return [...groups.entries()]
+    .map(([kind, items]) => {
+      const planned = items.reduce((acc, row) => acc + row.planned, 0);
+      const used = items.reduce((acc, row) => acc + row.used, 0);
+      return {
+        kind,
+        unit: items[0].unit,
+        jobs: items.length,
+        planned,
+        used,
+        extra: used - planned,
+        extraPercent: planned > 0 ? ((used - planned) / planned) * 100 : null,
+      };
+    })
+    .sort((a, b) => (b.extraPercent ?? 0) - (a.extraPercent ?? 0));
+}

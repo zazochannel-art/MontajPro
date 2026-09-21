@@ -10,9 +10,11 @@ import { StatCard } from "@/components/dashboard/stat-card";
 import { useMinuteTick, useStoreReady, useTable } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
 import {
+  buildConsumption,
   buildJobRows,
   byClient,
   byType,
+  consumptionByType,
   totals,
   UNIT_LABELS,
 } from "@/lib/reports";
@@ -66,7 +68,22 @@ export default function ReportsPage() {
       return date.slice(0, 10) >= cutoff;
     });
 
-    return { rows, sum: totals(rows), types: byType(rows), clients: byClient(rows) };
+    // Consumul se judecă pe aceleași lucrări ca restul raportului.
+    const consumption = consumptionByType(
+      buildConsumption({
+        jobs: rows.map((row) => row.job),
+        materials,
+        measurements,
+      }),
+    );
+
+    return {
+      rows,
+      sum: totals(rows),
+      types: byType(rows),
+      clients: byClient(rows),
+      consumption,
+    };
   }, [period, now, jobs, materials, expenses, sessions, measurements]);
 
   const clientName = (id: string | null) =>
@@ -204,6 +221,45 @@ export default function ReportsPage() {
               </article>
             ))}
           </section>
+
+          {report.consumption.length > 0 && (
+            <section className="space-y-2.5">
+              <h2 className="text-sm font-semibold">Consum față de estimat</h2>
+              <p className="text-xs text-muted-foreground">
+                Cât ai măsurat și cât a intrat efectiv. Diferența e tăiată
+                greșit, spart la montaj sau „mai luăm doi metri, să fie”.
+              </p>
+              <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+                {report.consumption.map((row) => (
+                  <div
+                    key={row.kind}
+                    className="flex items-center justify-between gap-3 p-3.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium">
+                        {JOB_TYPE_EMOJI[row.kind]} {JOB_TYPE_LABELS[row.kind]}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        estimat {formatNumber(row.planned)} {row.unit} · consumat{" "}
+                        {formatNumber(row.used)} {row.unit} · {row.jobs} lucrări
+                      </p>
+                    </div>
+                    <p
+                      className={cn(
+                        "shrink-0 font-bold tabular-nums",
+                        (row.extraPercent ?? 0) > 0
+                          ? "text-amber-300"
+                          : "text-emerald-300",
+                      )}
+                    >
+                      {(row.extraPercent ?? 0) > 0 ? "+" : ""}
+                      {formatNumber(row.extraPercent ?? 0, 1)}%
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="space-y-2.5">
             <h2 className="text-sm font-semibold">Clienți</h2>
