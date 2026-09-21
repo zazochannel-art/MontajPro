@@ -38,9 +38,9 @@
    * Nu înlocuiesc paleta interfeței — apar doar acolo unde apare marca, ca
    * aplicația să arate a ea însăși fără să-și schimbe limbajul de culoare.
    */
-  --wood: #b5723e;
-  --wood-light: #cf8f55;
-  --concrete: #e8e6e0;
+  --wood: #d29158;
+  --wood-light: #e0a570;
+  --concrete: #eeeeee;
 
   /* Înălțimile barelor fixe — folosite pentru padding-ul conținutului. */
   --bottom-nav-h: 4.25rem;
