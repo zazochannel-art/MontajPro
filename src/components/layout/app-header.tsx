@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, Bell, Menu, Search } from "lucide-react";
+import { ArrowLeft, Bell, HardHat, Menu, Search } from "lucide-react";
 import { useEffect, useState } from "react";
-import { NAV_SECTIONS, isActivePath } from "@/lib/nav";
+import { isActivePath, visibleSections } from "@/lib/nav";
+import { useApp } from "@/lib/app-provider";
 import { useTable } from "@/hooks/use-data";
 import { cn } from "@/lib/utils";
 import {
@@ -23,6 +24,7 @@ export function AppHeader({ title }: { title?: string }) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const { siteMode, setSiteMode } = useApp();
 
   // Ctrl/Cmd+K, tiparul cu care toată lumea e obișnuită pe desktop.
   useEffect(() => {
@@ -65,6 +67,16 @@ export function AppHeader({ title }: { title?: string }) {
             </h1>
           )}
           {!title && <div className="flex-1" />}
+
+          {siteMode && (
+            <button
+              type="button"
+              onClick={() => setSiteMode(false)}
+              className="flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-300"
+            >
+              <HardHat className="size-3.5" /> Șantier
+            </button>
+          )}
 
           <button
             type="button"
@@ -109,7 +121,7 @@ export function AppHeader({ title }: { title?: string }) {
             <DialogTitle>Meniu</DialogTitle>
           </DialogHeader>
           <div className="space-y-5">
-            {NAV_SECTIONS.map((section) => (
+            {visibleSections(siteMode).map((section) => (
               <div key={section.title}>
                 <p className="pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {section.title}

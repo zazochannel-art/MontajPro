@@ -25,11 +25,16 @@ import { BackupReminder } from "@/components/backup/backup-reminder";
 import { FirstRun } from "@/components/onboarding/first-run";
 import { useDashboardData } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
-import { formatDuration, formatMoney, monthName, weekdayName } from "@/lib/format";
+import {
+  formatDuration,
+  formatMoney,
+  monthName,
+  weekdayName,
+} from "@/lib/format";
 
 /** Dashboard-ul: ce se întâmplă azi, cât ai de încasat, cum stai luna asta. */
 export default function DashboardPage() {
-  const { currency, settings } = useApp();
+  const { currency, settings, siteMode } = useApp();
   const data = useDashboardData();
   const today = new Date();
   const firstName = settings?.full_name?.split(" ")[0];
@@ -57,39 +62,45 @@ export default function DashboardPage() {
           href="/lucrari?filtru=in_progress"
           hint={`${data.todayJobs.length} programate azi`}
         />
-        <StatCard
-          label="Bani de încasat"
-          value={formatMoney(data.receivable, currency, { compact: true })}
-          icon={Wallet}
-          tone="warning"
-          href="/finante"
-          hint={`${data.forecastNet >= 0 ? "+" : "−"}${formatMoney(
-            Math.abs(data.forecastNet),
-            currency,
-            { compact: true },
-          )} în 30 de zile`}
-        />
-        <StatCard
-          label="Încasări luna asta"
-          value={formatMoney(data.monthIncome, currency, { compact: true })}
-          icon={TrendingUp}
-          tone="success"
-          href="/finante"
-        />
-        <StatCard
-          label="Cheltuieli luna asta"
-          value={formatMoney(data.monthExpenses, currency, { compact: true })}
-          icon={TrendingDown}
-          tone="danger"
-          href="/finante"
-        />
-        <StatCard
-          label="Profit estimat"
-          value={formatMoney(data.monthProfit, currency, { compact: true })}
-          icon={Receipt}
-          tone={data.monthProfit >= 0 ? "success" : "danger"}
-          href="/finante"
-        />
+        {!siteMode && (
+          <>
+            <StatCard
+              label="Bani de încasat"
+              value={formatMoney(data.receivable, currency, { compact: true })}
+              icon={Wallet}
+              tone="warning"
+              href="/finante"
+              hint={`${data.forecastNet >= 0 ? "+" : "−"}${formatMoney(
+                Math.abs(data.forecastNet),
+                currency,
+                { compact: true },
+              )} în 30 de zile`}
+            />
+            <StatCard
+              label="Încasări luna asta"
+              value={formatMoney(data.monthIncome, currency, { compact: true })}
+              icon={TrendingUp}
+              tone="success"
+              href="/finante"
+            />
+            <StatCard
+              label="Cheltuieli luna asta"
+              value={formatMoney(data.monthExpenses, currency, {
+                compact: true,
+              })}
+              icon={TrendingDown}
+              tone="danger"
+              href="/finante"
+            />
+            <StatCard
+              label="Profit estimat"
+              value={formatMoney(data.monthProfit, currency, { compact: true })}
+              icon={Receipt}
+              tone={data.monthProfit >= 0 ? "success" : "danger"}
+              href="/finante"
+            />
+          </>
+        )}
         <StatCard
           label="Ore lucrate"
           value={formatDuration(data.monthMinutes)}
@@ -167,7 +178,9 @@ export default function DashboardPage() {
           </span>
           <div>
             <p className="font-medium">Calculator preț</p>
-            <p className="text-xs text-muted-foreground">Trepte, m², metri liniari</p>
+            <p className="text-xs text-muted-foreground">
+              Trepte, m², metri liniari
+            </p>
           </div>
         </Link>
         <Link
@@ -179,7 +192,9 @@ export default function DashboardPage() {
           </span>
           <div>
             <p className="font-medium">Măsurătoare rapidă</p>
-            <p className="text-xs text-muted-foreground">Direct de pe telefon</p>
+            <p className="text-xs text-muted-foreground">
+              Direct de pe telefon
+            </p>
           </div>
         </Link>
         <Link
@@ -191,7 +206,9 @@ export default function DashboardPage() {
           </span>
           <div>
             <p className="font-medium">Ofertă nouă</p>
-            <p className="text-xs text-muted-foreground">Gata de trimis clientului</p>
+            <p className="text-xs text-muted-foreground">
+              Gata de trimis clientului
+            </p>
           </div>
         </Link>
       </section>

@@ -43,7 +43,7 @@ function JobDetail({ id }: { id: string }) {
   const ready = useStoreReady();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { currency } = useApp();
+  const { currency, siteMode } = useApp();
   const details = useJobDetails(id);
   const project = useRow("projects", details.job?.project_id);
   const [tab, setTab] = useState(searchParams.get("tab") ?? "general");
@@ -83,17 +83,22 @@ function JobDetail({ id }: { id: string }) {
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-lg font-bold">{job.title}</h2>
             <p className="text-sm text-muted-foreground">
-              {JOB_TYPE_LABELS[job.type]} · {details.client?.name ?? "Fără client"}
+              {JOB_TYPE_LABELS[job.type]} ·{" "}
+              {details.client?.name ?? "Fără client"}
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <StatusBadge status={job.status} />
-              <span className="text-sm font-semibold tabular-nums">
-                {formatMoney(job.price_total, currency)}
-              </span>
-              {details.money.rest > 0 && (
-                <span className="text-xs text-amber-300">
-                  rest {formatMoney(details.money.rest, currency)}
-                </span>
+              {!siteMode && (
+                <>
+                  <span className="text-sm font-semibold tabular-nums">
+                    {formatMoney(job.price_total, currency)}
+                  </span>
+                  {details.money.rest > 0 && (
+                    <span className="text-xs text-amber-300">
+                      rest {formatMoney(details.money.rest, currency)}
+                    </span>
+                  )}
+                </>
               )}
               {project && (
                 <Link
@@ -129,7 +134,9 @@ function JobDetail({ id }: { id: string }) {
             >
               <Square className="size-5 fill-current" />
               FINALIZEAZĂ
-              <span className="font-mono tabular-nums">{formatStopwatch(elapsed)}</span>
+              <span className="font-mono tabular-nums">
+                {formatStopwatch(elapsed)}
+              </span>
             </button>
           ) : (
             <button
@@ -207,7 +214,11 @@ function JobDetail({ id }: { id: string }) {
   );
 }
 
-export default function JobPage({ params }: { params: Promise<{ id: string }> }) {
+export default function JobPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
   return (
     <Suspense fallback={<Skeleton className="h-96 w-full" />}>

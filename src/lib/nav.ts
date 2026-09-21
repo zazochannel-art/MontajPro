@@ -94,6 +94,32 @@ export const BOTTOM_NAV: NavItem[] = [
   { href: "/finante", label: "Bani", icon: Wallet },
 ];
 
+/**
+ * Paginile care arată bani și care dispar în modul șantier.
+ *
+ * Nu e o chestiune de secrete, ci de bun-simț: lângă client, pe un telefon
+ * ținut în mână, profitul pe luna trecută n-are ce căuta la vedere.
+ */
+const MONEY_PAGES = new Set(["/finante", "/rapoarte", "/facturi"]);
+
+export function visibleSections(siteMode: boolean): NavSection[] {
+  if (!siteMode) return NAV_SECTIONS;
+  return NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => !MONEY_PAGES.has(item.href)),
+  })).filter((section) => section.items.length > 0);
+}
+
+/** Pe șantier, locul „Banilor" din bara de jos îl ia măsurătoarea. */
+export function visibleBottomNav(siteMode: boolean): NavItem[] {
+  if (!siteMode) return BOTTOM_NAV;
+  return BOTTOM_NAV.map((item) =>
+    MONEY_PAGES.has(item.href)
+      ? { href: "/masuratori", label: "Măsuri", icon: Ruler }
+      : item,
+  );
+}
+
 export function isActivePath(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);

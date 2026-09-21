@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import {
   Archive,
   Bell,
+  HardHat,
   Building2,
   Camera,
   ListChecks,
@@ -82,6 +83,8 @@ export default function SettingsPage() {
     sync,
     lastSyncAt,
     pendingChanges,
+    siteMode,
+    setSiteMode,
   } = useApp();
   const { canInstall, installed, isIOS, install } = useInstallPrompt();
   const priceFileRef = useRef<HTMLInputElement>(null);
@@ -646,6 +649,26 @@ export default function SettingsPage() {
             <FlaskConical /> Încarcă date demo
           </Button>
         )}
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+              <HardHat className="size-4 text-primary" /> Mod șantier
+            </h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Ascunde prețurile, profitul și paginile de bani. Lângă client, pe
+              un telefon ținut în mână, n-au ce căuta la vedere. Ține de acest
+              telefon, nu de cont.
+            </p>
+          </div>
+          <Switch
+            checked={siteMode}
+            onCheckedChange={setSiteMode}
+            aria-label="Mod șantier"
+          />
+        </div>
       </section>
 
       <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
