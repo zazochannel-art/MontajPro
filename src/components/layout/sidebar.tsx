@@ -28,7 +28,7 @@ export function Sidebar({ onQuickAdd }: { onQuickAdd: () => void }) {
   };
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border bg-card pt-[env(safe-area-inset-top)] lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border bg-card pt-[env(safe-area-inset-top)] shadow-[1px_0_0_rgba(255,255,255,0.03)] lg:flex">
       <div className="flex h-16 items-center px-5">
         <Logo />
       </div>
@@ -54,9 +54,10 @@ export function Sidebar({ onQuickAdd }: { onQuickAdd: () => void }) {
                     <Link
                       href={item.href}
                       className={cn(
-                        "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                        "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
+                        "transition-[background-color,color,transform] duration-[--dur-1] ease-[--ease-out] active:scale-[0.98]",
                         active
-                          ? "bg-primary/10 text-primary"
+                          ? "bg-primary/12 text-primary before:absolute before:inset-y-1.5 before:-left-px before:w-0.5 before:rounded-full before:bg-primary before:content-['']"
                           : "text-muted-foreground hover:bg-accent hover:text-foreground",
                       )}
                     >

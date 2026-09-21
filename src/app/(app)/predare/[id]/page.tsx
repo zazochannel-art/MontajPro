@@ -99,7 +99,7 @@ export default function HandoverPage({
 
       <article
         id="document"
-        className="print-surface space-y-5 rounded-2xl border border-border bg-card p-5 sm:p-7"
+        className="print-surface space-y-5 rounded-2xl surface p-5 sm:p-7"
       >
         <header className="flex items-start justify-between gap-4 border-b border-border pb-4">
           <div>
@@ -221,7 +221,7 @@ export default function HandoverPage({
       </article>
 
       {!handover.signature && (
-        <section className="no-print space-y-3 rounded-2xl border border-border bg-card p-4">
+        <section className="no-print space-y-3 rounded-2xl surface p-4">
           <h3 className="text-sm font-semibold">Semnătura clientului</h3>
           <Field label="Numele celui care semnează">
             <Input

@@ -54,7 +54,7 @@ export default function LoginPage() {
   });
 
   return (
-    <div className="aurora flex min-h-dvh flex-col items-center justify-center px-5 pb-10 pt-[calc(env(safe-area-inset-top)+2.5rem)]">
+    <div className="aurora grain relative flex min-h-dvh flex-col items-center justify-center px-5 pb-10 pt-[calc(env(safe-area-inset-top)+2.5rem)]">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <Logo tagline />
@@ -63,7 +63,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="rounded-3xl border border-border bg-card p-5 shadow-2xl">
+        <div className="surface rise rounded-3xl p-5 shadow-2xl">
           {isSupabaseConfigured ? (
             <>
               <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-background p-1">
@@ -125,7 +125,7 @@ export default function LoginPage() {
                   </p>
                 )}
                 {notice && (
-                  <p className="flex items-start gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3.5 py-2.5 text-sm text-cyan-200">
+                  <p className="flex items-start gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3.5 py-2.5 text-sm text-primary-soft">
                     <Mail className="mt-0.5 size-4 shrink-0" />
                     {notice}
                   </p>

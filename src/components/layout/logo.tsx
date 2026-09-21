@@ -14,7 +14,7 @@ export function Logo({
   if (tagline) {
     return (
       <div className={cn("flex flex-col items-center gap-2", className)}>
-        <LogoMark className="h-14 w-auto" />
+        <LogoMark className="h-14 w-auto" animate />
         <div className="flex flex-col items-center gap-1">
           <span className="text-2xl font-bold uppercase tracking-tight">
             Mont<span className="text-wood-light">Craft</span>

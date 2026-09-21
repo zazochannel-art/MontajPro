@@ -136,7 +136,7 @@ export default function MaterialsPage() {
 
           {filtered.length ? (
             <>
-              <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-3.5">
+              <div className="flex items-center justify-between rounded-2xl surface p-3.5">
                 <span className="text-sm text-muted-foreground">Valoare stoc</span>
                 <span className="font-bold tabular-nums">{formatMoney(stockValue, currency)}</span>
               </div>
@@ -145,7 +145,7 @@ export default function MaterialsPage() {
                 {filtered.map((material) => (
                   <li
                     key={material.id}
-                    className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5"
+                    className="flex items-center gap-3 rounded-2xl surface p-3.5"
                   >
                     <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                       <Package className="size-4" />
@@ -235,7 +235,7 @@ export default function MaterialsPage() {
               </div>
 
               {orders.length > 0 && (
-                <div className="space-y-2 rounded-2xl border border-border bg-card p-3.5">
+                <div className="space-y-2 rounded-2xl surface p-3.5">
                   <p className="text-xs text-muted-foreground">
                     Trimite comanda, grupată pe furnizor:
                   </p>
@@ -272,7 +272,7 @@ export default function MaterialsPage() {
                 {shoppingList.map(({ material, job, inStock }) => (
                   <li
                     key={material.id}
-                    className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5"
+                    className="flex items-center gap-3 rounded-2xl surface p-3.5"
                   >
                     <Checkbox
                       checked={material.purchased}

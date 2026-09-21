@@ -144,7 +144,7 @@ export default function CalendarPage() {
       </div>
 
       {view === "month" ? (
-        <div className="rounded-2xl border border-border bg-card p-2 sm:p-3">
+        <div className="rounded-2xl surface p-2 sm:p-3">
           <div className="grid grid-cols-7 gap-1 pb-1">
             {WEEKDAY_SHORT.map((day) => (
               <div key={day} className="py-1 text-center text-[11px] font-medium text-muted-foreground">
@@ -196,7 +196,7 @@ export default function CalendarPage() {
                             ? "bg-emerald-400"
                             : job.status === "issue"
                               ? "bg-red-400"
-                              : "bg-cyan-400",
+                              : "bg-primary",
                         )}
                       />
                     ))}
@@ -227,7 +227,7 @@ export default function CalendarPage() {
                   if (job) void moveJob(job, key);
                 }}
                 className={cn(
-                  "rounded-2xl border border-border bg-card p-3",
+                  "rounded-2xl surface p-3",
                   key === todayKey() && "border-primary/40",
                 )}
               >

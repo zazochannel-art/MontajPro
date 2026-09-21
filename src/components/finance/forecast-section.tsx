@@ -24,7 +24,7 @@ function WeekRow({
   const width = (value: number) => `${scale ? Math.max(0, (value / scale) * 100) : 0}%`;
 
   return (
-    <li className="rounded-xl border border-border bg-card/60">
+    <li className="rounded-xl surface/60">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -148,7 +148,7 @@ export function ForecastSection() {
   const empty = forecast.income === 0 && forecast.expense === 0;
 
   return (
-    <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+    <section className="space-y-3 rounded-2xl surface p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold">Următoarele 4 săptămâni</h3>

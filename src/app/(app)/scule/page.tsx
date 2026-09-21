@@ -78,7 +78,7 @@ export default function ToolsPage() {
           {rows.map(({ tool, end, days }) => (
             <li
               key={tool.id}
-              className="flex gap-3 rounded-2xl border border-border bg-card p-3.5"
+              className="flex gap-3 rounded-2xl surface p-3.5"
             >
               <div className="size-16 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
                 {tool.photo_path || tool.photo_local_key ? (

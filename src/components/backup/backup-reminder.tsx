@@ -59,7 +59,8 @@ export function BackupReminder() {
   if (!status?.due) return null;
 
   return (
-    <section className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+    <section className="surface relative flex items-start gap-3 overflow-hidden rounded-2xl p-4 pl-5">
+      <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-amber-500" />
       <ShieldAlert className="mt-0.5 size-5 shrink-0 text-amber-300" />
       <div className="min-w-0 flex-1 space-y-2">
         <div>

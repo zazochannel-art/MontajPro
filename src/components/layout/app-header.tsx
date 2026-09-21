@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, Bell, HardHat, Menu, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isActivePath, visibleSections } from "@/lib/nav";
 import { useApp } from "@/lib/app-provider";
 import { useTable } from "@/hooks/use-data";
@@ -37,6 +37,23 @@ export function AppHeader({ title }: { title?: string }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+  /*
+   * Antetul se „ridică” după ce pagina a fost derulată: capătă fundal opac și
+   * o umbră, ca să se desprindă de conținutul care trece pe dedesubt. Clasa se
+   * pune direct pe element, nu prin stare: la derulare s-ar re-randa antetul
+   * de zeci de ori pe secundă degeaba.
+   */
+  const headerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const onScroll = () => {
+      const el = headerRef.current;
+      if (el) el.dataset.scrolled = window.scrollY > 8 ? "true" : "false";
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const notifications = useTable("notifications");
   const unread = notifications.filter((item) => !item.read_at).length;
 
@@ -51,7 +68,11 @@ export function AppHeader({ title }: { title?: string }) {
        * butoanele ajung dedesubtul ei. Fundalul antetului urcă în spatele
        * barei, conținutul rămâne sub ea. În browser marginea e 0.
        */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur-lg">
+      <header
+        ref={headerRef}
+        data-scrolled="false"
+        className="sticky top-0 z-30 border-b border-transparent bg-background/70 pt-[env(safe-area-inset-top)] backdrop-blur-xl transition-[background-color,border-color,box-shadow] duration-[--dur-2] ease-[--ease-out] data-[scrolled=true]:border-border data-[scrolled=true]:bg-background/92 data-[scrolled=true]:shadow-[0_8px_24px_-16px_rgba(0,0,0,0.9)]"
+      >
         <div className="flex h-14 items-center gap-2 px-3 sm:px-4 lg:h-16 lg:px-8">
           {isRoot ? (
             <div className="lg:hidden">
@@ -62,7 +83,7 @@ export function AppHeader({ title }: { title?: string }) {
               type="button"
               onClick={() => router.back()}
               aria-label="Înapoi"
-              className="-ml-1 flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-foreground lg:hidden"
+              className="-ml-1 flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-[background-color,color,transform] duration-[--dur-1] ease-[--ease-out] hover:bg-accent hover:text-foreground active:scale-90 lg:hidden"
             >
               <ArrowLeft className="size-5" />
             </button>
@@ -79,7 +100,7 @@ export function AppHeader({ title }: { title?: string }) {
             <button
               type="button"
               onClick={() => setSiteMode(false)}
-              className="flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-300"
+              className="pop flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/12 px-2.5 py-1 text-xs font-medium text-amber-300 transition-transform duration-[--dur-1] active:scale-95"
             >
               <HardHat className="size-3.5" /> Șantier
             </button>
@@ -89,7 +110,7 @@ export function AppHeader({ title }: { title?: string }) {
             type="button"
             onClick={() => setSearchOpen(true)}
             aria-label="Caută"
-            className="flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-[background-color,color,transform] duration-[--dur-1] ease-[--ease-out] hover:bg-accent hover:text-foreground active:scale-90"
           >
             <Search className="size-5" />
           </button>
@@ -99,11 +120,11 @@ export function AppHeader({ title }: { title?: string }) {
           <Link
             href="/notificari"
             aria-label="Notificări"
-            className="relative flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="relative flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-[background-color,color,transform] duration-[--dur-1] ease-[--ease-out] hover:bg-accent hover:text-foreground active:scale-90"
           >
             <Bell className="size-5" />
             {unread > 0 && (
-              <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-black">
+              <span className="pop absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
                 {unread > 9 ? "9+" : unread}
               </span>
             )}
@@ -113,7 +134,7 @@ export function AppHeader({ title }: { title?: string }) {
             type="button"
             onClick={() => setMenuOpen(true)}
             aria-label="Meniu"
-            className="flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-foreground lg:hidden"
+            className="flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-[background-color,color,transform] duration-[--dur-1] ease-[--ease-out] hover:bg-accent hover:text-foreground active:scale-90 lg:hidden"
           >
             <Menu className="size-5" />
           </button>

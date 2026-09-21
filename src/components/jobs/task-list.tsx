@@ -51,7 +51,7 @@ export function TaskList({ job }: { job: Job }) {
   };
 
   return (
-    <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+    <section className="space-y-3 rounded-2xl surface p-4">
       <div className="flex items-center justify-between gap-3">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <ListChecks className="size-4 text-primary" /> Pașii lucrării

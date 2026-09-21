@@ -304,7 +304,7 @@ export default function FinancePage() {
               {data.monthPayments.map((payment) => (
                 <li
                   key={payment.id}
-                  className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5"
+                  className="flex items-center gap-3 rounded-2xl surface p-3.5"
                 >
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-300">
                     <TrendingUp className="size-4" />
@@ -379,7 +379,7 @@ export default function FinancePage() {
           </div>
 
           {data.byCategory.length > 0 && (
-            <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+            <div className="space-y-2 rounded-2xl surface p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Pe categorii
               </p>
@@ -413,7 +413,7 @@ export default function FinancePage() {
               {data.monthExpenses.map((expense) => (
                 <li
                   key={expense.id}
-                  className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5"
+                  className="flex items-center gap-3 rounded-2xl surface p-3.5"
                 >
                   <button
                     type="button"

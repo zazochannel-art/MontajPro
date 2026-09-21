@@ -181,7 +181,7 @@ export function QuoteForm({ quote }: { quote?: Quote | null }) {
   return (
     <>
       <form onSubmit={onSubmit} className="space-y-4 pb-4">
-        <div className="space-y-3.5 rounded-2xl border border-border bg-card p-4">
+        <div className="space-y-3.5 rounded-2xl surface p-4">
           <Field label="Titlu" error={form.errors.title} required>
             <Input
               value={form.values.title}
@@ -236,7 +236,7 @@ export function QuoteForm({ quote }: { quote?: Quote | null }) {
           {items.map((item) => (
             <div
               key={item.key}
-              className="rounded-2xl border border-border bg-card p-3.5"
+              className="rounded-2xl surface p-3.5"
             >
               <div className="flex items-center gap-2">
                 <div className="flex-1">
@@ -373,7 +373,7 @@ export function QuoteForm({ quote }: { quote?: Quote | null }) {
           </Button>
         </div>
 
-        <div className="space-y-3.5 rounded-2xl border border-border bg-card p-4">
+        <div className="space-y-3.5 rounded-2xl surface p-4">
           <FieldRow>
             <Field label="Reducere">
               <MoneyInput

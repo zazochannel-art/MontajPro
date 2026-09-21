@@ -58,14 +58,14 @@ export function QuickAdd({
       label: "Lucrare nouă",
       hint: "Client, preț, dată",
       icon: Hammer,
-      tone: "from-cyan-500/20 to-cyan-500/5 text-cyan-300",
+      tone: "from-primary/20 to-primary/5 text-primary",
       onClick: () => go("/lucrari/nou"),
     },
     {
       label: "Măsurătoare rapidă",
       hint: "Scară, parchet, plintă",
       icon: Ruler,
-      tone: "from-violet-500/20 to-violet-500/5 text-violet-300",
+      tone: "from-sky-500/20 to-sky-500/5 text-sky-300",
       onClick: () => go("/masuratori/nou"),
     },
     {

@@ -25,7 +25,7 @@ export function DayRoute({ jobs, className }: { jobs: Job[]; className?: string 
 
   return (
     <section
-      className={className ?? "space-y-3 rounded-2xl border border-border bg-card p-4"}
+      className={className ?? "space-y-3 rounded-2xl surface p-4"}
     >
       {hasWarning && (
         <div className="space-y-1.5">

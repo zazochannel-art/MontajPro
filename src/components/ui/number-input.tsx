@@ -53,7 +53,7 @@ export function NumberInput({
           type="button"
           aria-label="Scade"
           onClick={() => bump(-step)}
-          className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 md:size-11"
+          className="flex size-12 shrink-0 items-center justify-center rounded-xl surface text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 md:size-11"
         >
           <Minus className="size-4" />
         </button>
@@ -88,7 +88,7 @@ export function NumberInput({
           type="button"
           aria-label="Adaugă"
           onClick={() => bump(step)}
-          className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 md:size-11"
+          className="flex size-12 shrink-0 items-center justify-center rounded-xl surface text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 md:size-11"
         >
           <Plus className="size-4" />
         </button>

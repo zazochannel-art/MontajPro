@@ -64,7 +64,7 @@ export function MaterialsTab({
     <div className="space-y-3">
       {materials.length ? (
         <>
-          <div className="grid grid-cols-3 gap-2 rounded-2xl border border-border bg-card p-3 text-center">
+          <div className="grid grid-cols-3 gap-2 rounded-2xl surface p-3 text-center">
             <div>
               <p className="text-xs text-muted-foreground">Total</p>
               <p className="font-bold tabular-nums">
@@ -86,7 +86,7 @@ export function MaterialsTab({
           </div>
 
           {consumption && (
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-2xl border border-border bg-card px-3.5 py-3 text-sm">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-2xl surface px-3.5 py-3 text-sm">
               <span className="text-muted-foreground">
                 Estimat {formatNumber(consumption.planned)} {consumption.unit} ·
                 consumat {formatNumber(consumption.used)} {consumption.unit}
@@ -108,7 +108,7 @@ export function MaterialsTab({
             {materials.map((material) => (
               <li
                 key={material.id}
-                className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5"
+                className="flex items-center gap-3 rounded-2xl surface p-3.5"
               >
                 <Checkbox
                   checked={material.purchased}

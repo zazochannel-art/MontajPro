@@ -41,7 +41,7 @@ export function MeasurementsTab({
           {measurements.map((measurement) => (
             <article
               key={measurement.id}
-              className="space-y-3 rounded-2xl border border-border bg-card p-4"
+              className="space-y-3 rounded-2xl surface p-4"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2.5">

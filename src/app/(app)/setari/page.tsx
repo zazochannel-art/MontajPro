@@ -167,7 +167,7 @@ export default function SettingsPage() {
         description="Profil, monedă, tarife și backup"
       />
 
-      <section className="space-y-3.5 rounded-2xl border border-border bg-card p-4">
+      <section className="space-y-3.5 rounded-2xl surface p-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <User className="size-4 text-primary" /> Profil
         </h3>
@@ -212,7 +212,7 @@ export default function SettingsPage() {
         </Field>
       </section>
 
-      <section className="space-y-3.5 rounded-2xl border border-border bg-card p-4">
+      <section className="space-y-3.5 rounded-2xl surface p-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <Coins className="size-4 text-primary" /> Monedă și unități
         </h3>
@@ -294,7 +294,7 @@ export default function SettingsPage() {
         </FieldRow>
       </section>
 
-      <section className="space-y-3.5 rounded-2xl border border-border bg-card p-4">
+      <section className="space-y-3.5 rounded-2xl surface p-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <Ruler className="size-4 text-primary" /> Tarife implicite
         </h3>
@@ -440,7 +440,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <section className="space-y-3 rounded-2xl surface p-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <Camera className="size-4 text-primary" /> Fotografii
         </h3>
@@ -462,7 +462,7 @@ export default function SettingsPage() {
 
       <TeamSection />
 
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <section className="space-y-3 rounded-2xl surface p-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <ListChecks className="size-4 text-primary" /> Pașii lucrării
         </h3>
@@ -501,7 +501,7 @@ export default function SettingsPage() {
         ))}
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <section className="space-y-3 rounded-2xl surface p-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <Tags className="size-4 text-primary" /> Categorii materiale
         </h3>
@@ -551,7 +551,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <section className="space-y-3 rounded-2xl surface p-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <Bell className="size-4 text-primary" /> Notificări
         </h3>
@@ -578,7 +578,7 @@ export default function SettingsPage() {
         )}
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <section className="space-y-3 rounded-2xl surface p-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <Smartphone className="size-4 text-primary" /> Aplicație
         </h3>
@@ -629,7 +629,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <section className="space-y-3 rounded-2xl surface p-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <Building2 className="size-4 text-primary" /> Oferte
         </h3>
@@ -644,7 +644,7 @@ export default function SettingsPage() {
         </Field>
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <section className="space-y-3 rounded-2xl surface p-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <FlaskConical className="size-4 text-primary" /> Date demo
         </h3>
@@ -685,7 +685,7 @@ export default function SettingsPage() {
 
       <ConflictsSection />
 
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <section className="space-y-3 rounded-2xl surface p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="flex items-center gap-2 text-sm font-semibold">
@@ -705,7 +705,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <section className="space-y-3 rounded-2xl surface p-4">
         <h3 className="text-sm font-semibold">Arhivă</h3>
         <p className="text-xs text-muted-foreground">
           Scoate din lista de lucrări comenzile terminate și încasate integral.
