@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Move } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/page-header";
+import { DayRoute } from "@/components/calendar/day-route";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
@@ -272,6 +273,7 @@ export default function CalendarPage() {
             </span>
             <span className="text-muted-foreground">· {selectedJobs.length} lucrări</span>
           </h3>
+          <DayRoute jobs={selectedJobs} />
           {selectedJobs.length ? (
             <ul className="space-y-2">
               {selectedJobs.map((job) => (

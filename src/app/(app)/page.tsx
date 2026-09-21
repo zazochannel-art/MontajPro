@@ -22,6 +22,7 @@ import { JobCard } from "@/components/jobs/job-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { BackupReminder } from "@/components/backup/backup-reminder";
+import { DayRoute } from "@/components/calendar/day-route";
 import { FirstRun } from "@/components/onboarding/first-run";
 import { useDashboardData } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
@@ -144,6 +145,7 @@ export default function DashboardPage() {
             {data.todayJobs.map((job) => (
               <TodayJobCard key={job.id} job={job} />
             ))}
+            <DayRoute jobs={data.todayJobs} />
           </div>
         ) : (
           <EmptyState

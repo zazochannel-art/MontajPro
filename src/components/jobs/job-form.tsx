@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Plus } from "lucide-react";
+import { CalendarClock, Check, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,9 @@ import {
 import { JOB_STATUSES, JOB_TYPES } from "@/lib/types";
 import type { Job, JobStatus, JobType } from "@/lib/types";
 import { useApp } from "@/lib/app-provider";
-import { useClients, useProjects } from "@/hooks/use-data";
+import { useClients, useProjects, useTable } from "@/hooks/use-data";
+import { dayLoad } from "@/lib/route";
+import { formatDuration } from "@/lib/format";
 import { clearCalcDraft, peekCalcDraft } from "@/lib/calc-draft";
 import { JOB_TYPE_UNIT } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -47,6 +49,7 @@ export function JobForm({
   const { currency } = useApp();
   const clients = useClients();
   const projects = useProjects();
+  const allJobs = useTable("jobs");
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
 
   // Când vii din calculator, tipul și prețul sunt deja calculate.
@@ -83,6 +86,17 @@ export function JobForm({
     clearCalcDraft();
     toast.success("Calculul a fost preluat");
   }, [draft]);
+
+  // Ce mai e programat în ziua aleasă. Avertizarea la programare valorează mai
+  // mult decât descoperirea la șapte dimineața.
+  const sameDay = dayLoad(
+    allJobs.filter(
+      (row) =>
+        row.id !== job?.id &&
+        Boolean(form.values.scheduled_date) &&
+        row.scheduled_date === form.values.scheduled_date,
+    ),
+  );
 
   const onSubmit = form.handleSubmit(async (data) => {
     const saved = await saveJob({ id: job?.id, ...data });
@@ -238,6 +252,18 @@ export function JobForm({
               />
             </Field>
           </FieldRow>
+
+          {sameDay.jobs.length > 0 && (
+            <p className="flex items-start gap-2 rounded-xl bg-muted/50 p-2.5 text-xs text-muted-foreground">
+              <CalendarClock className="mt-0.5 size-3.5 shrink-0" />
+              <span>
+                Mai ai {sameDay.jobs.length}{" "}
+                {sameDay.jobs.length === 1 ? "lucrare" : "lucrări"} în ziua asta
+                {sameDay.hours > 0 && `, ${formatDuration(Math.round(sameDay.hours * 60))} estimate`}
+                {sameDay.long && " — e o zi cam plină"}.
+              </span>
+            </p>
+          )}
 
           <Field
             label="Durată estimată"
