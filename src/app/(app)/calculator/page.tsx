@@ -39,6 +39,7 @@ import {
   everyPriceUnset,
   findPosition,
   groupedPositions,
+  TRAVEL_UNIT,
   type Position,
 } from "@/lib/price-list";
 import type { DefaultRates, JobType } from "@/lib/types";
@@ -306,6 +307,17 @@ export default function CalculatorPage() {
                       stepper={false}
                       suffix={line.unit}
                     />
+                    {line.unit === TRAVEL_UNIT && line.quantity > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          update(line.id, { quantity: line.quantity * 2 })
+                        }
+                        className="text-xs text-primary hover:underline"
+                      >
+                        dus-întors ({line.quantity * 2} {TRAVEL_UNIT})
+                      </button>
+                    )}
                   </Field>
                   <span className="pb-3 text-muted-foreground">×</span>
                   <Field label="Preț unitar">

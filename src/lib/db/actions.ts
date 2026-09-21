@@ -10,7 +10,9 @@
 import { store } from "./store";
 import { syncNow } from "./sync";
 import { deleteAsset } from "../storage";
+import { CLIENT_TABLES } from "../clients";
 import type {
+  Client,
   ExpenseCategory,
   Job,
   JobStatus,
@@ -56,6 +58,46 @@ export async function saveClient(input: {
   return row;
 }
 
+/**
+ * Unește doi clienți: tot ce e al lui `fromId` trece la `intoId`.
+ *
+ * Nu se pierde nimic. Lucrările, plățile, ofertele, facturile,
+ * procesele-verbale, măsurătorile și proiectele își schimbă doar stăpânul,
+ * iar câmpurile goale ale celui rămas se completează din cel care pleacă —
+ * telefonul scris o singură dată, la dublură, n-are de ce să dispară.
+ *
+ * Dublura pleacă în coș, deci unirea greșită are drum înapoi.
+ */
+export async function mergeClients(fromId: string, intoId: string): Promise<number> {
+  if (fromId === intoId) return 0;
+  const from = store.getTable("clients").find((row) => row.id === fromId);
+  const into = store.getTable("clients").find((row) => row.id === intoId);
+  if (!from || !into) return 0;
+
+  let moved = 0;
+  for (const table of CLIENT_TABLES) {
+    for (const row of store.getTable(table)) {
+      const owner = (row as { client_id?: string | null }).client_id;
+      if (row.deleted_at || owner !== fromId) continue;
+      await store.update(table, row.id, { client_id: intoId } as never);
+      moved++;
+    }
+  }
+
+  const patch: Partial<Client> = {};
+  if (!into.phone && from.phone) patch.phone = from.phone;
+  if (!into.email && from.email) patch.email = from.email;
+  if (!into.address && from.address) patch.address = from.address;
+  if (from.notes) {
+    patch.notes = into.notes ? `${into.notes}\n${from.notes}` : from.notes;
+  }
+  if (Object.keys(patch).length) await store.update("clients", intoId, patch);
+
+  await store.remove("clients", fromId);
+  kick();
+  return moved;
+}
+
 export async function deleteClient(id: string) {
   // Lucrările rămân, dar pierd legătura — istoricul financiar nu se pierde.
   const jobs = store.getTable("jobs").filter((job) => job.client_id === id);
@@ -65,11 +107,49 @@ export async function deleteClient(id: string) {
   kick();
 }
 
+/* -------------------------------- proiecte ------------------------- */
+
+export async function saveProject(input: {
+  id?: string;
+  name: string;
+  client_id?: string | null;
+  address?: string | null;
+  notes?: string | null;
+}) {
+  const payload = {
+    name: input.name.trim(),
+    client_id: input.client_id || null,
+    address: input.address?.trim() || null,
+    notes: input.notes?.trim() || null,
+  };
+  const row = input.id
+    ? await store.update("projects", input.id, payload)
+    : await store.insert("projects", payload);
+  kick();
+  return row;
+}
+
+export async function deleteProject(id: string) {
+  // Proiectul e doar un acoperiș. Când cade, lucrările rămân în picioare —
+  // cu banii, pozele și scadențarele lor cu tot.
+  const jobs = store.getTable("jobs").filter((job) => job.project_id === id);
+  for (const job of jobs) await store.update("jobs", job.id, { project_id: null });
+  await store.remove("projects", id);
+  kick();
+}
+
+/** Mută o lucrare în proiect sau o scoate din el. */
+export async function setJobProject(jobId: string, projectId: string | null) {
+  await store.update("jobs", jobId, { project_id: projectId });
+  kick();
+}
+
 /* -------------------------------- lucrări -------------------------- */
 
 export interface JobInput {
   id?: string;
   client_id: string | null;
+  project_id?: string | null;
   title: string;
   type: JobType;
   status: JobStatus;
@@ -87,6 +167,7 @@ export interface JobInput {
 export async function saveJob(input: JobInput) {
   const payload = {
     client_id: input.client_id,
+    project_id: input.project_id ?? null,
     title: input.title.trim(),
     type: input.type,
     status: input.status,
@@ -1242,6 +1323,8 @@ export async function duplicateJob(id: string) {
 
   const copy = await store.insert("jobs", {
     client_id: source.client_id,
+    // Un apartament duplicat rămâne în aceeași scară de bloc.
+    project_id: source.project_id ?? null,
     title: `${source.title} (copie)`,
     type: source.type,
     status: "quote",

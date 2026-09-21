@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Building2,
   FileCheck,
   FileText,
   Hammer,
@@ -55,6 +56,7 @@ export function GlobalSearch({
   const [query, setQuery] = useState("");
 
   const clients = useTable("clients");
+  const projects = useTable("projects");
   const jobs = useTable("jobs");
   const quotes = useTable("quotes");
   const invoices = useTable("invoices");
@@ -80,6 +82,19 @@ export function GlobalSearch({
         title: client.name,
         subtitle: [client.phone, client.address].filter(Boolean).join(" · ") || "Client",
         group: "Clienți",
+      });
+      if (result.length > 60) break;
+    }
+
+    for (const project of projects) {
+      if (!has(project.name, project.address, project.notes)) continue;
+      result.push({
+        id: project.id,
+        href: `/proiecte/${project.id}`,
+        icon: Building2,
+        title: project.name,
+        subtitle: project.address || "Proiect",
+        group: "Proiecte",
       });
       if (result.length > 60) break;
     }
@@ -175,7 +190,7 @@ export function GlobalSearch({
     }
 
     return result;
-  }, [query, clients, jobs, quotes, invoices, materials, tools, measurements, handovers, currency]);
+  }, [query, clients, projects, jobs, quotes, invoices, materials, tools, measurements, handovers, currency]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Hit[]>();

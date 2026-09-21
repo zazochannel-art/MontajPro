@@ -39,7 +39,11 @@ export const BUILTIN_POSITIONS: {
   { key: "parquet_m2", name: "Montaj parchet", unit: "m²", kind: "parquet" },
   { key: "plinth_m", name: "Montaj plintă", unit: "m", kind: "plinth" },
   { key: "hourly", name: "Manoperă la oră", unit: "oră", kind: "any" },
+  { key: "travel_km", name: "Deplasare", unit: "km", kind: "any" },
 ];
+
+/** Unitatea pe care se poate apăsa „dus-întors”. */
+export const TRAVEL_UNIT = "km";
 
 /** Id-ul unei poziții implicite, ca să nu se ciocnească cu cele proprii. */
 export function builtinId(key: keyof DefaultRates): string {

@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
-import { BOTTOM_NAV, isActivePath } from "@/lib/nav";
+import { isActivePath, visibleBottomNav, type NavItem } from "@/lib/nav";
 import { cn } from "@/lib/utils";
+import { useApp } from "@/lib/app-provider";
 
 /**
  * Navigația de jos + butonul flotant „+”, montate într-o singură bară ca să nu
@@ -12,9 +13,11 @@ import { cn } from "@/lib/utils";
  */
 export function BottomNav({ onQuickAdd }: { onQuickAdd: () => void }) {
   const pathname = usePathname();
-  const [left, right] = [BOTTOM_NAV.slice(0, 2), BOTTOM_NAV.slice(2)];
+  const { siteMode } = useApp();
+  const items = visibleBottomNav(siteMode);
+  const [left, right] = [items.slice(0, 2), items.slice(2)];
 
-  const renderItem = (item: (typeof BOTTOM_NAV)[number]) => {
+  const renderItem = (item: NavItem) => {
     const active = isActivePath(pathname, item.href);
     return (
       <Link

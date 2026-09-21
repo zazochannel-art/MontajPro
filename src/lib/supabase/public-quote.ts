@@ -66,6 +66,19 @@ export async function acceptPublicQuote(
   return { state: "ok", quote: data as PublicQuote };
 }
 
+/**
+ * Spune serverului că oferta a fost deschisă.
+ *
+ * Nimic nu depinde de rezultat: dacă pică, clientul tot vede oferta. De aceea
+ * eșecul se înghite în tăcere, în loc să strice pagina pentru o statistică.
+ */
+export async function markQuoteViewed(token: string): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const supabase = getSupabase();
+  if (!supabase) return;
+  await supabase.rpc("mark_quote_viewed", { token });
+}
+
 /** Linkul de trimis clientului. */
 export function publicQuoteUrl(token: string): string {
   const origin = typeof window === "undefined" ? "" : window.location.origin;

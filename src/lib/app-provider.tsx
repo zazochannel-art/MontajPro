@@ -15,6 +15,7 @@ import type { Session } from "@supabase/supabase-js";
 import { getSupabase, isSupabaseConfigured } from "./supabase/client";
 import { Store, store } from "./db/store";
 import { syncNow } from "./db/sync";
+import { metaGet, metaSet } from "./db/idb";
 import {
   DEFAULT_CURRENCY,
   DEFAULT_MATERIAL_CATEGORIES,
@@ -28,6 +29,7 @@ import { uid } from "./utils";
 const LOCAL_USER_KEY = "montajpro.local-user";
 const LOCAL_MODE_KEY = "montajpro.local-mode";
 const SYNC_INTERVAL_MS = 60_000;
+const SITE_MODE_KEY = "site_mode";
 
 export type AppMode = "cloud" | "local" | "unknown";
 
@@ -39,6 +41,14 @@ interface AuthState {
 
 interface AppContextValue extends AuthState {
   ready: boolean;
+  /**
+   * Modul șantier: fără cifre financiare pe ecran.
+   *
+   * Ține de telefon, nu de cont — pe telefonul din buzunar, lângă client,
+   * prețurile n-au ce căuta la vedere; pe laptopul de acasă, au.
+   */
+  siteMode: boolean;
+  setSiteMode: (value: boolean) => void;
   settings: Settings | null;
   currency: string;
   syncStatus: string;
@@ -298,6 +308,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   /* ----------------------- ieșire din cont -------------------------- */
 
+  const [siteMode, setSiteModeState] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void metaGet<boolean>(SITE_MODE_KEY).then((value) => {
+      if (!cancelled) setSiteModeState(Boolean(value));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const setSiteMode = useCallback((value: boolean) => {
+    setSiteModeState(value);
+    void metaSet(SITE_MODE_KEY, value);
+  }, []);
+
   const signOut = useCallback(async () => {
     const supabase = getSupabase();
     writeStorage(LOCAL_MODE_KEY, null);
@@ -317,6 +344,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     () => ({
       ...auth,
       ready: booted && syncState.ready,
+      siteMode,
+      setSiteMode,
       settings,
       currency: settings?.currency || DEFAULT_CURRENCY,
       syncStatus: syncState.status,
@@ -328,7 +357,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       signOut,
       startLocalMode,
     }),
-    [auth, booted, settings, online, signOut, startLocalMode, syncState],
+    [
+      auth,
+      booted,
+      settings,
+      online,
+      siteMode,
+      setSiteMode,
+      signOut,
+      startLocalMode,
+      syncState,
+    ],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

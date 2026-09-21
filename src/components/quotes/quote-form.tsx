@@ -33,6 +33,7 @@ import {
   findPosition,
   matchPosition,
   positionGroups,
+  TRAVEL_UNIT,
   type Position,
 } from "@/lib/price-list";
 import type { JobType, Quote } from "@/lib/types";
@@ -298,6 +299,17 @@ export function QuoteForm({ quote }: { quote?: Quote | null }) {
                     onChange={(value) => update(item.key, { quantity: value })}
                     stepper={false}
                   />
+                  {item.unit === TRAVEL_UNIT && item.quantity > 0 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        update(item.key, { quantity: item.quantity * 2 })
+                      }
+                      className="text-xs text-primary hover:underline"
+                    >
+                      dus-întors
+                    </button>
+                  )}
                 </Field>
                 <Field label="Unitate">
                   <Select

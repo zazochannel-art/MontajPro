@@ -71,6 +71,7 @@ export const NOTIFICATION_KINDS = [
   "installment_due",
   "follow_up",
   "job_warranty",
+  "quote_viewed",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
@@ -88,6 +89,8 @@ export interface Client extends BaseRow {
 
 export interface Job extends BaseRow {
   client_id: ID | null;
+  /** Proiectul din care face parte; gol pentru o lucrare de sine stătătoare. */
+  project_id: ID | null;
   title: string;
   type: JobType;
   status: JobStatus;
@@ -247,6 +250,17 @@ export interface Quote extends BaseRow {
   accepted_by_client_at: string | null;
   /** Numele scris de client la acceptare. */
   client_signature: string | null;
+  /**
+   * Prima dată când cineva a deschis linkul public.
+   *
+   * Se scrie doar pe server, din pagina publică. De aceea cele trei coloane
+   * lipsesc din lista de trimitere (`TABLE_COLUMNS`): se trag la
+   * sincronizare, dar nu se împing niciodată înapoi, ca o copie locală veche
+   * să nu șteargă o vizită pe care telefonul n-a văzut-o încă.
+   */
+  viewed_at: string | null;
+  last_viewed_at: string | null;
+  view_count: number;
 }
 
 export interface Invoice extends BaseRow {
@@ -399,6 +413,14 @@ export interface DefaultRates {
   parquet_m2: number;
   plinth_m: number;
   hourly: number;
+  /**
+   * Tarif pe kilometru.
+   *
+   * Drumul până în sat și înapoi e muncă plătită, nu un cadou. Până acum
+   * „transport" exista doar ca o categorie de cheltuială — adică o plăteai
+   * din buzunarul tău.
+   */
+  travel_km: number;
 }
 
 /**
@@ -429,6 +451,7 @@ export interface NotificationPrefs {
   installment_due: boolean;
   /** Sună clientul la câteva luni după montaj. */
   follow_up: boolean;
+  quote_viewed: boolean;
   /** Garanția lucrării stă să expire. */
   job_warranty: boolean;
 }
@@ -457,12 +480,27 @@ export interface Settings extends BaseRow {
   photo_stamp: boolean;
 }
 
+/**
+ * Un proiect: mai multe lucrări sub același acoperiș.
+ *
+ * O scară de bloc înseamnă zece apartamente. Fiecare rămâne o lucrare
+ * întreagă, cu banii, pozele și scadențarul ei; proiectul doar le leagă, ca
+ * întrebarea „cât am încasat din toată scara?" să aibă un răspuns.
+ */
+export interface Project extends BaseRow {
+  name: string;
+  client_id: ID | null;
+  address: string | null;
+  notes: string | null;
+}
+
 /* ------------------------------------------------------------------ */
 /* Registrul tabelelor sincronizate                                    */
 /* ------------------------------------------------------------------ */
 
 export interface Tables {
   clients: Client;
+  projects: Project;
   jobs: Job;
   job_measurements: JobMeasurement;
   job_photos: JobPhoto;
@@ -487,6 +525,7 @@ export type TableName = keyof Tables;
 
 export const TABLE_NAMES: TableName[] = [
   "clients",
+  "projects",
   "jobs",
   "job_measurements",
   "job_photos",

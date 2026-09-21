@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
-import { NAV_SECTIONS, isActivePath } from "@/lib/nav";
+import { isActivePath, visibleSections } from "@/lib/nav";
 import { cn, initials } from "@/lib/utils";
 import { useApp } from "@/lib/app-provider";
 import { useTable } from "@/hooks/use-data";
@@ -13,7 +13,8 @@ import { Logo } from "./logo";
 /** Bara laterală — doar pe desktop (`lg:` în sus). */
 export function Sidebar({ onQuickAdd }: { onQuickAdd: () => void }) {
   const pathname = usePathname();
-  const { settings, email, mode } = useApp();
+  const { settings, email, mode, siteMode } = useApp();
+  const sections = visibleSections(siteMode);
   const notifications = useTable("notifications");
   const jobs = useTable("jobs");
 
@@ -37,7 +38,7 @@ export function Sidebar({ onQuickAdd }: { onQuickAdd: () => void }) {
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-4">
-        {NAV_SECTIONS.map((section) => (
+        {sections.map((section) => (
           <div key={section.title}>
             <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {section.title}

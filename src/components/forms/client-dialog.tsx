@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -16,6 +18,8 @@ import { Field } from "@/components/ui/field";
 import { useZodForm } from "@/hooks/use-zod-form";
 import { clientSchema } from "@/lib/schemas";
 import { saveClient } from "@/lib/db/actions";
+import { useClients } from "@/hooks/use-data";
+import { findDuplicates } from "@/lib/clients";
 import type { Client } from "@/lib/types";
 
 export function ClientDialog({
@@ -55,12 +59,22 @@ function ClientForm({
   onOpenChange: (open: boolean) => void;
   onSaved?: (id: string) => void;
 }) {
+  const router = useRouter();
+  const clients = useClients();
   const form = useZodForm(clientSchema, {
     name: client?.name ?? "",
     phone: client?.phone ?? "",
     email: client?.email ?? "",
     address: client?.address ?? "",
     notes: client?.notes ?? "",
+  });
+
+  // Dacă omul e deja în agendă, mai bine îl deschizi decât să-l adaugi încă
+  // o dată: pe a doua fișă nu se vede nimic din ce ți-a plătit pe prima.
+  const duplicates = findDuplicates(clients, {
+    name: form.values.name,
+    phone: form.values.phone,
+    excludeId: client?.id ?? null,
   });
 
   const onSubmit = form.handleSubmit(async (data) => {
@@ -144,6 +158,33 @@ function ClientForm({
             placeholder="Preferă lucrul în weekend, are câine în curte..."
           />
         </Field>
+
+        {duplicates.length > 0 && (
+          <div className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+            <p className="flex items-start gap-2 text-xs text-amber-200">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+              {duplicates[0].by === "phone"
+                ? "Numărul ăsta e deja în agendă."
+                : "Ai deja un client cu numele ăsta."}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {duplicates.slice(0, 3).map(({ client: match }) => (
+                <Button
+                  key={match.id}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    onOpenChange(false);
+                    router.push(`/clienti/${match.id}`);
+                  }}
+                >
+                  Deschide {match.name}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <DialogFooter>
           <Button

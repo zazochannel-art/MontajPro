@@ -4,7 +4,9 @@ import { use, useMemo, useState } from "react";
 import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
 import {
+  AlertTriangle,
   MapPin,
+  Merge,
   MessageCircle,
   Navigation,
   Pencil,
@@ -22,7 +24,8 @@ import { ClientDialog } from "@/components/forms/client-dialog";
 import { JobCard } from "@/components/jobs/job-card";
 import { AssetImage } from "@/components/photo/asset-image";
 import { useRow, useStoreReady, useTable } from "@/hooks/use-data";
-import { deleteClient } from "@/lib/db/actions";
+import { deleteClient, mergeClients } from "@/lib/db/actions";
+import { findDuplicates } from "@/lib/clients";
 import { formatDateShort, formatMoney } from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
 import { PAYMENT_KIND_LABELS } from "@/lib/constants";
@@ -34,6 +37,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
   const router = useRouter();
   const { currency } = useApp();
   const client = useRow("clients", id);
+  const clients = useTable("clients");
   const allJobs = useTable("jobs");
   const allPayments = useTable("payments");
   const allPhotos = useTable("job_photos");
@@ -69,6 +73,13 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
 
   const phone = telHref(client.phone);
   const maps = mapsHref(client.address);
+  // Dublura se poate repara și după ce s-a produs: cine are deja două fișe
+  // pentru același om vrea să le vadă la un loc, nu să aleagă între ele.
+  const duplicates = findDuplicates(clients, {
+    name: client.name,
+    phone: client.phone,
+    excludeId: client.id,
+  });
   const whatsapp = client.phone ? `https://wa.me/${client.phone.replace(/[^\d]/g, "")}` : null;
 
   return (
@@ -207,6 +218,39 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
                   alt="Fotografie lucrare"
                 />
               </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {duplicates.length > 0 && (
+        <section className="space-y-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+          <p className="flex items-start gap-2 text-sm text-amber-200">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            {duplicates[0].by === "phone"
+              ? "Altcineva din agendă are același număr. Probabil e același om, cu istoricul rupt în două."
+              : "Mai ai un client cu numele ăsta."}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {duplicates.slice(0, 3).map(({ client: other }) => (
+              <Confirm
+                key={other.id}
+                title={`Unești cu ${other.name}?`}
+                description="Lucrările, plățile, ofertele, facturile și procesele-verbale trec la clientul acesta. Dublura ajunge în coș, deci se poate întoarce."
+                confirmLabel="Unește"
+                onConfirm={async () => {
+                  const moved = await mergeClients(other.id, client.id);
+                  toast.success(
+                    moved
+                      ? `${moved} înregistrări mutate la ${client.name}`
+                      : "Clienții au fost uniți",
+                  );
+                }}
+              >
+                <Button size="sm" variant="outline">
+                  <Merge /> Unește cu {other.name}
+                </Button>
+              </Confirm>
             ))}
           </div>
         </section>

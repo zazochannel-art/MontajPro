@@ -14,7 +14,7 @@ import { StatusBadge } from "./status-badge";
  * rest de plată, status) încape într-un card apăsabil.
  */
 export function JobCard({ job }: { job: Job }) {
-  const { currency } = useApp();
+  const { currency, siteMode } = useApp();
   const clientName = useClientName(job.client_id);
   const payments = useJobPaymentIndex();
   const money = payments[job.id];
@@ -56,32 +56,45 @@ export function JobCard({ job }: { job: Job }) {
 
           <div className="mt-3 flex items-end justify-between gap-3 border-t border-border pt-3">
             <div className="grid grid-cols-3 gap-3 text-xs">
-              <div>
-                <p className="text-muted-foreground">Preț</p>
-                <p className="font-semibold tabular-nums">
-                  {formatMoney(job.price_total, currency, { compact: true })}
+              {siteMode && (
+                <p className="col-span-3 text-muted-foreground">
+                  Mod șantier — prețurile sunt ascunse
                 </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Avans</p>
-                <p className="font-semibold tabular-nums text-emerald-300">
-                  {formatMoney(money?.advance ?? 0, currency, {
-                    compact: true,
-                  })}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Rest</p>
-                <p
-                  className={`font-semibold tabular-nums ${
-                    (money?.rest ?? 0) > 0
-                      ? "text-amber-300"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {formatMoney(money?.rest ?? 0, currency, { compact: true })}
-                </p>
-              </div>
+              )}
+              {!siteMode && (
+                <>
+                  <div>
+                    <p className="text-muted-foreground">Preț</p>
+                    <p className="font-semibold tabular-nums">
+                      {formatMoney(job.price_total, currency, {
+                        compact: true,
+                      })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Avans</p>
+                    <p className="font-semibold tabular-nums text-emerald-300">
+                      {formatMoney(money?.advance ?? 0, currency, {
+                        compact: true,
+                      })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Rest</p>
+                    <p
+                      className={`font-semibold tabular-nums ${
+                        (money?.rest ?? 0) > 0
+                          ? "text-amber-300"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {formatMoney(money?.rest ?? 0, currency, {
+                        compact: true,
+                      })}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
             <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
           </div>

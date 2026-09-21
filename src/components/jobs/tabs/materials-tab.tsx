@@ -25,16 +25,20 @@ import {
 import { useTable } from "@/hooks/use-data";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
-import type { JobMaterial, Material } from "@/lib/types";
+import { buildConsumption } from "@/lib/reports";
+import type { Job, JobMaterial, JobMeasurement, Material } from "@/lib/types";
 import { sum } from "@/lib/utils";
 
 export function MaterialsTab({
-  jobId,
+  job,
   materials,
+  measurements,
 }: {
-  jobId: string;
+  job: Job;
   materials: JobMaterial[];
+  measurements: JobMeasurement[];
 }) {
+  const jobId = job.id;
   const { currency } = useApp();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<JobMaterial | null>(null);
@@ -48,6 +52,13 @@ export function MaterialsTab({
   );
   const missing = materials.filter((material) => !material.purchased);
   const inventory = useTable("materials");
+
+  // Estimatul din măsurătoare față de ce a intrat efectiv în lucrare.
+  const [consumption] = buildConsumption({
+    jobs: [job],
+    materials,
+    measurements,
+  });
 
   return (
     <div className="space-y-3">
@@ -73,6 +84,25 @@ export function MaterialsTab({
               </p>
             </div>
           </div>
+
+          {consumption && (
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-2xl border border-border bg-card px-3.5 py-3 text-sm">
+              <span className="text-muted-foreground">
+                Estimat {formatNumber(consumption.planned)} {consumption.unit} ·
+                consumat {formatNumber(consumption.used)} {consumption.unit}
+              </span>
+              <span
+                className={
+                  consumption.extra > 0.001
+                    ? "font-semibold tabular-nums text-amber-300"
+                    : "font-semibold tabular-nums text-emerald-300"
+                }
+              >
+                {consumption.extra > 0 ? "+" : ""}
+                {formatNumber(consumption.extraPercent ?? 0, 1)}%
+              </span>
+            </div>
+          )}
 
           <ul className="space-y-2">
             {materials.map((material) => (

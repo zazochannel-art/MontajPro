@@ -16,27 +16,31 @@ schimba din Setări (MDL, RON, EUR, USD, UAH, GBP).
 | **Dashboard** | Lucrări active, programul de azi, bani de încasat, încasări/cheltuieli/profit pe luna curentă, ore lucrate, materiale de cumpărat |
 | **Lucrări** | Listă cu filtre pe status (ofertă, confirmată, materiale, în lucru, finalizată, problemă), preț / avans / rest pe fiecare card |
 | **Pagina lucrării** | Tab-uri: General, Măsurători, Poze, Materiale, Finanțe, Activitate; buton mare **START / FINALIZEAZĂ** cu cronometru |
-| **Clienți** | CRUD complet, istoric lucrări și plăți, fotografii, acțiuni rapide (sună, WhatsApp, hartă) |
+| **Clienți** | CRUD complet, istoric lucrări și plăți, fotografii, acțiuni rapide (sună, WhatsApp, hartă); dublurile se prind după telefon și se pot uni |
 | **Măsurători** | Scară / parchet / plintă / altceva, cu **calcule automate** (suprafețe, unghi, bucăți necesare, pierdere %) |
-| **Calculator preț** | Alegi poziția, prețul și unitatea vin din tarifele din Setări; cantitățile pot veni direct dintr-o măsurătoare; salvează în lucrare sau ofertă |
+| **Calculator preț** | Alegi poziția, prețul și unitatea vin din tarifele din Setări; deplasarea se socotește pe km, cu „dus-întors"; cantitățile pot veni direct dintr-o măsurătoare; salvează în lucrare sau ofertă |
 | **Oferte** | Linii alese din aceleași poziții ca în calculator, cu prețul din Setări; numerotate automat, cu subtotal/reducere/avans/rest, format printabil și partajare prin WhatsApp/share nativ; se transformă într-o lucrare dintr-o apăsare |
 | **Calendar** | Lunar și săptămânal, mutarea lucrării pe altă zi (drag pe desktop, buton pe telefon) |
 | **Finanțe** | Încasări, cheltuieli pe categorii, profit, bani de primit, avansuri și câștigul pe oră — pe lună |
 | **Materiale** | Inventar care scade când iei din depozit + listă de cumpărături care ține cont de ce ai deja pe raft |
 | **Scule** | Evidență cu preț, dată cumpărare, garanție și alertă înainte de expirare |
 | **Portofoliu** | Lucrările finalizate cu „înainte / după” |
-| **Oferte trimise ca link** | Clientul deschide oferta în browser, fără cont, și o acceptă cu numele lui — confirmarea ajunge înapoi cu dată și oră |
+| **Oferte trimise ca link** | Clientul deschide oferta în browser, fără cont, și o acceptă cu numele lui — confirmarea ajunge înapoi cu dată și oră; știi și când a deschis-o fără s-o accepte |
 | **Facturi** | Serie și număr, TVA, scadență, marcare ca achitată, printabilă; datele clientului se îngheață în factură |
 | **Export contabil** | CSV pentru încasări, cheltuieli și facturi, cu separator `;` și virgulă zecimală, gata de deschis în Excel |
 | **Notificări** | În aplicație și push pe telefon: lucrare azi/mâine, plată restantă, materiale lipsă, garanție care expiră, ofertă neconfirmată |
 | **Căutare globală** | Un câmp peste clienți, lucrări, oferte, facturi, materiale, scule și măsurători (Ctrl/Cmd+K) |
 | **Pașii lucrării** | Listă bifabilă pe prima filă a lucrării, pornită din șabloane pe tip, editabile în Setări |
-| **Rapoarte** | Ce tip de lucrare aduce bani, preț mediu pe treaptă/m²/m, câștig pe oră, top clienți — doar din lucrări finalizate |
+| **Rapoarte** | Ce tip de lucrare aduce bani, preț mediu pe treaptă/m²/m, câștig pe oră, top clienți, consum real față de estimat — doar din lucrări finalizate |
 | **Proces-verbal de predare** | Ce s-a executat, garanția, pozele „după” și semnătura clientului desenată cu degetul |
 | **PDF** | Ofertă, factură și proces-verbal se descarcă ca .pdf, identic pe orice telefon |
 | **Echipă** | Al doilea om vede lucrarea, bifează pași, pornește cronometrul și pune poze — fără să vadă un leu, și fără să aibă nevoie de semnal |
 | **Scadențar** | Tranșele lucrării (la semnare, la material, la predare) cu termen și memento; „am luat” scrie o încasare adevărată |
 | **Cheltuieli fixe** | Chirie, leasing, telefon — se scad din profitul lunii, ca cifra să nu fie mai mare decât adevărul |
+| **Prognoza banilor** | Ce intră și ce iese în următoarele 4 săptămâni, din tranșe cu termen și cheltuieli cunoscute — fără bani „poate" |
+| **Proiecte** | Un bloc, zece apartamente: lucrări separate sub un acoperiș, cu total, încasat și rest la un loc |
+| **Mod șantier** | Un comutator care scoate prețurile și paginile de bani de pe ecran cât ești lângă client |
+| **Schițe** | Desenezi cotele cu degetul peste o poză sau pe o coală albă, lângă măsurătoare |
 | **Coș de gunoi** | Tot ce se șterge stă 30 de zile deoparte; o lucrare restaurată se întoarce cu măsurătorile, pozele și plățile ei |
 | **Arhivă** | Lucrările vechi și încasate ies din lista de zi cu zi, dar rămân în rapoarte, la client și în căutare |
 | **Backup** | Copie locală luată singură zilnic (și înainte de orice import), plus un memento pentru fișierul descărcat — singurul care supraviețuiește telefonului pierdut |
@@ -236,14 +240,18 @@ Alături de ele rulează testele care apără datele acolo unde greșeala nu are
 drum înapoi: `trash.test.ts` (tot ce se șterge împreună poartă aceeași clipă,
 altfel restaurarea aduce o lucrare fără plățile ei), `archive.test.ts` (nimic
 cu rest de încasat nu se arhivează automat), `backup.test.ts` (o copie din
-listă chiar se poate citi înapoi) și `team.test.ts` (ce bifează al doilea om
-fără semnal ajunge pe server la prima bară de semnal).
+listă chiar se poate citi înapoi), `forecast.test.ts` (nimic fără termen nu
+intră în prognoză, iar aceiași bani nu se numără de două ori),
+`clients.test.ts` (unirea a doi clienți mută tot ce ține de om, pe fiecare
+tabel), `projects.test.ts` (un proiect șters nu ia lucrările cu el) și
+`team.test.ts` (ce bifează al doilea om fără semnal ajunge pe server la prima
+bară de semnal).
 
 Testul de fum pornește un Chromium cu viewport de iPhone și parcurge fluxul
 real: mod local → client nou → lucrare nouă → cronometru → măsurătoare cu
 calcule → materiale → plată → calculator → ofertă → toate paginile →
-persistență după reload → primii pași → arhivă → backup → schimbarea monedei →
-fișierele PWA.
+persistență după reload → proiect → mod șantier → primii pași → arhivă →
+backup → schimbarea monedei → fișierele PWA.
 
 ```bash
 npm run build && npm run start -- -p 3100   # într-un terminal
@@ -266,11 +274,14 @@ src/
     jobs/ quotes/ measurements/ photo/ dashboard/ notifications/
     backup/           copia locală luată singură + mementoul de pe dashboard
     onboarding/       primii pași pe un cont nou
+    photo/            captură foto, imagini stocate și schița de mână
   lib/
     db/               store local, IndexedDB, sincronizare, acțiuni, date demo
     supabase/         clientul de browser
     calc.ts           calcule pentru măsurători, prețuri și finanțe
     backup.ts         copii locale, restaurare, mementoul de backup
+    forecast.ts       ce intră și ce iese în următoarele săptămâni
+    clients.ts        dublurile de clienți: cum se prind și cum se unesc
     trash.ts          ce s-a șters în ultimele 30 de zile, grupat pe operație
     export.ts         CSV pentru contabilitate
     push.ts           abonarea la notificări push
