@@ -60,7 +60,7 @@ export function OverviewTab({
     <div className="space-y-4">
       <TaskList job={job} />
 
-      <section className="rounded-2xl border border-border bg-card p-4">
+      <section className="rounded-2xl surface p-4">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Client
         </p>
@@ -126,7 +126,7 @@ export function OverviewTab({
         )}
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-4">
+      <section className="rounded-2xl surface p-4">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Detalii
         </p>
@@ -178,7 +178,7 @@ export function OverviewTab({
         </dl>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-4">
+      <section className="rounded-2xl surface p-4">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Status
         </p>
@@ -202,7 +202,7 @@ export function OverviewTab({
         </Select>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-4">
+      <section className="rounded-2xl surface p-4">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Bani
         </p>
@@ -229,7 +229,7 @@ export function OverviewTab({
       </section>
 
       {job.notes && (
-        <section className="rounded-2xl border border-border bg-card p-4">
+        <section className="rounded-2xl surface p-4">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Notițe
           </p>

@@ -43,9 +43,10 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed z-50 flex flex-col gap-4 border border-border bg-card shadow-2xl",
+        "fixed z-50 flex flex-col gap-4 surface shadow-2xl",
         // Mobil: foaie de jos, cu colțuri rotunjite sus.
-        "inset-x-0 bottom-0 max-h-[92dvh] overflow-y-auto rounded-t-3xl p-5 pb-8",
+        "inset-x-0 bottom-0 max-h-[92dvh] overflow-y-auto rounded-t-3xl p-5 pb-8 shadow-[0_-12px_40px_-12px_rgba(0,0,0,0.8)]",
+        "duration-[--dur-3] ease-[--ease-out]",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom",
         // Desktop: fereastră centrată.

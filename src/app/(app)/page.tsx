@@ -56,7 +56,7 @@ export default function DashboardPage() {
       <FirstRun />
       <BackupReminder />
 
-      <section className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
+      <section className="stagger grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
         <StatCard
           label={t("Lucrări active")}
           value={String(data.activeJobs.length)}
@@ -175,9 +175,9 @@ export default function DashboardPage() {
       <section className="grid gap-3 sm:grid-cols-3">
         <Link
           href="/calculator"
-          className="card-hover flex items-center gap-3 rounded-2xl border border-border bg-card p-4 hover:border-primary/40"
+          className="card-hover flex items-center gap-3 rounded-2xl surface p-4 hover:border-primary/40"
         >
-          <span className="flex size-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-300">
+          <span className="flex size-10 items-center justify-center rounded-xl bg-primary/12 text-primary">
             <Calculator className="size-5" />
           </span>
           <div>
@@ -189,9 +189,9 @@ export default function DashboardPage() {
         </Link>
         <Link
           href="/masuratori/nou"
-          className="card-hover flex items-center gap-3 rounded-2xl border border-border bg-card p-4 hover:border-primary/40"
+          className="card-hover flex items-center gap-3 rounded-2xl surface p-4 hover:border-primary/40"
         >
-          <span className="flex size-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-300">
+          <span className="flex size-10 items-center justify-center rounded-xl bg-sky-500/12 text-sky-300">
             <Ruler className="size-5" />
           </span>
           <div>
@@ -203,7 +203,7 @@ export default function DashboardPage() {
         </Link>
         <Link
           href="/oferte/nou"
-          className="card-hover flex items-center gap-3 rounded-2xl border border-border bg-card p-4 hover:border-primary/40"
+          className="card-hover flex items-center gap-3 rounded-2xl surface p-4 hover:border-primary/40"
         >
           <span className="flex size-10 items-center justify-center rounded-xl bg-fuchsia-500/10 text-fuchsia-300">
             <FileText className="size-5" />

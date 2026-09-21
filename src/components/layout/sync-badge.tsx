@@ -27,7 +27,7 @@ export function SyncBadge({ className }: { className?: string }) {
     : mode === "local"
       ? { icon: CloudOff, label: "Mod local", tone: "text-muted-foreground" }
       : syncStatus === "syncing"
-        ? { icon: Loader2, label: "Se sincronizează", tone: "text-cyan-300" }
+        ? { icon: Loader2, label: "Se sincronizează", tone: "text-primary" }
         : syncStatus === "error"
           ? {
               icon: TriangleAlert,
@@ -50,11 +50,17 @@ export function SyncBadge({ className }: { className?: string }) {
       onClick={() => void sync()}
       title={state.label}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent",
+        "relative inline-flex items-center gap-1.5 rounded-full border border-border bg-elevated px-2.5 py-1.5 text-xs font-medium shadow-[var(--lift)] transition-[background-color,border-color,transform] duration-[--dur-1] ease-[--ease-out] hover:border-border-strong hover:bg-accent active:scale-95",
         state.tone,
         className,
       )}
     >
+      {syncStatus === "syncing" && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-full bg-current opacity-10 [animation:breathe_1.6s_ease-in-out_infinite]"
+        />
+      )}
       <Icon
         className={cn("size-3.5", syncStatus === "syncing" && "animate-spin")}
       />

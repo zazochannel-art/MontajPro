@@ -87,7 +87,7 @@ export default function PortfolioPage() {
           {entries.map(({ job, before, after, during }) => (
             <article
               key={job.id}
-              className="overflow-hidden rounded-2xl border border-border bg-card"
+              className="overflow-hidden rounded-2xl surface"
             >
               <div className="grid grid-cols-2 gap-px bg-border">
                 <div className="relative aspect-[4/3] bg-muted">

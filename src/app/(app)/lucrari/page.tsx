@@ -119,7 +119,7 @@ function JobsList() {
           ))}
         </div>
       ) : filtered.length ? (
-        <div className="space-y-3">
+        <div className="stagger space-y-3">
           {filtered.map((job) => (
             <JobCard key={job.id} job={job} />
           ))}

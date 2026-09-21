@@ -114,7 +114,7 @@ function QuoteDocument({
 
   return (
     <main className="mx-auto min-h-dvh max-w-2xl p-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:p-6 sm:pt-[calc(env(safe-area-inset-top)+1.5rem)]">
-      <article className="print-surface space-y-5 rounded-2xl border border-border bg-card p-5 sm:p-7">
+      <article className="print-surface space-y-5 rounded-2xl surface p-5 sm:p-7">
         <header className="flex items-start justify-between gap-4 border-b border-border pb-4">
           <div>
             <h1 className="text-xl font-bold tracking-tight">
@@ -235,7 +235,7 @@ function QuoteDocument({
           </div>
         </div>
       ) : (
-        <div className="no-print mt-4 space-y-3 rounded-2xl border border-border bg-card p-4">
+        <div className="no-print mt-4 space-y-3 rounded-2xl surface p-4">
           <p className="text-sm text-muted-foreground">
             Dacă prețul îți convine, confirmă aici. Confirmarea ajunge direct la montator.
           </p>

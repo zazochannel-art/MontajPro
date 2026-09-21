@@ -80,7 +80,7 @@ export function FinanceTab({
 
   return (
     <div className="space-y-4">
-      <section className="rounded-2xl border border-border bg-card p-4">
+      <section className="rounded-2xl surface p-4">
         <dl className="space-y-2.5">
           {rows.map((row) => (
             <div
@@ -173,7 +173,7 @@ export function FinanceTab({
             {payments.map((payment) => (
               <li
                 key={payment.id}
-                className="flex items-center gap-3 rounded-xl border border-border bg-card p-3.5"
+                className="flex items-center gap-3 rounded-xl surface p-3.5"
               >
                 <span className="flex size-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-300">
                   <Wallet className="size-4" />
@@ -231,7 +231,7 @@ export function FinanceTab({
             {expenses.map((expense) => (
               <li
                 key={expense.id}
-                className="flex items-center gap-3 rounded-xl border border-border bg-card p-3.5"
+                className="flex items-center gap-3 rounded-xl surface p-3.5"
               >
                 <span className="flex size-9 items-center justify-center rounded-lg bg-red-500/10 text-red-300">
                   <Receipt className="size-4" />

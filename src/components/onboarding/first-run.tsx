@@ -139,7 +139,8 @@ export function FirstRun() {
   const emptyAccount = !clients.length && !jobs.length && !hasDemoData();
 
   return (
-    <section className="space-y-3 rounded-2xl border border-primary/30 bg-primary/5 p-4">
+    <section className="surface relative space-y-3 overflow-hidden rounded-2xl p-4 pl-5">
+      <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-primary" />
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold">Hai să pornim</h3>

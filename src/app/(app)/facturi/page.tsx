@@ -72,9 +72,9 @@ export default function InvoicesPage() {
             <li key={invoice.id}>
               <Link
                 href={`/facturi/${invoice.id}`}
-                className="card-hover flex items-center gap-3 rounded-2xl border border-border bg-card p-4 hover:border-primary/40"
+                className="card-hover flex items-center gap-3 rounded-2xl surface p-4 hover:border-primary/40"
               >
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-300">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
                   <ReceiptText className="size-5" />
                 </span>
                 <div className="min-w-0 flex-1">

@@ -52,7 +52,7 @@ export function FixedCosts({ monthKey }: { monthKey: string }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between gap-3 rounded-2xl surface p-4">
         <div>
           <p className="flex items-center gap-2 text-sm font-medium">
             <Repeat className="size-4 text-primary" /> Pe luna aceasta
@@ -67,7 +67,7 @@ export function FixedCosts({ monthKey }: { monthKey: string }) {
       </div>
 
       {sorted.length ? (
-        <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+        <ul className="divide-y divide-border overflow-hidden rounded-2xl surface">
           {sorted.map((cost) => (
             <li key={cost.id} className="flex items-center gap-3 p-3.5">
               <div className="min-w-0 flex-1">
@@ -123,7 +123,7 @@ export function FixedCosts({ monthKey }: { monthKey: string }) {
         />
       )}
 
-      <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <div className="space-y-3 rounded-2xl surface p-4">
         <FieldRow>
           <Field label="Denumire" htmlFor="fixed-name">
             <Input

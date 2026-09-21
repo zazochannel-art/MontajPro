@@ -17,7 +17,7 @@ const AlertDialogContent = React.forwardRef<
     <AlertDialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-x-4 top-1/2 z-50 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl",
+        "fixed inset-x-4 top-1/2 z-50 -translate-y-1/2 rounded-2xl surface p-5 shadow-2xl",
         "data-[state=open]:animate-in data-[state=open]:zoom-in-95",
         "sm:left-1/2 sm:right-auto sm:w-full sm:max-w-md sm:-translate-x-1/2",
         className,

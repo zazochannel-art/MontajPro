@@ -61,10 +61,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (needsLogin || !ready) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
-        <Logo />
+      <div className="aurora grain relative flex min-h-dvh flex-col items-center justify-center gap-4">
+        <div className="rise">
+          <Logo />
+        </div>
         <div className="h-1 w-32 overflow-hidden rounded-full bg-muted">
-          <div className="h-full w-1/2 animate-[loading_1.2s_ease-in-out_infinite] rounded-full bg-primary" />
+          <div className="h-full w-1/2 animate-[loading_1.2s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-primary-soft to-primary" />
         </div>
         <p className="text-sm text-muted-foreground">Se încarcă datele…</p>
         <style>{`@keyframes loading { 0% { transform: translateX(-100%) } 100% { transform: translateX(200%) } }`}</style>
@@ -80,14 +82,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <AppHeader />
 
         {!online && (
-          <div className="mx-3 mt-3 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm text-amber-200 sm:mx-4 lg:mx-8">
+          <div className="rise mx-3 mt-3 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm text-amber-200 shadow-[var(--lift)] sm:mx-4 lg:mx-8">
             <WifiOff className="size-4 shrink-0" />
             <span>Ești offline. Datele se salvează pe telefon și se trimit automat.</span>
           </div>
         )}
 
         {mode === "local" && online && !localNoticeHidden && (
-          <div className="mx-3 mt-3 flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm text-muted-foreground sm:mx-4 lg:mx-8">
+          <div className="surface rise mx-3 mt-3 flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm text-muted-foreground sm:mx-4 lg:mx-8">
             <CloudOff className="size-4 shrink-0" />
             <span className="flex-1">
               Mod local — datele rămân pe acest dispozitiv.{" "}
@@ -112,7 +114,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <ActiveWorkBar />
 
-        <main className="mx-auto w-full max-w-6xl px-3 pb-[calc(var(--bottom-nav-h)+2rem)] pt-4 sm:px-4 lg:px-8 lg:pb-10">
+        <main
+          key={pathname}
+          className="rise mx-auto w-full max-w-6xl px-3 pb-[calc(var(--bottom-nav-h)+2rem)] pt-4 sm:px-4 lg:px-8 lg:pb-10"
+        >
           {children}
         </main>
       </div>

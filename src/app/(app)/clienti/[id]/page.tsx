@@ -84,7 +84,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
 
   return (
     <div className="space-y-5">
-      <header className="rounded-2xl border border-border bg-card p-4">
+      <header className="rounded-2xl surface p-4">
         <div className="flex items-start gap-3">
           <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 text-lg font-bold text-primary">
             {initials(client.name)}
@@ -140,7 +140,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
           { label: "Finalizate", value: String(data.done) },
           { label: "Active", value: String(data.active) },
         ].map((stat) => (
-          <div key={stat.label} className="rounded-2xl border border-border bg-card p-3.5">
+          <div key={stat.label} className="rounded-2xl surface p-3.5">
             <p className="text-xs text-muted-foreground">{stat.label}</p>
             <p className="text-lg font-bold tabular-nums">{stat.value}</p>
           </div>
@@ -148,7 +148,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
       </section>
 
       {client.notes && (
-        <section className="rounded-2xl border border-border bg-card p-4">
+        <section className="rounded-2xl surface p-4">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Notițe
           </p>
@@ -183,7 +183,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
             {data.payments.map((payment) => (
               <li
                 key={payment.id}
-                className="flex items-center gap-3 rounded-xl border border-border bg-card p-3.5"
+                className="flex items-center gap-3 rounded-xl surface p-3.5"
               >
                 <span className="flex size-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-300">
                   <Wallet className="size-4" />

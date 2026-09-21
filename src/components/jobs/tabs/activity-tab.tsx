@@ -77,7 +77,7 @@ export function ActivityTab({
           icon: FileText,
           title: "Ofertă trimisă",
           detail: quote.title,
-          tone: "bg-cyan-500/10 text-cyan-300",
+          tone: "bg-primary/12 text-primary",
         });
       }
       if (quote.accepted_at) {
@@ -86,7 +86,7 @@ export function ActivityTab({
           icon: FileCheck,
           title: "Client a confirmat",
           detail: quote.title,
-          tone: "bg-violet-500/10 text-violet-300",
+          tone: "bg-sky-500/12 text-sky-300",
         });
       }
     }
@@ -144,7 +144,7 @@ export function ActivityTab({
             ? "Lucrare începută"
             : "Sesiune de lucru",
         detail: duration,
-        tone: "bg-cyan-500/10 text-cyan-300",
+        tone: "bg-primary/12 text-primary",
       });
     });
 
@@ -174,7 +174,7 @@ export function ActivityTab({
         detail: senders.length
           ? `${list_.length} poze · de la ${senders.join(", ")}`
           : `${list_.length} poze`,
-        tone: "bg-violet-500/10 text-violet-300",
+        tone: "bg-sky-500/12 text-sky-300",
       });
     }
 

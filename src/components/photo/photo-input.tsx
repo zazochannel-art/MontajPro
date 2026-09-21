@@ -92,7 +92,7 @@ export function PhotoInput({
           type="button"
           disabled={busy}
           onClick={() => cameraRef.current?.click()}
-          className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-60"
+          className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl surface px-4 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-60"
         >
           {busy ? (
             <Loader2 className="size-4 animate-spin" />
@@ -106,7 +106,7 @@ export function PhotoInput({
           disabled={busy}
           aria-label="Alege din galerie"
           onClick={() => galleryRef.current?.click()}
-          className="inline-flex size-11 items-center justify-center rounded-xl border border-border bg-card transition-colors hover:bg-accent disabled:opacity-60"
+          className="inline-flex size-11 items-center justify-center rounded-xl surface transition-colors hover:bg-accent disabled:opacity-60"
         >
           <ImagePlus className="size-4" />
         </button>

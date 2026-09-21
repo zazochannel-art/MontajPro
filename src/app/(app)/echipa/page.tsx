@@ -210,7 +210,7 @@ function SharedJobCard({
   const done = tasks?.filter((task) => task.done).length ?? 0;
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-border bg-card">
+    <article className="overflow-hidden rounded-2xl surface">
       <button
         type="button"
         onClick={onToggle}

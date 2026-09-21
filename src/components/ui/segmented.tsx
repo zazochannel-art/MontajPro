@@ -5,6 +5,9 @@ import { cn } from "@/lib/utils";
 /**
  * Filtre sub formă de „pastile” derulabile orizontal — alternativa mobilă la
  * tabelele cu filtre.
+ *
+ * Pastila activă nu-și schimbă doar culoarea: primește un fundal plin și o
+ * umbră, ca să se vadă dintr-o privire pe ce filtru ești, chiar și în soare.
  */
 export function Segmented<T extends string>({
   options,
@@ -35,10 +38,11 @@ export function Segmented<T extends string>({
             aria-selected={active}
             onClick={() => onChange(option.value)}
             className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+              "flex shrink-0 select-none items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium",
+              "transition-[background-color,border-color,color,box-shadow,transform] duration-[--dur-1] ease-[--ease-out] active:scale-[0.96]",
               active
-                ? "border-primary bg-primary/15 text-primary"
-                : "border-border bg-card text-muted-foreground hover:text-foreground",
+                ? "border-transparent bg-gradient-to-b from-primary-soft to-primary text-primary-foreground shadow-[0_6px_16px_-8px_color-mix(in_oklab,var(--primary)_70%,transparent)]"
+                : "border-border bg-elevated text-muted-foreground shadow-[var(--lift)] hover:border-border-strong hover:text-foreground",
             )}
           >
             {option.label}
@@ -46,7 +50,7 @@ export function Segmented<T extends string>({
               <span
                 className={cn(
                   "rounded-full px-1.5 text-xs tabular-nums",
-                  active ? "bg-primary/20" : "bg-muted",
+                  active ? "bg-black/20 text-primary-foreground" : "bg-muted",
                 )}
               >
                 {option.count}

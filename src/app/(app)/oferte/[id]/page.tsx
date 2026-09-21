@@ -164,7 +164,7 @@ export default function QuotePage({
       {/* Documentul propriu-zis */}
       <article
         id="document"
-        className="print-surface space-y-5 rounded-2xl border border-border bg-card p-5 sm:p-7"
+        className="print-surface space-y-5 rounded-2xl surface p-5 sm:p-7"
       >
         <header className="flex items-start justify-between gap-4 border-b border-border pb-4">
           <div>
@@ -320,7 +320,7 @@ export default function QuotePage({
       </article>
 
       {quote.public_token && isSupabaseConfigured && (
-        <div className="no-print flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-xs">
+        <div className="no-print flex items-center gap-2 rounded-xl surface p-3 text-xs">
           <Link2 className="size-4 shrink-0 text-muted-foreground" />
           <span className="min-w-0 flex-1 truncate text-muted-foreground">
             {publicQuoteUrl(quote.public_token)}
@@ -341,7 +341,7 @@ export default function QuotePage({
       )}
 
       {quote.status === "sent" && quote.public_token && (
-        <div className="no-print space-y-2 rounded-xl border border-border bg-card p-3">
+        <div className="no-print space-y-2 rounded-xl surface p-3">
           <p className="text-xs text-muted-foreground">
             {quote.reminder_sent_at
               ? `I-ai dat ghes ultima dată pe ${formatDate(quote.reminder_sent_at)}.`

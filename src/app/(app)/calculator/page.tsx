@@ -288,7 +288,7 @@ export default function CalculatorPage() {
               </p>
             )}
             {lines.map((line) => (
-              <div key={line.id} className="rounded-2xl border border-border bg-card p-3.5">
+              <div key={line.id} className="rounded-2xl surface p-3.5">
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
                     <Select

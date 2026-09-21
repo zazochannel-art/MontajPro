@@ -83,7 +83,7 @@ export default function ClientsPage() {
             const phone = telHref(client.phone);
             return (
               <li key={client.id}>
-                <div className="card-hover flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 hover:border-primary/40">
+                <div className="card-hover flex items-center gap-3 rounded-2xl surface p-3.5 hover:border-primary/40">
                   <Link href={`/clienti/${client.id}`} className="flex min-w-0 flex-1 items-center gap-3">
                     <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 text-sm font-semibold text-primary">
                       {initials(client.name)}

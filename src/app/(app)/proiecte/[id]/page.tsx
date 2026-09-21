@@ -78,7 +78,7 @@ export default function ProjectPage({
         }
       />
 
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <section className="space-y-3 rounded-2xl surface p-4">
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <User className="size-4" /> {clientName}
@@ -172,7 +172,7 @@ export default function ProjectPage({
         )}
 
         {loose.length > 0 && (
-          <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+          <div className="space-y-2 rounded-2xl surface p-4">
             <p className="text-xs text-muted-foreground">
               Mută o lucrare existentă sub acest proiect:
             </p>

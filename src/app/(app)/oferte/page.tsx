@@ -86,7 +86,7 @@ export default function QuotesPage() {
             <li key={quote.id}>
               <Link
                 href={`/oferte/${quote.id}`}
-                className="card-hover flex items-center gap-3 rounded-2xl border border-border bg-card p-4 hover:border-primary/40"
+                className="card-hover flex items-center gap-3 rounded-2xl surface p-4 hover:border-primary/40"
               >
                 <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-fuchsia-500/10 text-fuchsia-300">
                   <FileText className="size-5" />

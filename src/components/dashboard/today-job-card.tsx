@@ -26,7 +26,7 @@ export function TodayJobCard({ job }: { job: Job }) {
   const maps = mapsHref(job.address);
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
+    <div className="rounded-2xl surface p-4">
       <div className="flex items-start gap-3">
         <div className="flex flex-col items-center gap-1">
           <span className="font-mono text-lg font-bold tabular-nums text-primary">

@@ -106,7 +106,7 @@ export default function NewMeasurementPage() {
           ))}
         </div>
 
-        <div className="space-y-3.5 rounded-2xl border border-border bg-card p-4">
+        <div className="space-y-3.5 rounded-2xl surface p-4">
           <Field label="Etichetă" hint="ex. scara din hol, dormitor 1">
             <Input
               value={label}
@@ -118,7 +118,7 @@ export default function NewMeasurementPage() {
 
         <DerivedPanel kind={kind} data={data} />
 
-        <div className="space-y-3.5 rounded-2xl border border-border bg-card p-4">
+        <div className="space-y-3.5 rounded-2xl surface p-4">
           <Field label="Leagă de lucrare" hint="Opțional">
             <Select
               value={jobId ?? "none"}

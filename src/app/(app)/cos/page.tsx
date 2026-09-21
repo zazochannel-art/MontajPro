@@ -33,7 +33,7 @@ export default function TrashPage() {
       {!ready ? (
         <Skeleton className="h-48 w-full" />
       ) : items.length ? (
-        <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="divide-y divide-border overflow-hidden rounded-2xl surface">
           {items.map((item) => (
             <div
               key={item.at}

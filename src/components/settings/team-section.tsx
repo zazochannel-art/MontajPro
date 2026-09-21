@@ -52,7 +52,7 @@ export function TeamSection() {
 
   if (mode !== "cloud") {
     return (
-      <section className="space-y-2 rounded-2xl border border-border bg-card p-4">
+      <section className="space-y-2 rounded-2xl surface p-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <HardHat className="size-4 text-primary" /> Echipă
         </h3>
@@ -86,7 +86,7 @@ export function TeamSection() {
   };
 
   return (
-    <section className="space-y-3.5 rounded-2xl border border-border bg-card p-4">
+    <section className="space-y-3.5 rounded-2xl surface p-4">
       <h3 className="flex items-center gap-2 text-sm font-semibold">
         <HardHat className="size-4 text-primary" /> Echipă
       </h3>

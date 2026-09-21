@@ -1,16 +1,18 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
+/**
+ * Suprafața de bază. `.surface` aduce muchia de lumină de sus și umbra de
+ * dedesubt — fără ele, pe fundalul aproape negru toate cardurile ar părea
+ * lipite de pagină.
+ */
 const Card = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn(
-      "rounded-2xl border border-border bg-card text-card-foreground shadow-sm",
-      className,
-    )}
+    className={cn("surface rounded-2xl text-card-foreground", className)}
     {...props}
   />
 ));

@@ -75,7 +75,7 @@ function JobDetail({ id }: { id: string }) {
 
   return (
     <div className="space-y-4">
-      <header className="rounded-2xl border border-border bg-card p-4">
+      <header className="rounded-2xl surface p-4">
         <div className="flex items-start gap-3">
           <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-muted text-2xl">
             {JOB_TYPE_EMOJI[job.type]}
@@ -103,7 +103,7 @@ function JobDetail({ id }: { id: string }) {
               {project && (
                 <Link
                   href={`/proiecte/${project.id}`}
-                  className="inline-flex items-center gap-1 rounded-full bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-300 hover:bg-cyan-500/20"
+                  className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-xs text-primary hover:bg-primary/20"
                 >
                   <Building2 className="size-3" /> {project.name}
                 </Link>

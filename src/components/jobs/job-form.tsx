@@ -111,7 +111,7 @@ export function JobForm({
   return (
     <>
       <form onSubmit={onSubmit} className="space-y-5 pb-4">
-        <div className="space-y-3.5 rounded-2xl border border-border bg-card p-4">
+        <div className="space-y-3.5 rounded-2xl surface p-4">
           <Field label="Tip lucrare">
             <div className="grid grid-cols-4 gap-2">
               {JOB_TYPES.map((type) => (
@@ -229,7 +229,7 @@ export function JobForm({
           </Field>
         </div>
 
-        <div className="space-y-3.5 rounded-2xl border border-border bg-card p-4">
+        <div className="space-y-3.5 rounded-2xl surface p-4">
           <FieldRow>
             <Field label="Data" htmlFor="job-date">
               <Input
@@ -298,7 +298,7 @@ export function JobForm({
           </Field>
         </div>
 
-        <div className="space-y-3.5 rounded-2xl border border-border bg-card p-4">
+        <div className="space-y-3.5 rounded-2xl surface p-4">
           <Field
             label="Preț total"
             htmlFor="job-price"

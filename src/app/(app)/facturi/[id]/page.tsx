@@ -78,7 +78,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
 
       <article
         id="document"
-        className="print-surface space-y-5 rounded-2xl border border-border bg-card p-5 sm:p-7"
+        className="print-surface space-y-5 rounded-2xl surface p-5 sm:p-7"
       >
         <header className="flex items-start justify-between gap-4 border-b border-border pb-4">
           <div>

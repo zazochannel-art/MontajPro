@@ -54,7 +54,7 @@ export default function HandoversPage() {
       {!ready ? (
         <Skeleton className="h-48 w-full" />
       ) : rows.length ? (
-        <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="divide-y divide-border overflow-hidden rounded-2xl surface">
           {rows.map((row) => {
             const job = jobs.find((item) => item.id === row.job_id);
             return (

@@ -157,7 +157,7 @@ export default function ReportsPage() {
             {report.types.map((row) => (
               <article
                 key={row.kind}
-                className="space-y-3 rounded-2xl border border-border bg-card p-4"
+                className="space-y-3 rounded-2xl surface p-4"
               >
                 <div className="flex items-center justify-between gap-3">
                   <p className="flex items-center gap-2 font-semibold">
@@ -229,7 +229,7 @@ export default function ReportsPage() {
                 Cât ai măsurat și cât a intrat efectiv. Diferența e tăiată
                 greșit, spart la montaj sau „mai luăm doi metri, să fie”.
               </p>
-              <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+              <div className="divide-y divide-border overflow-hidden rounded-2xl surface">
                 {report.consumption.map((row) => (
                   <div
                     key={row.kind}
@@ -263,7 +263,7 @@ export default function ReportsPage() {
 
           <section className="space-y-2.5">
             <h2 className="text-sm font-semibold">Clienți</h2>
-            <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+            <div className="divide-y divide-border overflow-hidden rounded-2xl surface">
               {report.clients.slice(0, 10).map((row) => (
                 <div
                   key={row.clientId ?? "none"}

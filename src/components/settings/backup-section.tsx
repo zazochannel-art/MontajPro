@@ -85,7 +85,7 @@ export function BackupSection() {
   );
 
   return (
-    <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+    <section className="space-y-3 rounded-2xl surface p-4">
       <h3 className="text-sm font-semibold">Backup</h3>
       <p className="text-xs text-muted-foreground">
         {status?.lastDownload

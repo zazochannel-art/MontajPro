@@ -21,39 +21,58 @@ export function StatCard({
   className?: string;
 }) {
   const tones: Record<string, string> = {
-    default: "text-muted-foreground bg-muted",
-    primary: "text-cyan-300 bg-cyan-500/10",
-    secondary: "text-violet-300 bg-violet-500/10",
-    success: "text-emerald-300 bg-emerald-500/10",
-    warning: "text-amber-300 bg-amber-500/10",
-    danger: "text-red-300 bg-red-500/10",
+    default: "text-muted-foreground bg-elevated",
+    primary: "text-primary bg-primary/12",
+    secondary: "text-sky-300 bg-sky-500/12",
+    success: "text-emerald-300 bg-emerald-500/12",
+    warning: "text-amber-300 bg-amber-500/12",
+    danger: "text-red-300 bg-red-500/12",
+  };
+
+  const glow: Record<string, string> = {
+    default: "from-white/[0.04]",
+    primary: "from-primary/[0.13]",
+    secondary: "from-sky-500/[0.12]",
+    success: "from-emerald-500/[0.12]",
+    warning: "from-amber-500/[0.12]",
+    danger: "from-red-500/[0.12]",
   };
 
   const content = (
     <div
       className={cn(
-        "card-hover flex h-full flex-col gap-2 rounded-2xl border border-border bg-card p-3.5 sm:p-4",
-        href && "hover:border-primary/40",
+        "card-hover surface group relative h-full overflow-hidden rounded-2xl p-3.5 sm:p-4",
         className,
       )}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-muted-foreground">
-          {label}
-        </span>
-        <span
-          className={cn(
-            "flex size-8 items-center justify-center rounded-lg",
-            tones[tone],
-          )}
-        >
-          <Icon className="size-4" />
-        </span>
+      {/* Lumina din colț dă adâncime cardului fără să încarce conținutul. */}
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute -right-8 -top-10 size-28 rounded-full bg-gradient-to-br to-transparent blur-2xl",
+          glow[tone],
+        )}
+      />
+
+      <div className="relative flex h-full flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-medium text-muted-foreground">
+            {label}
+          </span>
+          <span
+            className={cn(
+              "flex size-8 items-center justify-center rounded-lg transition-transform duration-[--dur-2] ease-[--ease-spring] group-hover:scale-110 group-active:scale-90",
+              tones[tone],
+            )}
+          >
+            <Icon className="size-4" />
+          </span>
+        </div>
+        <p className="text-xl font-bold tabular-nums tracking-tight sm:text-2xl">
+          {value}
+        </p>
+        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       </div>
-      <p className="text-xl font-bold tabular-nums tracking-tight sm:text-2xl">
-        {value}
-      </p>
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
 
