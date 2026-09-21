@@ -527,6 +527,43 @@ try {
   await page.getByRole("heading", { name: "Lucrări" }).waitFor({ timeout: 10000 });
   check("comutarea înapoi în română merge", true);
 
+  /* ----------------------------- clientul deja în agendă ----------- */
+  section("Clientul deja în agendă, adăugat din lucrare");
+
+  // Scenariul care pierdea munca: scrii o lucrare, apeși „+” la client, tastezi
+  // un om pe care îl ai deja în agendă. Înainte, butonul de dublură te muta pe
+  // fișa clientului și lucrarea scrisă pe jumătate se ducea. Acum îl alege.
+  await page.goto(`${BASE}/lucrari/nou`, { waitUntil: "networkidle" });
+  await page.getByPlaceholder("Montaj scară stejar").waitFor({ timeout: 15000 });
+  await page.waitForTimeout(2000);
+  await page.getByPlaceholder("Montaj scară stejar").fill("Lucrare pe jumătate (test)");
+  await page.locator("#job-price").fill("7777");
+  await page.getByRole("button", { name: "Client nou" }).first().click();
+  await page.locator("#client-name").waitFor({ timeout: 10000 });
+  await page.locator("#client-name").fill("Ion Popescu (test)");
+
+  const pickExisting = page.getByRole("button", { name: /^Alege pe / });
+  await pickExisting.first().waitFor({ timeout: 10000 });
+  check("clientul deja existent e semnalat, cu opțiunea de a-l alege", true);
+
+  await pickExisting.first().click();
+  await page.waitForTimeout(1500);
+  check(
+    "rămâi în lucrare, nu ești mutat pe fișa clientului",
+    new URL(page.url()).pathname === "/lucrari/nou",
+    `ești la ${new URL(page.url()).pathname}`,
+  );
+  check(
+    "ce scrisesei în lucrare nu s-a pierdut",
+    (await page.getByPlaceholder("Montaj scară stejar").inputValue()) ===
+      "Lucrare pe jumătate (test)" &&
+      (await page.locator("#job-price").inputValue()) === "7777",
+  );
+  check(
+    "clientul găsit a fost pus pe lucrare",
+    (await page.getByRole("combobox").first().innerText()).includes("Ion Popescu (test)"),
+  );
+
   /* ----------------------------- zona sigură ----------------------- */
   section("Zona sigură (telefon cu aplicația instalată)");
 
