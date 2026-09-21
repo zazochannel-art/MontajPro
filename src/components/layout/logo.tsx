@@ -14,7 +14,7 @@ export function Logo({
   if (tagline) {
     return (
       <div className={cn("flex flex-col items-center gap-2", className)}>
-        <LogoMark className="size-12" />
+        <LogoMark className="h-14 w-auto" />
         <div className="flex flex-col items-center gap-1">
           <span className="text-2xl font-bold uppercase tracking-tight">
             Mont<span className="text-wood-light">Craft</span>
@@ -29,7 +29,7 @@ export function Logo({
 
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
-      <LogoMark className="size-9 shrink-0" />
+      <LogoMark className="h-8 w-auto shrink-0" />
       {!compact && (
         <span className="text-lg font-bold uppercase tracking-tight">
           Mont<span className="text-wood-light">Craft</span>
