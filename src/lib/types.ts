@@ -411,6 +411,14 @@ export interface DefaultRates {
   parquet_m2: number;
   plinth_m: number;
   hourly: number;
+  /**
+   * Tarif pe kilometru.
+   *
+   * Drumul până în sat și înapoi e muncă plătită, nu un cadou. Până acum
+   * „transport" exista doar ca o categorie de cheltuială — adică o plăteai
+   * din buzunarul tău.
+   */
+  travel_km: number;
 }
 
 /**

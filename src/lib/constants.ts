@@ -120,6 +120,7 @@ export const DEFAULT_RATES: DefaultRates = {
   parquet_m2: 0,
   plinth_m: 0,
   hourly: 0,
+  travel_km: 0,
 };
 
 /**
@@ -181,7 +182,7 @@ export const DEFAULT_MATERIAL_CATEGORIES = [
   "Altele",
 ];
 
-export const UNITS = ["buc", "m", "m²", "m³", "kg", "l", "set", "pachet", "oră"];
+export const UNITS = ["buc", "m", "m²", "m³", "kg", "l", "set", "pachet", "oră", "km"];
 
 /** Unitatea implicită de măsură pentru fiecare tip de lucrare. */
 export const JOB_TYPE_UNIT: Record<JobType, string> = {
