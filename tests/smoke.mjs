@@ -1005,6 +1005,147 @@ try {
     (await page.getByText(/% față de/).count()) > 0,
   );
 
+  /* ----------------------------- lucrarea de mai multe zile -------- */
+  section("Lucrarea care ține mai multe zile");
+
+  /*
+   * Trei zile pornind de azi, ca să cadă în săptămâna pe care o arată banda
+   * de capacitate — acolo se vede că orele se împart, nu se îngrămădesc.
+   */
+  const spanStart = new Date();
+  const dayOne = spanStart.toISOString().slice(0, 10);
+  const dayThree = new Date(spanStart.getTime() + 2 * 86400000)
+    .toISOString()
+    .slice(0, 10);
+  await page.goto(`${BASE}/lucrari/nou`, { waitUntil: "networkidle" });
+  await page.getByPlaceholder("Montaj scară stejar").waitFor({ timeout: 15000 });
+  await page.getByPlaceholder("Montaj scară stejar").fill("Scară de trei zile (test)");
+  await page.locator("#job-date").fill(dayOne);
+  await page.locator("#job-end-date").fill(dayThree);
+  await page.locator("#job-hours").fill("24");
+  await page.locator("#job-price").fill("20000");
+  await page.getByRole("button", { name: /Creează lucrarea/i }).click();
+  await page.waitForURL(/\/lucrari\/[0-9a-f-]{36}/, { timeout: 15000 });
+  const longJobUrl = page.url();
+  check("lucrarea poate ține mai multe zile", true);
+  check(
+    "fișa spune din câte zile e făcută",
+    (await page.getByText(/3 zile, până pe/i).count()) > 0,
+  );
+
+  /*
+   * Cifra care mințea: 24 de ore stăteau toate pe prima zi, deci săptămâna
+   * ieșea suprarezervată luni și liberă marți-miercuri. Acum se împart.
+   */
+  await page.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
+  await page.getByText("Săptămâna asta").first().waitFor({ timeout: 15000 });
+  await page.waitForTimeout(1500);
+  const strip = await page
+    .locator("button[aria-label^='Blochează ziua'], button[aria-label^='Eliberează ziua']")
+    .allInnerTexts();
+  check(
+    "orele se împart pe zilele lucrării, nu stau toate pe prima",
+    !strip.some((text) => text.includes("24")),
+    `banda zilelor: ${strip.join(" | ")}`,
+  );
+  check(
+    "fiecare zi a lucrării primește partea ei",
+    strip.filter((text) => text.includes("8")).length >= 2,
+    `banda zilelor: ${strip.join(" | ")}`,
+  );
+
+  /* ----------------------------- ziua blocată ---------------------- */
+  section("Avertismentele de zi");
+
+  await page.goto(`${jobUrl}/editare`, { waitUntil: "networkidle" });
+  await page.locator("#job-title").waitFor({ timeout: 15000 });
+  await page.waitForTimeout(1200);
+  const todayForBlock = new Date().toISOString().slice(0, 10);
+  await page.locator("#job-date").fill(todayForBlock);
+  await page.getByRole("button", { name: /Salvează/i }).click();
+  await page.waitForURL(/\/lucrari\/[0-9a-f-]{36}$/, { timeout: 15000 });
+
+  await page.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
+  const blockToday2 = page.getByRole("button", { name: `Blochează ziua de ${todayForBlock}` });
+  await blockToday2.waitFor({ timeout: 15000 });
+  await blockToday2.click();
+  await page.waitForTimeout(1200);
+  check(
+    "blocând o zi cu lucrări, se spune că rămân acolo",
+    (await page.getByText(/rămâne programată atunci|rămân programate atunci/i).count()) > 0,
+  );
+  await page.getByRole("button", { name: `Eliberează ziua de ${todayForBlock}` }).click();
+  await page.waitForTimeout(800);
+
+  /* ----------------------------- adrese multiple ------------------- */
+  section("Clientul cu mai multe adrese");
+
+  await page.goto(`${BASE}/clienti`, { waitUntil: "networkidle" });
+  await page.getByText("Ion Popescu (test)").first().click();
+  await page.waitForURL(/\/clienti\/[0-9a-f-]{36}/, { timeout: 15000 });
+  await page.getByRole("button", { name: /Editează/i }).first().click();
+  const addrDialog = page.getByRole("dialog");
+  await addrDialog.getByRole("button", { name: /Încă o adresă/i }).waitFor({ timeout: 10000 });
+  await addrDialog.getByRole("button", { name: /Încă o adresă/i }).click();
+  await addrDialog.getByLabel("Numele adresei 1", { exact: true }).fill("Apartamentul 2");
+  await addrDialog.getByLabel("Adresa 1", { exact: true }).fill("str. Dacia 12, ap. 2");
+  await addrDialog.getByRole("button", { name: /Salvează/i }).click();
+  await addrDialog.waitFor({ state: "hidden", timeout: 10000 });
+  check("clientul poate avea mai multe adrese", true);
+
+  await page.goto(`${BASE}/lucrari/nou`, { waitUntil: "networkidle" });
+  await page.getByPlaceholder("Montaj scară stejar").waitFor({ timeout: 15000 });
+  await page.waitForTimeout(2000);
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: /Ion Popescu \(test\)/ }).click();
+  await page.waitForTimeout(800);
+  const pickAddress = page.getByRole("button", { name: /Apartamentul 2/ });
+  await pickAddress.waitFor({ timeout: 10000 });
+  check("adresele știute apar ca butoane pe lucrare", true);
+  await pickAddress.click();
+  check(
+    "adresa aleasă intră în câmp, fără s-o retastezi",
+    (await page.locator("#job-address").inputValue()) === "str. Dacia 12, ap. 2",
+  );
+
+  /* ----------------------------- pusă pe pauză --------------------- */
+  section("Lucrarea pusă pe pauză");
+
+  await page.goto(`${longJobUrl}/editare`, { waitUntil: "networkidle" });
+  await page.locator("#job-title").waitFor({ timeout: 15000 });
+  await page.waitForTimeout(1200);
+  const statusSelect2 = page.getByRole("combobox").last();
+  await statusSelect2.click();
+  await page.getByRole("option", { name: /^În așteptare$/ }).click();
+  await page.getByRole("button", { name: /Salvează/i }).click();
+  await page.waitForURL(/\/lucrari\/[0-9a-f-]{36}$/, { timeout: 15000 });
+  check(
+    "lucrarea se poate pune în așteptare",
+    (await page.getByText("În așteptare").count()) > 0,
+  );
+
+  /* ----------------------------- înapoi la furnizor ---------------- */
+  section("Materialul dus înapoi la furnizor");
+
+  await page.goto(`${jobUrl}?tab=materiale`, { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: /Materiale/i }).click();
+  await page.waitForTimeout(1200);
+  const supplierButton = page.getByRole("button", { name: /ai dus ceva înapoi la furnizor/i });
+  await supplierButton.first().waitFor({ timeout: 10000 });
+  check("materialul cumpărat poate fi dus înapoi la furnizor", true);
+
+  await supplierButton.first().click();
+  const supplierInput = page.getByLabel(/Cât ai dus înapoi din/i);
+  await supplierInput.waitFor({ timeout: 10000 });
+  await supplierInput.fill("2");
+  await page.getByRole("button", { name: /^Notează$/ }).click();
+  await page.getByText(/de recuperat/i).first().waitFor({ timeout: 10000 });
+  check("se notează cât ai de recuperat", true);
+
+  await page.goto(`${BASE}/finante`, { waitUntil: "networkidle" });
+  await page.getByText("De recuperat de la furnizor").first().waitFor({ timeout: 15000 });
+  check("banii de recuperat se văd în finanțe, nu se pierd", true);
+
   /* ----------------------------- zona sigură ----------------------- */
   section("Zona sigură (telefon cu aplicația instalată)");
 

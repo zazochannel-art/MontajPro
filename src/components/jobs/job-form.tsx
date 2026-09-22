@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, Check, Gauge, Plus, Scale } from "lucide-react";
+import { CalendarClock, Check, Gauge, MapPin, Plus, Scale } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,8 @@ import {
   JOB_TYPE_LABELS,
 } from "@/lib/constants";
 import { JOB_STATUSES, JOB_TYPES } from "@/lib/types";
-import type { Job, JobStatus, JobType } from "@/lib/types";
+import type { Client, Job, JobStatus, JobType } from "@/lib/types";
+import { loadTeam, type TeamRow } from "@/lib/team";
 import { useApp } from "@/lib/app-provider";
 import {
   useAveragePerHour,
@@ -82,6 +83,8 @@ export function JobForm({
     status: (job?.status ?? "quote") as JobStatus,
     address: job?.address ?? "",
     scheduled_date: job?.scheduled_date ?? "",
+    scheduled_end_date: job?.scheduled_end_date ?? "",
+    assigned_member_id: job?.assigned_member_id ?? null,
     scheduled_time: job?.scheduled_time ?? "",
     estimated_hours: job?.estimated_hours ?? 0,
     travel_km: job?.travel_km ?? 0,
@@ -247,6 +250,14 @@ export function JobForm({
               onChange={(event) => form.set("address", event.target.value)}
               placeholder="str. Ismail 45, Chișinău"
             />
+            {/*
+              * Adresele pe care le știi deja despre omul ăsta. Cine are trei
+              * apartamente nu le retastează de fiecare dată.
+              */}
+            <KnownAddresses
+              client={clients.find((row) => row.id === form.values.client_id) ?? null}
+              onPick={(address) => form.set("address", address)}
+            />
           </Field>
         </div>
 
@@ -273,6 +284,32 @@ export function JobForm({
               />
             </Field>
           </FieldRow>
+
+          {/*
+            * Ultima zi, pentru lucrările care țin mai mult. Orele se împart
+            * pe zilele lucrării, altfel toată scara ar sta pe prima zi și
+            * săptămâna ar ieși plină luni și goală marți.
+            */}
+          <Field
+            label="Ține până pe"
+            htmlFor="job-end-date"
+            hint="Lasă gol dacă e o lucrare de o zi."
+          >
+            <Input
+              id="job-end-date"
+              type="date"
+              min={form.values.scheduled_date || undefined}
+              value={form.values.scheduled_end_date ?? ""}
+              onChange={(event) =>
+                form.set("scheduled_end_date", event.target.value)
+              }
+            />
+          </Field>
+
+          <AssignField
+            value={form.values.assigned_member_id ?? null}
+            onChange={(value) => form.set("assigned_member_id", value)}
+          />
 
           {sameDay.jobs.length > 0 && (
             <p className="flex items-start gap-2 rounded-xl bg-muted/50 p-2.5 text-xs text-muted-foreground">
@@ -487,3 +524,108 @@ function RateHint({
     </p>
   );
 }
+
+/**
+ * Adresele știute ale clientului, ca butoane.
+ *
+ * Cea principală plus cele adăugate pe fișă. Apare doar când chiar sunt mai
+ * multe de ales: un singur buton care pune exact ce e deja în câmp n-ajută
+ * pe nimeni.
+ */
+function KnownAddresses({
+  client,
+  onPick,
+}: {
+  client: Client | null;
+  onPick: (address: string) => void;
+}) {
+  if (!client) return null;
+
+  const seen = new Set<string>();
+  const options: { label: string; address: string }[] = [];
+  for (const row of [
+    { label: "Principală", address: client.address ?? "" },
+    ...(client.addresses ?? []),
+  ]) {
+    const address = row.address.trim();
+    if (!address || seen.has(address)) continue;
+    seen.add(address);
+    options.push({ label: row.label.trim() || "Adresă", address });
+  }
+
+  if (options.length < 2) return null;
+
+  return (
+    <div className="flex flex-wrap gap-1.5 pt-2">
+      {options.map((option) => (
+        <button
+          key={option.address}
+          type="button"
+          onClick={() => onPick(option.address)}
+          title={option.address}
+          className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <MapPin className="mr-1 inline size-3" />
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Cine merge la lucrarea asta.
+ *
+ * Orele lucrate spun cine a fost, după fapt; asta spune cine e trimis,
+ * înainte. Apare doar dacă ai pe cineva în echipă — altfel e o întrebare
+ * fără răspunsuri.
+ */
+function AssignField({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (value: string | null) => void;
+}) {
+  const { userId, email } = useApp();
+  const [team, setTeam] = useState<TeamRow[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadTeam(userId, email).then((state) => {
+      if (cancelled) return;
+      setTeam(
+        state.members.filter((row) => row.member_id && !row.revoked_at),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, email]);
+
+  if (!team.length) return null;
+
+  return (
+    <Field label="Cine merge" hint="Gol înseamnă că mergi tu.">
+      <Select
+        value={value ?? MYSELF}
+        onValueChange={(next) => onChange(next === MYSELF ? null : next)}
+      >
+        <SelectTrigger aria-label="Cine merge">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={MYSELF}>Eu</SelectItem>
+          {team.map((row) => (
+            <SelectItem key={row.member_id!} value={row.member_id!}>
+              {row.member_name || row.member_email}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </Field>
+  );
+}
+
+/** Valoarea „mergi tu” din selector; Radix nu primește șir gol. */
+const MYSELF = "me";

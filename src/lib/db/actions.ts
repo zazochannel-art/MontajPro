@@ -12,6 +12,7 @@ import { syncNow } from "./sync";
 import { deleteAsset } from "../storage";
 import { CLIENT_TABLES } from "../clients";
 import type {
+  ClientAddress,
   ClientSource,
   Client,
   ExpenseCategory,
@@ -50,6 +51,7 @@ export async function saveClient(input: {
   source?: ClientSource | null;
   referred_by_client_id?: string | null;
   price_adjust?: number | null;
+  addresses?: ClientAddress[];
 }) {
   const payload = {
     name: input.name.trim(),
@@ -63,6 +65,14 @@ export async function saveClient(input: {
     referred_by_client_id:
       input.source === "recommendation" ? (input.referred_by_client_id ?? null) : null,
     price_adjust: num(input.price_adjust),
+    // Adresele goale n-au ce căuta în listă: un rând fără adresă nu e o
+    // adresă, e un rând pe care l-ai deschis și l-ai lăsat așa.
+    addresses: (input.addresses ?? [])
+      .map((row) => ({
+        label: row.label.trim(),
+        address: row.address.trim(),
+      }))
+      .filter((row) => row.address),
   };
   const row = input.id
     ? await store.update("clients", input.id, payload)
@@ -172,6 +182,10 @@ export interface JobInput {
   estimated_hours?: number | null;
   /** Dus-întors, în kilometri; se înmulțește cu tariful pe km din setări. */
   travel_km?: number | null;
+  /** Ultima zi, când lucrarea ține mai multe. */
+  scheduled_end_date?: string | null;
+  /** Omul din echipă trimis acolo; gol = mergi tu. */
+  assigned_member_id?: string | null;
   price_total: number;
   material_cost?: number | null;
   notes?: string | null;
@@ -188,7 +202,9 @@ export async function saveJob(input: JobInput) {
     status: input.status,
     address: input.address?.trim() || null,
     scheduled_date: input.scheduled_date || null,
+    scheduled_end_date: input.scheduled_end_date || null,
     scheduled_time: input.scheduled_time || null,
+    assigned_member_id: input.assigned_member_id || null,
     estimated_hours: input.estimated_hours ?? null,
     travel_km: input.travel_km ?? null,
     price_total: num(input.price_total),
@@ -1669,6 +1685,44 @@ export async function extendQuote(quoteId: string, days = 14) {
 export async function setPhotoCaption(photoId: string, caption: string) {
   await store.update("job_photos", photoId, {
     caption: caption.trim() || null,
+  });
+  kick();
+}
+
+/* ----------------------- înapoi la furnizor ------------------------ */
+
+/**
+ * Materialul dus înapoi la furnizor.
+ *
+ * Altceva decât „pune în stoc”: ăla intră pe raftul tău, ăsta pleacă de tot
+ * și rămân niște bani de recuperat. Nu mișcă inventarul — n-a fost niciodată
+ * al tău.
+ *
+ * Se adună la ce s-a întors deja, ca să poți da înapoi în două rânduri.
+ */
+export async function returnToSupplier(
+  jobMaterialId: string,
+  quantity: number,
+): Promise<boolean> {
+  const value = num(quantity);
+  if (value <= 0) return false;
+
+  const line = store
+    .getTable("job_materials")
+    .find((row) => row.id === jobMaterialId);
+  if (!line) return false;
+
+  await store.update("job_materials", jobMaterialId, {
+    supplier_return_quantity: num(line.supplier_return_quantity) + value,
+  });
+  kick();
+  return true;
+}
+
+/** Șterge ce s-a notat ca dus înapoi — furnizorul a plătit, sau a fost o greșeală. */
+export async function clearSupplierReturn(jobMaterialId: string) {
+  await store.update("job_materials", jobMaterialId, {
+    supplier_return_quantity: 0,
   });
   kick();
 }

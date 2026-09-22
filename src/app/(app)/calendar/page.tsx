@@ -22,9 +22,12 @@ import {
 import { StatusBadge } from "@/components/jobs/status-badge";
 import { useJobs, useTable } from "@/hooks/use-data";
 import { updateJob } from "@/lib/db/actions";
+import { jobDayCount, jobDays } from "@/lib/span";
+import { checkDay } from "@/lib/day-guard";
 import { JOB_TYPE_EMOJI } from "@/lib/constants";
 import {
   WEEKDAY_SHORT,
+  formatDateShort,
   formatDuration,
   formatMoney,
   monthName,
@@ -51,6 +54,8 @@ function addDays(date: Date, days: number) {
 
 export default function CalendarPage() {
   const jobs = useJobs();
+  const allJobs = jobs;
+  const blocks = useTable("day_blocks");
   const clients = useTable("clients");
   const { currency } = useApp();
   const t = useT();
@@ -63,8 +68,8 @@ export default function CalendarPage() {
   const byDay = useMemo(() => {
     const map: Record<string, Job[]> = {};
     for (const job of jobs) {
-      if (!job.scheduled_date) continue;
-      (map[job.scheduled_date] ||= []).push(job);
+      // O lucrare de trei zile apare în toate trei, nu doar în prima.
+      for (const day of jobDays(job)) (map[day] ||= []).push(job);
     }
     for (const list of Object.values(map)) {
       list.sort((a, b) => (a.scheduled_time || "99:99").localeCompare(b.scheduled_time || "99:99"));
@@ -92,9 +97,39 @@ export default function CalendarPage() {
     });
   };
 
+  /*
+   * Mutarea nu se oprește niciodată — omul știe lucruri pe care aplicația nu
+   * le știe. Dar dacă ziua e blocată sau deja plină, o spune: înainte
+   * răspundea „Mutată pe...” și atât, chiar dacă o mutai peste nunta pentru
+   * care blocaseși ziua.
+   *
+   * Lucrarea de mai multe zile își duce durata cu ea: muți începutul, se
+   * mută și sfârșitul cu tot atâtea zile.
+   */
   const moveJob = async (job: Job, date: string) => {
-    await updateJob(job.id, { scheduled_date: date });
-    toast.success(`Mutată pe ${date}`);
+    const check = checkDay(date, allJobs, blocks, job);
+    const patch: Partial<Job> = { scheduled_date: date };
+
+    const span = jobDayCount(job);
+    if (span > 1) patch.scheduled_end_date = shiftDays(date, span - 1);
+
+    await updateJob(job.id, patch);
+
+    if (check.blocked) {
+      toast.warning(
+        check.blockReason
+          ? `Mutată pe ${formatDateShort(date)} — zi blocată: ${check.blockReason}`
+          : `Mutată pe ${formatDateShort(date)}, care e o zi blocată`,
+      );
+    } else if (check.full) {
+      toast.warning(
+        `Mutată pe ${formatDateShort(date)} — ziua ajunge la ${formatDuration(
+          (check.hours + (job.estimated_hours ?? 0)) * 60,
+        )}`,
+      );
+    } else {
+      toast.success(`Mutată pe ${formatDateShort(date)}`);
+    }
   };
 
   const clientName = (job: Job) =>
@@ -386,4 +421,11 @@ function JobRow({
       </Button>
     </div>
   );
+}
+
+/** Aceeași zi, mutată cu atâtea zile înainte. */
+function shiftDays(day: string, days: number): string {
+  const start = Date.parse(`${day.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(start)) return day;
+  return new Date(start + days * 86_400_000).toISOString().slice(0, 10);
 }

@@ -17,6 +17,7 @@ import { store } from "./store";
 import { toPayload } from "./columns";
 import { flushQueue } from "../team";
 import { recordConflict } from "../conflicts";
+import { isNumberClash } from "../renumber";
 import { TABLE_NAMES } from "../types";
 import type { BaseRow, TableName } from "../types";
 
@@ -68,9 +69,46 @@ async function pushOutbox(): Promise<string[]> {
     const payload = bucket.rows.map((row) =>
       toPayload(table, row as unknown as Record<string, unknown>),
     );
-    const { error } = await supabase
+    let { error } = await supabase
       .from(table)
       .upsert(payload, { onConflict: "id" });
+
+    /*
+     * Numărul care se ciocnește.
+     *
+     * Numărul următor se ia din ce are telefonul: maximul local plus unu.
+     * Două telefoane fără semnal fac amândouă factura #5, iar baza o refuză
+     * pe a doua — tocmai de asta există indexul unic.
+     *
+     * Înainte, refuzul lăsa rândurile în coadă și se reîncerca la nesfârșit.
+     * Cum trimiterea se face pe tabele întregi, o dublură de acum trei luni
+     * bloca toate facturile din spatele ei. Acum documentul primește numărul
+     * următor liber de pe server și pleacă. O factură tipărită deja cu alt
+     * număr e o neplăcere; una care nu pleacă niciodată e mai rea.
+     */
+    if (error && isNumberClash(table, error.message)) {
+      const renumbered = await renumberClashing(supabase, table, bucket.rows);
+      if (renumbered) {
+        /*
+         * Rândurile se citesc din nou din magazie, nu din `bucket.rows`:
+         * `store.update` scrie un obiect nou, iar cel de aici a rămas cu
+         * numărul vechi. Trimis așa, ar cădea la fel, la nesfârșit.
+         */
+        const ids = new Set(bucket.rows.map((row) => row.id));
+        const fresh = (store.getTable(table) as BaseRow[]).filter((row) =>
+          ids.has(row.id),
+        );
+        ({ error } = await supabase
+          .from(table)
+          .upsert(
+            fresh.map((row) =>
+              toPayload(table, row as unknown as Record<string, unknown>),
+            ),
+            { onConflict: "id" },
+          ));
+      }
+    }
+
     if (error) {
       // Un tabel care refuză scrierea nu trebuie să blocheze restul
       // sincronizării: rândurile rămân în outbox și se reîncearcă, iar
@@ -82,6 +120,57 @@ async function pushOutbox(): Promise<string[]> {
   }
 
   return problems;
+}
+
+/**
+ * Dă documentelor care se ciocnesc primul număr liber de pe server.
+ *
+ * Se întreabă serverul, nu memoria locală: dublura vine tocmai din faptul că
+ * telefonul ăsta nu știa ce a scris celălalt. Numărul se schimbă și local, ca
+ * documentul să arate la fel pe ecran și în bază.
+ *
+ * Întoarce `true` dacă a schimbat ceva — altfel n-are rost o a doua
+ * încercare cu exact aceleași rânduri.
+ */
+async function renumberClashing(
+  supabase: NonNullable<ReturnType<typeof getSupabase>>,
+  table: TableName,
+  rows: BaseRow[],
+): Promise<boolean> {
+  const numbered = rows as unknown as { id: string; number: number; series?: string }[];
+  // Pe serii diferite numerele curg separat, deci se întreabă pe serie.
+  const bySeries = new Map<string, typeof numbered>();
+  for (const row of numbered) {
+    const key = row.series ?? "";
+    bySeries.set(key, [...(bySeries.get(key) ?? []), row]);
+  }
+
+  let changed = false;
+  for (const [series, group] of bySeries) {
+    let query = supabase
+      .from(table)
+      .select("number")
+      .order("number", { ascending: false })
+      .limit(1);
+    if (series) query = query.eq("series", series);
+
+    const { data, error } = await query;
+    if (error) return changed;
+
+    let next = (((data?.[0] as { number?: number } | undefined)?.number ?? 0) || 0) + 1;
+    for (const row of group.sort((a, b) => a.number - b.number)) {
+      if (row.number === next) {
+        next += 1;
+        continue;
+      }
+      await store.update(table, row.id, {
+        number: next,
+      } as never);
+      next += 1;
+      changed = true;
+    }
+  }
+  return changed;
 }
 
 /**

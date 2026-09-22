@@ -27,6 +27,7 @@ function line(
     created_at: `${day}T08:00:00.000Z`,
     job_id: `job-${n}`,
     returned_quantity: 0,
+    supplier_return_quantity: 0,
     material_id: "parchet",
     name: "Parchet stejar",
     quantity: 10,

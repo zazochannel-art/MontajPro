@@ -47,6 +47,8 @@ import { ClosingCard } from "@/components/jobs/closing-card";
 import { useTable } from "@/hooks/use-data";
 import { mapsHref, telHref } from "@/lib/utils";
 import { ShareJob } from "@/components/jobs/share-job";
+import { AssignedTo } from "@/components/jobs/assigned-to";
+import { jobDayCount } from "@/lib/span";
 
 /** Rezumatul lucrării: cine, unde, când, cât. */
 export function OverviewTab({
@@ -85,6 +87,8 @@ export function OverviewTab({
         handover={handover}
         rest={money.rest}
       />
+
+      <AssignedTo job={job} />
 
       <ShareJob job={job} />
 
@@ -177,6 +181,13 @@ export function OverviewTab({
               {formatDate(job.scheduled_date)}
               {job.scheduled_time && `, ${job.scheduled_time}`}
             </dd>
+            {/* Lucrarea care ține mai multe zile o spune aici, nu o deduci. */}
+            {jobDayCount(job) > 1 && (
+              <dd className="text-xs text-muted-foreground">
+                {jobDayCount(job)} zile, până pe{" "}
+                {formatDate(job.scheduled_end_date)}
+              </dd>
+            )}
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Durată estimată</dt>

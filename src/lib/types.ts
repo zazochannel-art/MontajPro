@@ -32,6 +32,13 @@ export const JOB_STATUSES = [
   "confirmed",
   "materials",
   "in_progress",
+  /**
+   * Pusă pe pauză: se așteaptă clientul, un material, o hotărâre.
+   *
+   * Altceva decât „issue”, unde e o problemă de rezolvat. Lucrarea în pauză
+   * nu mai mănâncă din capacitatea săptămânii — nu se lucrează la ea.
+   */
+  "on_hold",
   "done",
   "issue",
 ] as const;
@@ -99,6 +106,18 @@ export interface Client extends BaseRow {
    * reducerea stătea în capul tău și o recalculai de fiecare dată.
    */
   price_adjust: number;
+  /**
+   * Adrese în plus față de cea principală.
+   *
+   * Omul cu trei apartamente avea un singur rând. Se ține ca listă în chiar
+   * rândul clientului: sunt două-trei adrese, nu o evidență.
+   */
+  addresses: ClientAddress[];
+}
+
+export interface ClientAddress {
+  label: string;
+  address: string;
 }
 
 /**
@@ -126,8 +145,16 @@ export interface Job extends BaseRow {
   type: JobType;
   status: JobStatus;
   address: string | null;
-  /** ISO date (YYYY-MM-DD) — ziua programată. */
+  /** ISO date (YYYY-MM-DD) — ziua programată, sau prima zi. */
   scheduled_date: string | null;
+  /**
+   * Ultima zi a lucrării; gol înseamnă o singură zi.
+   *
+   * O scară de trei zile punea toate orele pe prima: săptămâna ieșea
+   * suprarezervată luni și liberă marți-miercuri, deci cifra „cât ai liber”
+   * mințea pentru orice lucrare mai lungă de o zi.
+   */
+  scheduled_end_date: string | null;
   /** HH:mm */
   scheduled_time: string | null;
   estimated_hours: number | null;
@@ -175,6 +202,13 @@ export interface Job extends BaseRow {
    * cu tot — funcția din bază nu mai întoarce nimic.
    */
   public_token: string | null;
+  /**
+   * Omul din echipă trimis la lucrarea asta.
+   *
+   * `work_sessions.by_member_id` spune cine a lucrat, după fapt; asta spune
+   * cine e trimis, înainte. Gol înseamnă că mergi tu.
+   */
+  assigned_member_id: ID | null;
 }
 
 /** Valorile măsurătorilor, în funcție de tip. Stocate ca JSON. */
@@ -252,6 +286,13 @@ export interface JobMaterial extends BaseRow {
    * cifra asta, data viitoare cumperi din nou, fiindcă nimeni nu ține minte.
    */
   returned_quantity: number;
+  /**
+   * Cantitatea dusă înapoi la furnizor.
+   *
+   * Altceva decât `returned_quantity`, care înseamnă „pus înapoi în depozitul
+   * meu”. Asta e materialul adus greșit, pentru care aștepți banii înapoi.
+   */
+  supplier_return_quantity: number;
   material_id: ID | null;
   name: string;
   quantity: number;
