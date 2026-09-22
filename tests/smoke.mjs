@@ -30,6 +30,23 @@ function section(title) {
   console.log(`\n${title}`);
 }
 
+/**
+ * A apărut pe ecran, în timpul dat?
+ *
+ * O verificare scrisă ca „așteaptă o clipă, apoi numără” trece pe laptopul
+ * meu și pică pe mașina din CI, care e mai înceată — nu fiindcă aplicația e
+ * stricată, ci fiindcă n-a apucat să deseneze. Așteptarea pe element nu
+ * slăbește verificarea: tot cere ca lucrul să fie acolo.
+ */
+async function seen(locator, timeout = 10000) {
+  try {
+    await locator.first().waitFor({ state: "visible", timeout });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Mediile CI/agent au un Chromium preinstalat care poate să nu corespundă
 // versiunii din node_modules; CHROMIUM_PATH îl indică explicit.
 const browser = await chromium.launch(
@@ -999,10 +1016,9 @@ try {
 
   await page.goto(`${BASE}/materiale`, { waitUntil: "networkidle" });
   await page.getByText("Parchet stejar (test)").first().waitFor({ timeout: 15000 });
-  await page.waitForTimeout(1200);
   check(
     "materialul cumpărat de două ori arată cât s-a schimbat prețul",
-    (await page.getByText(/% față de/).count()) > 0,
+    await seen(page.getByText(/% față de/), 15000),
   );
 
   /* ----------------------------- lucrarea de mai multe zile -------- */
@@ -1030,7 +1046,7 @@ try {
   check("lucrarea poate ține mai multe zile", true);
   check(
     "fișa spune din câte zile e făcută",
-    (await page.getByText(/3 zile, până pe/i).count()) > 0,
+    await seen(page.getByText(/3 zile, până pe/i)),
   );
 
   /*
@@ -1069,10 +1085,9 @@ try {
   const blockToday2 = page.getByRole("button", { name: `Blochează ziua de ${todayForBlock}` });
   await blockToday2.waitFor({ timeout: 15000 });
   await blockToday2.click();
-  await page.waitForTimeout(1200);
   check(
     "blocând o zi cu lucrări, se spune că rămân acolo",
-    (await page.getByText(/rămâne programată atunci|rămân programate atunci/i).count()) > 0,
+    await seen(page.getByText(/rămâne programată atunci|rămân programate atunci/i)),
   );
   await page.getByRole("button", { name: `Eliberează ziua de ${todayForBlock}` }).click();
   await page.waitForTimeout(800);
@@ -1121,7 +1136,7 @@ try {
   await page.waitForURL(/\/lucrari\/[0-9a-f-]{36}$/, { timeout: 15000 });
   check(
     "lucrarea se poate pune în așteptare",
-    (await page.getByText("În așteptare").count()) > 0,
+    await seen(page.getByText("În așteptare")),
   );
 
   /* ----------------------------- înapoi la furnizor ---------------- */
