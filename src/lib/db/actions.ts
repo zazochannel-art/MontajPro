@@ -28,6 +28,8 @@ import type {
   TableName,
 } from "../types";
 import { nowISO, num, uid } from "../utils";
+import { planFromQuote } from "../quote-convert";
+import { allPositions } from "../price-list";
 import { todayKey } from "../format";
 
 /** Trimite modificările imediat, fără să blocheze interfața. */
@@ -167,6 +169,8 @@ export interface JobInput {
   scheduled_date?: string | null;
   scheduled_time?: string | null;
   estimated_hours?: number | null;
+  /** Dus-întors, în kilometri; se înmulțește cu tariful pe km din setări. */
+  travel_km?: number | null;
   price_total: number;
   material_cost?: number | null;
   notes?: string | null;
@@ -185,6 +189,7 @@ export async function saveJob(input: JobInput) {
     scheduled_date: input.scheduled_date || null,
     scheduled_time: input.scheduled_time || null,
     estimated_hours: input.estimated_hours ?? null,
+    travel_km: input.travel_km ?? null,
     price_total: num(input.price_total),
     material_cost: input.material_cost ?? null,
     notes: input.notes?.trim() || null,
@@ -705,10 +710,23 @@ export async function saveQuote(
   return quote;
 }
 
-export async function setQuoteStatus(id: string, status: Quote["status"]) {
+/**
+ * Schimbă starea ofertei.
+ *
+ * La refuz se ține și motivul: fără el, după trei oferte pierdute singura
+ * concluzie care-ți rămâne e „lumea n-are bani”, care nu te ajută să schimbi
+ * nimic. Motivul se șterge dacă oferta iese din refuz — ar fi o explicație
+ * pentru ceva ce nu s-a mai întâmplat.
+ */
+export async function setQuoteStatus(
+  id: string,
+  status: Quote["status"],
+  reason?: string | null,
+) {
   const patch: Partial<Quote> = { status };
   if (status === "sent") patch.sent_at = nowISO();
   if (status === "accepted") patch.accepted_at = nowISO();
+  patch.rejected_reason = status === "rejected" ? reason?.trim() || null : null;
   await store.update("quotes", id, patch);
   kick();
 }
@@ -741,10 +759,23 @@ export function quoteTotal(
   return { subtotal, total: Math.max(0, subtotal - num(discount)) };
 }
 
-/** Transformă o ofertă acceptată în lucrare (cu avansul deja înregistrat). */
+/**
+ * Transformă o ofertă acceptată în lucrare.
+ *
+ * Ce ai scris o dată nu se mai scrie a doua oară: tipul lucrării, orele și
+ * kilometrii se citesc din liniile ofertei. Înainte, tipul era mereu
+ * „Altceva” și liniile ajungeau lipite ca text în notițe — adică nici
+ * șablonul de pași, nici lista de scule, nici media pe unitate nu aveau de
+ * unde ști cu ce au de-a face.
+ *
+ * Liniile rămân pe ofertă, care e legată de lucrare prin `job_id`: acolo se
+ * citesc, întregi, oricând. Notițele rămân ale tale.
+ *
+ * `type` se poate da din afară când se știe mai bine decât din linii.
+ */
 export async function convertQuoteToJob(
   quoteId: string,
-  type: JobType = "other",
+  type?: JobType,
 ) {
   const quote = store.getTable("quotes").find((row) => row.id === quoteId);
   if (!quote) return null;
@@ -753,20 +784,20 @@ export async function convertQuoteToJob(
     .filter((item) => item.quote_id === quoteId);
   const { total } = quoteTotal(items, quote.discount);
 
+  const settings = store.getTable("settings")[0];
+  const plan = planFromQuote(items, allPositions(settings));
+
   // Avansul din ofertă este o cerere, nu bani încasați: nu creăm o plată
   // pentru el. Se înregistrează când ajunge efectiv la montator.
   const job = await saveJob({
     client_id: quote.client_id,
     title: quote.title,
-    type,
+    type: type ?? plan.type,
     status: "confirmed",
     price_total: total,
-    notes: items
-      .map(
-        (item) =>
-          `${item.description}: ${item.quantity} ${item.unit} × ${item.unit_price}`,
-      )
-      .join("\n"),
+    estimated_hours: plan.hours || null,
+    travel_km: plan.travelKm || null,
+    notes: quote.notes?.trim() || null,
   });
   if (job) {
     await store.update("quotes", quoteId, {
@@ -1566,4 +1597,19 @@ export async function payCrewMember(input: {
   });
   kick();
   return row;
+}
+
+/* --------------------------- portofoliul --------------------------- */
+
+/**
+ * Pune sau scoate lucrarea din portofoliul public.
+ *
+ * Bifa asta e singurul lucru care decide ce vede cineva prin linkul public:
+ * funcția din bază întoarce exact lucrările cu `in_portfolio = true`. O
+ * lucrare terminată rămâne în aplicație oricum — bifa spune doar dacă se
+ * arată și altora.
+ */
+export async function setJobInPortfolio(jobId: string, on: boolean) {
+  await store.update("jobs", jobId, { in_portfolio: on });
+  kick();
 }

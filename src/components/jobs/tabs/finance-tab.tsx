@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Clock,
   FileSignature,
+  MessageCircle,
   Plus,
   Receipt,
   ReceiptText,
@@ -20,7 +21,8 @@ import { ExpenseDialog } from "@/components/forms/expense-dialog";
 import { InvoiceDialog } from "@/components/forms/invoice-dialog";
 import { HandoverDialog } from "@/components/forms/handover-dialog";
 import { Installments } from "@/components/jobs/installments";
-import { useTable } from "@/hooks/use-data";
+import { useRow, useTable } from "@/hooks/use-data";
+import { moneyRequestText, whatsappHref } from "@/lib/order";
 import { deletePayment, deleteExpense } from "@/lib/db/actions";
 import {
   EXPENSE_CATEGORY_LABELS,
@@ -50,7 +52,9 @@ export function FinanceTab({
   payments: Payment[];
   expenses: Expense[];
 }) {
-  const { currency } = useApp();
+  const { currency, settings } = useApp();
+  const client = useRow("clients", job.client_id);
+  const installments = useTable("installments");
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
@@ -117,6 +121,43 @@ export function FinanceTab({
             {formatMoney(money.profit, currency)}
           </p>
         </div>
+
+        {/*
+          * Mesajul prin care ceri restul. Se scria de mână de fiecare dată,
+          * adică de multe ori nu se scria deloc și banii stăteau. Apare doar
+          * cât timp chiar a rămas ceva de încasat.
+          */}
+        {money.rest > 0 && (
+          <Button
+            variant="outline"
+            className="mt-2 w-full"
+            onClick={() => {
+              const next = installments
+                .filter(
+                  (row) =>
+                    row.job_id === job.id &&
+                    !row.deleted_at &&
+                    !row.payment_id &&
+                    row.due_date,
+                )
+                .sort((a, b) => (a.due_date ?? "").localeCompare(b.due_date ?? ""))[0];
+              const text = moneyRequestText({
+                clientName: client?.name ?? null,
+                jobTitle: job.title,
+                rest: formatMoney(money.rest, currency),
+                dueDate: next?.due_date ? formatDateShort(next.due_date) : null,
+                from: settings?.company || settings?.full_name || null,
+              });
+              window.open(
+                whatsappHref(text, client?.phone),
+                "_blank",
+                "noopener,noreferrer",
+              );
+            }}
+          >
+            <MessageCircle /> Cere restul de {formatMoney(money.rest, currency)}
+          </Button>
+        )}
 
         {money.hours > 0 && (
           <div className="mt-2.5 flex items-center justify-between gap-3 rounded-xl bg-background p-3.5">

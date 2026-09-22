@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Camera, ImageIcon, Images, Pencil } from "lucide-react";
+import { Camera, Globe, ImageIcon, Images, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,9 @@ import {
 } from "@/components/ui/dialog";
 import { AssetImage } from "@/components/photo/asset-image";
 import { useAllJobs, useTable } from "@/hooks/use-data";
-import { updateJob } from "@/lib/db/actions";
+import { setJobInPortfolio, updateJob } from "@/lib/db/actions";
+import { Switch } from "@/components/ui/switch";
+import { useApp } from "@/lib/app-provider";
 import { JOB_TYPE_EMOJI, JOB_TYPE_LABELS } from "@/lib/constants";
 import { JOB_TYPES } from "@/lib/types";
 import type { Job, JobType } from "@/lib/types";
@@ -29,6 +31,7 @@ type Filter = JobType | "all";
 
 /** Portofoliul: lucrările finalizate, cu „înainte” și „după”. */
 export default function PortfolioPage() {
+  const { settings } = useApp();
   const jobs = useAllJobs();
   const photos = useTable("job_photos");
   const [filter, setFilter] = useState<Filter>("all");
@@ -67,6 +70,11 @@ export default function PortfolioPage() {
       <PageHeader
         title="Portofoliu"
         description="Lucrările finalizate — dovada meseriei tale"
+      />
+
+      <PublicHint
+        shown={jobs.filter((job) => job.in_portfolio && !job.deleted_at).length}
+        linkOn={!!settings?.portfolio_token}
       />
 
       <Segmented<Filter>
@@ -153,6 +161,31 @@ export default function PortfolioPage() {
                   <p className="text-sm text-muted-foreground">{job.portfolio_description}</p>
                 )}
 
+                {/*
+                  * Bifa care hotărăște ce se vede prin linkul public. Fără ea,
+                  * linkul din Setări arată o pagină goală: funcția din bază
+                  * întoarce doar lucrările bifate aici.
+                  */}
+                <label className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-2.5">
+                  <span className="flex items-center gap-2 text-xs">
+                    <Globe className="size-3.5 text-muted-foreground" />
+                    <span className={job.in_portfolio ? "font-medium" : "text-muted-foreground"}>
+                      {job.in_portfolio ? "Se vede public" : "Doar pentru tine"}
+                    </span>
+                  </span>
+                  <Switch
+                    checked={!!job.in_portfolio}
+                    aria-label={`Arată „${job.title}” în portofoliul public`}
+                    onCheckedChange={(on) => {
+                      void setJobInPortfolio(job.id, on).then(() => {
+                        toast.success(
+                          on ? "Intră în portofoliul public" : "Scoasă din portofoliul public",
+                        );
+                      });
+                    }}
+                  />
+                </label>
+
                 <div className="flex items-center justify-between gap-2 pt-1">
                   <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                     <Images className="size-3.5" />
@@ -213,5 +246,45 @@ export default function PortfolioPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/**
+ * Cum stau cele două lucruri care fac linkul public să arate ceva.
+ *
+ * Linkul pornit fără nicio lucrare bifată duce la o pagină goală, iar
+ * lucrările bifate fără link pornit nu se văd nicăieri. Rândul ăsta spune
+ * limpede care dintre cele două lipsește.
+ */
+function PublicHint({ shown, linkOn }: { shown: number; linkOn: boolean }) {
+  if (linkOn && shown > 0) {
+    return (
+      <p className="flex items-start gap-2 rounded-xl surface p-3 text-xs text-muted-foreground">
+        <Globe className="mt-0.5 size-3.5 shrink-0 text-primary" />
+        <span>
+          {shown} {shown === 1 ? "lucrare se vede" : "lucrări se văd"} prin linkul
+          public.{" "}
+          <Link href="/setari" className="text-primary hover:underline">
+            Linkul
+          </Link>
+        </span>
+      </p>
+    );
+  }
+
+  return (
+    <p className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+      <Globe className="mt-0.5 size-3.5 shrink-0" />
+      <span>
+        {linkOn
+          ? "Linkul public e pornit, dar n-ai bifat nicio lucrare — cine îl deschide vede o pagină goală. Bifează mai jos ce vrei să arăți."
+          : shown > 0
+            ? `Ai ${shown} ${shown === 1 ? "lucrare bifată" : "lucrări bifate"}, dar linkul public e oprit, deci nu le vede nimeni.`
+            : "Bifează lucrările pe care vrei să le arăți, apoi pornește linkul public din Setări."}{" "}
+        <Link href="/setari" className="underline underline-offset-2">
+          Setări
+        </Link>
+      </span>
+    </p>
   );
 }

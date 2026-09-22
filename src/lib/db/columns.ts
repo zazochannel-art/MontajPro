@@ -110,6 +110,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "client_signature",
     "client_signature_image",
     "reminder_sent_at",
+    "rejected_reason",
   ],
   quote_items: [...BASE, "quote_id", "description", "quantity", "unit", "unit_price", "position"],
   invoices: [

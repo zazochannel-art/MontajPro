@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useMemo } from "react";
+import { use, useMemo, useState } from "react";
 import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
 import {
@@ -33,6 +33,8 @@ import {
   setQuoteStatus,
 } from "@/lib/db/actions";
 import { publicQuoteUrl } from "@/lib/supabase/public-quote";
+import { RejectDialog } from "@/components/quotes/reject-dialog";
+import { REJECT_REASON_LABELS, isRejectReason } from "@/lib/quote-stats";
 import { reminderText, whatsappHref } from "@/lib/order";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { QUOTE_STATUS_CLASSES, QUOTE_STATUS_LABELS } from "@/lib/constants";
@@ -55,6 +57,7 @@ export default function QuotePage({
   const { id } = use(params);
   const router = useRouter();
   const ready = useStoreReady();
+  const [rejectOpen, setRejectOpen] = useState(false);
   const { currency, settings } = useApp();
   const quote = useRow("quotes", id);
   const allItems = useTable("quote_items");
@@ -395,14 +398,16 @@ export default function QuotePage({
             </Button>
           )}
           {quote.status !== "rejected" && (
-            <Button
-              variant="outline"
-              onClick={async () => {
-                await setQuoteStatus(quote.id, "rejected");
-                toast.success("Ofertă refuzată");
-              }}
-            >
+            <Button variant="outline" onClick={() => setRejectOpen(true)}>
               <XCircle /> Refuzată
+            </Button>
+          )}
+          {quote.status === "rejected" && (
+            <Button variant="outline" onClick={() => setRejectOpen(true)}>
+              <XCircle />{" "}
+              {isRejectReason(quote.rejected_reason)
+                ? REJECT_REASON_LABELS[quote.rejected_reason]
+                : "Pune un motiv"}
             </Button>
           )}
           {!quote.job_id && (
@@ -466,6 +471,12 @@ export default function QuotePage({
           </Confirm>
         </div>
       </div>
+
+      <RejectDialog
+        quoteId={quote.id}
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
+      />
     </div>
   );
 }

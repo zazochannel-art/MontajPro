@@ -25,6 +25,7 @@ import {
   JOB_TYPE_LABELS,
 } from "@/lib/constants";
 import { topReferrers, totalsBySource } from "@/lib/sources";
+import { QuoteReport } from "@/components/reports/quote-report";
 import { formatMoney, formatNumber, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -68,14 +69,21 @@ export default function ReportsPage() {
     [clients, jobs, payments],
   );
 
-  const report = useMemo(() => {
-    const cutoff =
+  /*
+   * Aceeași tăietură pentru tot ce se uită în urmă pe pagina asta: dacă
+   * lucrările sunt pe douăsprezece luni, ofertele n-au voie să fie pe tot.
+   */
+  const cutoff = useMemo(
+    () =>
       period === "all"
         ? ""
         : new Date(now - Number(period) * 30 * 86_400_000)
             .toISOString()
-            .slice(0, 10);
+            .slice(0, 10),
+    [period, now],
+  );
 
+  const report = useMemo(() => {
     const rows = buildJobRows({
       jobs,
       materials,
@@ -109,7 +117,7 @@ export default function ReportsPage() {
       clients: byClient(rows),
       consumption,
     };
-  }, [period, now, jobs, materials, expenses, sessions, measurements]);
+  }, [cutoff, now, jobs, materials, expenses, sessions, measurements]);
 
   const clientName = (id: string | null) =>
     id
@@ -131,6 +139,13 @@ export default function ReportsPage() {
           label: PERIOD_LABELS[value],
         }))}
       />
+
+      {/*
+        * Ofertele nu stau după lucrări: cine trimite zece oferte și le pierde
+        * pe toate n-are nicio lucrare terminată, și tocmai atunci are cel mai
+        * mult nevoie să vadă de ce.
+        */}
+      {ready && <QuoteReport from={cutoff || undefined} />}
 
       {!ready ? (
         <Skeleton className="h-48 w-full" />

@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { BackupReminder } from "@/components/backup/backup-reminder";
 import { DayRoute } from "@/components/calendar/day-route";
 import { PackList } from "@/components/dashboard/pack-list";
+import { OpenTasks } from "@/components/dashboard/open-tasks";
 import { FirstRun } from "@/components/onboarding/first-run";
 import { useDashboardData } from "@/hooks/use-data";
 import { useT } from "@/hooks/use-t";
@@ -218,6 +219,8 @@ export default function DashboardPage() {
           </div>
         </Link>
       </section>
+
+      <OpenTasks />
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
