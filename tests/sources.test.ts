@@ -26,6 +26,7 @@ function client(id: string, patch: Partial<Client> = {}): Client {
     notes: null,
     source: null,
     referred_by_client_id: null,
+    price_adjust: 0,
     ...patch,
   };
 }
@@ -53,6 +54,7 @@ function job(id: string, clientId: string | null): Job {
     portfolio_description: null,
     warranty_of_job_id: null,
     material_delivered_at: null,
+    travel_km: null,
   };
 }
 

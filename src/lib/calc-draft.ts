@@ -22,6 +22,8 @@ export interface CalcDraft {
   kind: JobType;
   lines: CalcLine[];
   total: number;
+  /** Clientul pentru care s-a calculat, ca să nu fie ales din nou. */
+  client_id?: string | null;
 }
 
 export function saveCalcDraft(draft: CalcDraft) {

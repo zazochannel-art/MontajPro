@@ -23,6 +23,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { BackupReminder } from "@/components/backup/backup-reminder";
 import { DayRoute } from "@/components/calendar/day-route";
+import { PackList } from "@/components/dashboard/pack-list";
 import { FirstRun } from "@/components/onboarding/first-run";
 import { useDashboardData } from "@/hooks/use-data";
 import { useT } from "@/hooks/use-t";
@@ -148,6 +149,7 @@ export default function DashboardPage() {
               <TodayJobCard key={job.id} job={job} />
             ))}
             <DayRoute jobs={data.todayJobs} />
+            <PackList jobs={data.todayJobs} />
           </div>
         ) : (
           <EmptyState

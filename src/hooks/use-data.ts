@@ -8,6 +8,11 @@ import { jobMoney, totalWorkedMinutes } from "@/lib/calc";
 import { buildForecast } from "@/lib/forecast";
 import { todayKey, toDateKey } from "@/lib/format";
 import { estimateHours, measurementSize, paceFor } from "@/lib/pace";
+import { crewCostForJob, crewLedger } from "@/lib/crew";
+import type { CrewLine } from "@/lib/crew";
+import { buildJobRows, totals } from "@/lib/reports";
+import { weekLoad } from "@/lib/capacity";
+import type { WeekLoad } from "@/lib/capacity";
 import type { PaceEstimate } from "@/lib/pace";
 
 /**
@@ -220,6 +225,18 @@ export function useJobDetails(jobId: string | null | undefined) {
     const activeSession = sessions.find((row) => !row.ended_at) ?? null;
 
     const workedMinutes = totalWorkedMinutes(sessions, now);
+    const settings = allSettings[0];
+
+    /*
+     * Ce te-a costat lucrarea în plus față de materiale: orele ajutorului și
+     * drumul. Manopera ta rămâne pe dinafară, dinadins — vezi `jobMoney`.
+     */
+    const crewCost = jobId
+      ? crewCostForJob(sessions, settings?.member_rates ?? {}, jobId)
+      : 0;
+    const travelCost =
+      (job?.travel_km ?? 0) * (settings?.default_rates?.travel_km ?? 0);
+
     const money = jobMoney({
       price: job?.price_total ?? 0,
       payments,
@@ -227,7 +244,9 @@ export function useJobDetails(jobId: string | null | undefined) {
       expenses,
       extraMaterialCost: job?.material_cost ?? 0,
       workedMinutes,
-      hourlyTarget: allSettings[0]?.default_rates?.hourly ?? null,
+      hourlyTarget: settings?.default_rates?.hourly ?? null,
+      crewCost,
+      travelCost,
     });
 
     return {
@@ -422,6 +441,35 @@ export function usePaceEstimate(
 }
 
 /**
+ * Media ta pe oră, din lucrările terminate.
+ *
+ * Cifra exista în Rapoarte, adică o vedeai o dată pe lună. Aici e răspunsul
+ * la singura întrebare care contează când scrii prețul: la banii ăștia, pe
+ * atâtea ore, ies mai bine sau mai prost decât de obicei?
+ *
+ * Lucrarea care se editează nu intră în medie — altfel s-ar compara cu ea
+ * însăși și ar ieși mereu „la fel”.
+ */
+export function useAveragePerHour(exceptJobId?: string | null): number {
+  const jobs = useAllJobs();
+  const materials = useTable("job_materials");
+  const expenses = useTable("expenses");
+  const sessions = useTable("work_sessions");
+  const measurements = useTable("job_measurements");
+
+  return useMemo(() => {
+    const rows = buildJobRows({
+      jobs: jobs.filter((job) => job.id !== exceptJobId),
+      materials,
+      expenses,
+      sessions,
+      measurements,
+    });
+    return totals(rows).perHour ?? 0;
+  }, [jobs, materials, expenses, sessions, measurements, exceptJobId]);
+}
+
+/**
  * Lucrarea asta are deja o poză „înainte”?
  *
  * Întrebarea se pune o singură dată pe lucrare: odată ce există una, nu mai
@@ -437,5 +485,40 @@ export function useHasBeforePhoto(jobId: string | null | undefined): boolean {
           !photo.deleted_at && photo.job_id === jobId && photo.stage === "before",
       ),
     [photos, jobId],
+  );
+}
+
+/** Zilele blocate — o nuntă, o sărbătoare, o zi la spital. */
+export function useDayBlocks() {
+  const rows = useTable("day_blocks");
+  return useMemo(
+    () => rows.filter((row) => !row.deleted_at).sort((a, b) => a.day.localeCompare(b.day)),
+    [rows],
+  );
+}
+
+/** Cine cât a lucrat, cât a primit și cât mai are de primit. */
+export function useCrewLedger(): CrewLine[] {
+  const sessions = useTable("work_sessions");
+  const expenses = useTable("expenses");
+  const settings = useTable("settings");
+  return useMemo(
+    () => crewLedger(sessions, expenses, settings[0]?.member_rates ?? {}),
+    [sessions, expenses, settings],
+  );
+}
+
+/** Încărcarea săptămânii în care cade ziua dată. */
+export function useWeekLoad(from: Date = new Date()): WeekLoad {
+  const jobs = useJobs();
+  const blocks = useDayBlocks();
+  const settings = useTable("settings");
+  const key = `${from.getFullYear()}-${from.getMonth()}-${from.getDate()}`;
+  return useMemo(
+    () => weekLoad(jobs, blocks, from, 8),
+    // `key` ține loc de `from`: un obiect Date nou la fiecare randare ar reface
+    // socoteala degeaba, deși ziua e aceeași.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [jobs, blocks, settings, key],
   );
 }

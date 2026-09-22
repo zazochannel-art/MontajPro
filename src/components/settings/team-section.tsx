@@ -9,6 +9,7 @@ import { Field, FieldRow } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
 import { Confirm } from "@/components/ui/confirm";
 import { useApp } from "@/lib/app-provider";
+import { updateSettings } from "@/lib/db/actions";
 import {
   acceptInvite,
   inviteMember,
@@ -30,7 +31,16 @@ const EMPTY: TeamState = { members: [], invites: [], memberships: [] };
  * cheltuială, nicio ofertă.
  */
 export function TeamSection() {
-  const { userId, email, mode } = useApp();
+  const { userId, email, mode, settings, currency } = useApp();
+
+  /*
+   * Tarifele sunt un singur câmp în setări, deci se scriu înapoi întregi —
+   * aceeași regulă ca la lista de prețuri sau la limitele treptei.
+   */
+  const rates = settings?.member_rates ?? {};
+  const setRate = (memberId: string, value: number) =>
+    void updateSettings({ member_rates: { ...rates, [memberId]: value } });
+
   const [team, setTeam] = useState<TeamState>(EMPTY);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
@@ -145,6 +155,31 @@ export function TeamSection() {
                 <p className="truncate text-xs text-muted-foreground">
                   {row.member_name ? row.member_email : null}
                 </p>
+                {/*
+                  * Tariful stă în setările tale, nu pe rândul din echipă:
+                  * omul își poate citi propriul rând, iar cât îi dai pe oră e
+                  * treaba ta. Apare doar după ce a acceptat invitația, fiindcă
+                  * până atunci n-are încă un cont de care să se lege orele.
+                  */}
+                {row.member_id && !row.revoked_at && (
+                  <label className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="shrink-0">Tarif</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      step={5}
+                      value={rates[row.member_id] ?? ""}
+                      onChange={(event) =>
+                        setRate(row.member_id!, Number(event.target.value) || 0)
+                      }
+                      placeholder="0"
+                      aria-label={`Tarif pe oră pentru ${row.member_name || row.member_email}`}
+                      className="w-20 rounded-lg border border-border bg-elevated px-2 py-1 text-right text-foreground"
+                    />
+                    <span className="shrink-0">{currency}/oră</span>
+                  </label>
+                )}
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
                 {row.revoked_at ? (

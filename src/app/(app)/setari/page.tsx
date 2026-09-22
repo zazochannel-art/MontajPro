@@ -46,6 +46,7 @@ import { PushToggle } from "@/components/settings/push-toggle";
 import { TeamSection } from "@/components/settings/team-section";
 import { useArchivedJobs, useTable } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
+import { PublicLinks } from "@/components/settings/public-links";
 import { DEFAULT_STAIR_LIMITS } from "@/lib/stairs";
 import type { StairLimits } from "@/lib/types";
 import { useInstallPrompt } from "@/hooks/use-install-prompt";
@@ -309,6 +310,8 @@ export default function SettingsPage() {
           </Field>
         </FieldRow>
       </section>
+
+      <PublicLinks />
 
       <section className="space-y-3.5 rounded-2xl surface p-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold">

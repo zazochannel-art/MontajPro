@@ -90,6 +90,14 @@ export interface Client extends BaseRow {
   source: ClientSource | null;
   /** Când sursa e „recomandare”: clientul care l-a trimis. */
   referred_by_client_id: ID | null;
+  /**
+   * Ce plătește omul ăsta față de lista ta, în procente.
+   *
+   * Negativ e reducere, pozitiv e adaos. Constructorul care îți aduce cinci
+   * apartamente pe an nu plătește cât unul care vine o dată, iar până acum
+   * reducerea stătea în capul tău și o recalculai de fiecare dată.
+   */
+  price_adjust: number;
 }
 
 /**
@@ -152,6 +160,13 @@ export interface Job extends BaseRow {
    * umiditatea ei. Montat prea devreme, se umflă peste câteva luni.
    */
   material_delivered_at: string | null;
+  /**
+   * Kilometrii chiar făcuți la lucrarea asta, dus-întors.
+   *
+   * Tariful pe kilometru era de mult în setări; câți kilometri ai mers de fapt,
+   * nu. Fără cifra asta, mașina e o cheltuială fără adresă.
+   */
+  travel_km: number | null;
 }
 
 /** Valorile măsurătorilor, în funcție de tip. Stocate ca JSON. */
@@ -222,6 +237,13 @@ export interface JobPhoto extends BaseRow {
 
 export interface JobMaterial extends BaseRow {
   job_id: ID;
+  /**
+   * Cât a rămas și s-a pus înapoi în depozit.
+   *
+   * Din 35 de pachete cumpărate intră 33,4 în podea; restul stă în pod. Fără
+   * cifra asta, data viitoare cumperi din nou, fiindcă nimeni nu ține minte.
+   */
+  returned_quantity: number;
   material_id: ID | null;
   name: string;
   quantity: number;
@@ -267,6 +289,14 @@ export interface Payment extends BaseRow {
 }
 
 export interface Expense extends BaseRow {
+  /**
+   * Omul din echipă plătit cu banii ăștia.
+   *
+   * Plata ajutorului e o cheltuială ca oricare alta — nu inventăm un al doilea
+   * fel de a scoate lei din buzunar —, dar legată de el ca să știm ce s-a
+   * achitat din ce s-a lucrat.
+   */
+  member_id: ID | null;
   job_id: ID | null;
   category: ExpenseCategory;
   amount: number;
@@ -408,6 +438,15 @@ export interface Handover extends BaseRow {
   signature: string | null;
   signer_name: string | null;
   signed_at: string | null;
+  /**
+   * Linkul prin care clientul îl citește și îl semnează de pe telefonul lui.
+   *
+   * Până acum semna pe telefonul tău, deci trebuia să fiți amândoi acolo în
+   * aceeași clipă. Gol = procesul-verbal n-a fost trimis nimănui.
+   */
+  public_token: string | null;
+  client_signature_image: string | null;
+  signed_by_client_at: string | null;
 }
 
 export interface QuoteItem extends BaseRow {
@@ -420,6 +459,8 @@ export interface QuoteItem extends BaseRow {
 }
 
 export interface Tool extends BaseRow {
+  /** La ce fel de lucrări îți trebuie. Gol = la toate, sau la niciuna anume. */
+  job_types: JobType[];
   name: string;
   brand: string | null;
   model: string | null;
@@ -545,6 +586,30 @@ export interface Settings extends BaseRow {
   acclimatization_hours: number;
   /** Ce se cere unei trepte ca să se urce bine. Vezi `lib/stairs.ts`. */
   stair_limits: StairLimits;
+  /**
+   * Cât dai pe oră fiecărui om din echipă, după `auth.uid()`-ul lui.
+   *
+   * Stă în setările tale, nu pe rândul din echipă: ajutorul își poate citi
+   * propriul rând, iar cât îi dai pe oră e treaba ta.
+   */
+  member_rates: Record<string, number>;
+  /** Linkul public al portofoliului. Gol = nu e nimic de arătat nimănui. */
+  portfolio_token: string | null;
+  portfolio_intro: string | null;
+  /** Linkul de abonare la calendar (.ics). */
+  calendar_token: string | null;
+}
+
+/**
+ * O zi în care nu lucrezi.
+ *
+ * O nuntă, o sărbătoare, o zi la spital. Până acum calendarul te credea liber
+ * în orice zi fără lucrare.
+ */
+export interface DayBlock extends BaseRow {
+  /** ISO date (YYYY-MM-DD). */
+  day: string;
+  reason: string | null;
 }
 
 /**
@@ -598,6 +663,7 @@ export interface Tables {
   installments: Installment;
   tools: Tool;
   work_sessions: WorkSession;
+  day_blocks: DayBlock;
   notifications: AppNotification;
   settings: Settings;
 }
@@ -623,6 +689,7 @@ export const TABLE_NAMES: TableName[] = [
   "installments",
   "tools",
   "work_sessions",
+  "day_blocks",
   "notifications",
   "settings",
 ];

@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { JobMaterialDialog } from "@/components/forms/job-material-dialog";
 import {
   deleteJobMaterial,
+  returnMaterialToStock,
   returnToStock,
   takeFromStock,
   toggleJobMaterial,
@@ -242,6 +243,9 @@ function StockLine({
     );
   }
 
+  // Cumpărat pentru lucrare: ce n-a intrat în podea se poate pune în depozit.
+  if (material.purchased) return <LeftoverLine material={material} stock={stock} />;
+
   return (
     <button
       type="button"
@@ -259,5 +263,82 @@ function StockLine({
       <PackageMinus className="size-3" />
       în depozit: {formatNumber(stock.quantity)} {stock.unit} · ia din stoc
     </button>
+  );
+}
+
+/**
+ * Restul de material, întors în depozit.
+ *
+ * Din 35 de pachete cumpărate intră 33,4 în podea; restul stă în pod. Fără
+ * rândul ăsta, data viitoare cumperi din nou ce ai deja acasă.
+ *
+ * Se poate face în mai multe rânduri: ce s-a întors deja rămâne scris, ca să
+ * nu se adune de două ori aceeași cantitate.
+ */
+function LeftoverLine({
+  material,
+  stock,
+}: {
+  material: JobMaterial;
+  stock: Material;
+}) {
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState(0);
+  const returned = material.returned_quantity ?? 0;
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+      >
+        <PackageCheck className="size-3" />
+        {returned > 0
+          ? `pus la loc ${formatNumber(returned)} ${material.unit} · mai pune`
+          : "a rămas material? pune-l în depozit"}
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <input
+        type="number"
+        inputMode="decimal"
+        min={0}
+        step="any"
+        autoFocus
+        value={amount || ""}
+        onChange={(event) => setAmount(Number(event.target.value) || 0)}
+        placeholder="0"
+        aria-label={`Cât a rămas din ${material.name}`}
+        className="w-20 rounded-lg border border-border bg-elevated px-2 py-1 text-right text-sm"
+      />
+      <span className="text-xs text-muted-foreground">{material.unit}</span>
+      <Button
+        size="sm"
+        onClick={async () => {
+          const ok = await returnMaterialToStock(material.id, amount);
+          if (!ok) return toast.error("Pune o cantitate mai mare ca zero");
+          toast.success(
+            `${formatNumber(amount)} ${material.unit} în depozit (${formatNumber(
+              stock.quantity + amount,
+            )} în total)`,
+          );
+          setAmount(0);
+          setOpen(false);
+        }}
+      >
+        Pune în stoc
+      </Button>
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        className="text-xs text-muted-foreground hover:underline"
+      >
+        Renunță
+      </button>
+    </div>
   );
 }

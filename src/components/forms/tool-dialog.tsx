@@ -20,7 +20,8 @@ import { AssetImage } from "@/components/photo/asset-image";
 import { useZodForm } from "@/hooks/use-zod-form";
 import { toolSchema } from "@/lib/schemas";
 import { saveTool } from "@/lib/db/actions";
-import type { Tool } from "@/lib/types";
+import { JOB_TYPE_EMOJI, JOB_TYPE_LABELS } from "@/lib/constants";
+import { JOB_TYPES, type JobType, type Tool } from "@/lib/types";
 import { useApp } from "@/lib/app-provider";
 
 export function ToolDialog({
@@ -60,6 +61,7 @@ function ToolForm({
 
   const form = useZodForm(toolSchema, {
     name: tool?.name ?? "",
+    job_types: tool?.job_types ?? [],
     brand: tool?.brand ?? "",
     model: tool?.model ?? "",
     price: tool?.price ?? 0,
@@ -93,6 +95,32 @@ function ToolForm({
             onChange={(event) => form.set("name", event.target.value)}
             placeholder="Ferăstrău circular"
           />
+        </Field>
+
+        <Field label="La ce lucrări îți trebuie">
+          <div className="flex flex-wrap gap-2">
+            {JOB_TYPES.map((type) => {
+              const on = (form.values.job_types ?? []).includes(type);
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => form.set("job_types", toggle(form.values.job_types ?? [], type))}
+                  className={
+                    on
+                      ? "rounded-full border border-primary/40 bg-primary/12 px-3 py-1.5 text-sm font-medium text-primary transition-transform duration-[--dur-1] active:scale-95"
+                      : "rounded-full border border-border bg-background px-3 py-1.5 text-sm text-muted-foreground transition-[background-color,color,transform] duration-[--dur-1] hover:bg-accent hover:text-foreground active:scale-95"
+                  }
+                >
+                  {JOB_TYPE_EMOJI[type]} {JOB_TYPE_LABELS[type]}
+                </button>
+              );
+            })}
+          </div>
+          <p className="pt-1.5 text-xs text-muted-foreground">
+            Dimineața îți spunem ce să încarci în mașină, după lucrările zilei.
+          </p>
         </Field>
 
         <FieldRow>
@@ -195,4 +223,11 @@ function ToolForm({
       </form>
     </>
   );
+}
+
+/** Bifează sau debifează un tip, fără să atingă restul listei. */
+function toggle(types: JobType[], type: JobType): JobType[] {
+  return types.includes(type)
+    ? types.filter((item) => item !== type)
+    : [...types, type];
 }

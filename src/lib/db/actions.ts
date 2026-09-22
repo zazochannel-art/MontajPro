@@ -46,6 +46,7 @@ export async function saveClient(input: {
   notes?: string | null;
   source?: ClientSource | null;
   referred_by_client_id?: string | null;
+  price_adjust?: number | null;
 }) {
   const payload = {
     name: input.name.trim(),
@@ -58,6 +59,7 @@ export async function saveClient(input: {
     // să nu ținem o legătură care nu mai înseamnă nimic.
     referred_by_client_id:
       input.source === "recommendation" ? (input.referred_by_client_id ?? null) : null,
+    price_adjust: num(input.price_adjust),
   };
   const row = input.id
     ? await store.update("clients", input.id, payload)
@@ -585,6 +587,7 @@ export async function deleteExpense(id: string) {
 export async function saveTool(input: {
   id?: string;
   name: string;
+  job_types?: JobType[];
   brand?: string | null;
   model?: string | null;
   price?: number | null;
@@ -596,6 +599,7 @@ export async function saveTool(input: {
 }) {
   const payload = {
     name: input.name.trim(),
+    job_types: input.job_types ?? [],
     brand: input.brand?.trim() || null,
     model: input.model?.trim() || null,
     price: input.price ?? null,
@@ -1424,4 +1428,142 @@ export async function duplicateJob(id: string) {
 
   kick();
   return copy;
+}
+
+/* ---------------------- linkuri publice ---------------------------- */
+
+/**
+ * Un token lung, imposibil de ghicit.
+ *
+ * Aceeași formă ca la ofertă: două identificatoare lipite, fără liniuțe. Cine
+ * n-are linkul nu ajunge la date, iar ștergerea lui închide ușa la loc.
+ */
+function freshToken(): string {
+  return `${uid()}${uid()}`.replace(/-/g, "");
+}
+
+/** Linkul prin care clientul citește și semnează procesul-verbal. */
+export async function shareHandover(handoverId: string): Promise<string | null> {
+  const handover = store
+    .getTable("handovers")
+    .find((row) => row.id === handoverId);
+  if (!handover) return null;
+
+  const token = handover.public_token || freshToken();
+  if (!handover.public_token) {
+    await store.update("handovers", handoverId, { public_token: token });
+    kick();
+  }
+  return token;
+}
+
+/**
+ * Pornește sau oprește un link public din setări.
+ *
+ * `on = false` șterge tokenul, iar linkul moare pe loc — inclusiv accesul la
+ * pozele din portofoliu, care se închid la loc în aceeași clipă.
+ */
+export async function setPublicLink(
+  which: "portfolio_token" | "calendar_token",
+  on: boolean,
+): Promise<string | null> {
+  const settings = store.getTable("settings")[0];
+  if (!settings) return null;
+
+  const token = on ? settings[which] || freshToken() : null;
+  await store.update("settings", settings.id, { [which]: token });
+  kick();
+  return token;
+}
+
+/* ---------------------- materialul rămas --------------------------- */
+
+/**
+ * Restul de material se întoarce în depozit.
+ *
+ * Din 35 de pachete cumpărate intră 33,4 în podea. Ce rămâne se pune înapoi în
+ * stoc, ca data viitoare să nu cumperi din nou ce ai deja în pod.
+ *
+ * Cantitatea se adună la ce s-a întors deja: poți da înapoi în două rânduri,
+ * dacă găsești restul mai târziu.
+ */
+export async function returnMaterialToStock(
+  jobMaterialId: string,
+  quantity: number,
+): Promise<boolean> {
+  const amount = num(quantity);
+  if (amount <= 0) return false;
+
+  const line = store
+    .getTable("job_materials")
+    .find((row) => row.id === jobMaterialId);
+  if (!line || !line.material_id) return false;
+
+  const stock = store
+    .getTable("materials")
+    .find((row) => row.id === line.material_id && !row.deleted_at);
+  if (!stock) return false;
+
+  await store.update("job_materials", jobMaterialId, {
+    returned_quantity: num(line.returned_quantity) + amount,
+  });
+  await store.update("materials", stock.id, {
+    quantity: num(stock.quantity) + amount,
+  });
+  kick();
+  return true;
+}
+
+/* ---------------------- zilele blocate ----------------------------- */
+
+/** Blochează o zi, sau o eliberează dacă era deja blocată. */
+export async function toggleDayBlock(day: string, reason?: string | null) {
+  const existing = store
+    .getTable("day_blocks")
+    .find((row) => row.day === day && !row.deleted_at);
+
+  if (existing) {
+    await store.remove("day_blocks", existing.id);
+    kick();
+    return null;
+  }
+
+  const row = await store.insert("day_blocks", {
+    day,
+    reason: reason?.trim() || null,
+  });
+  kick();
+  return row;
+}
+
+/* ---------------------- plata ajutorului --------------------------- */
+
+/**
+ * Banii dați unui om din echipă.
+ *
+ * E o cheltuială ca oricare alta — nu inventăm un al doilea fel de a scoate
+ * lei din buzunar —, doar că poartă numele omului, ca să știm ce s-a achitat
+ * din ce s-a lucrat.
+ */
+export async function payCrewMember(input: {
+  member_id: string;
+  member_name: string;
+  amount: number;
+  note?: string | null;
+}) {
+  const amount = num(input.amount);
+  if (amount <= 0) return null;
+
+  const row = await store.insert("expenses", {
+    job_id: null,
+    member_id: input.member_id,
+    category: "other",
+    amount,
+    spent_at: todayKey(),
+    note: input.note?.trim() || `Plată ${input.member_name}`,
+    receipt_path: null,
+    receipt_local_key: null,
+  });
+  kick();
+  return row;
 }

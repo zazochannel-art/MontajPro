@@ -167,6 +167,10 @@ function defaultSettings(userId: string): Settings {
     photo_stamp: true,
     acclimatization_hours: 48,
     stair_limits: { ...DEFAULT_STAIR_LIMITS },
+    member_rates: {},
+    portfolio_token: null,
+    portfolio_intro: null,
+    calendar_token: null,
   };
 }
 

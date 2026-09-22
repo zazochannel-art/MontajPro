@@ -605,6 +605,178 @@ try {
     (await page.getByRole("combobox").first().innerText()).includes("Ion Popescu (test)"),
   );
 
+  /* ----------------------------- sculele zilei --------------------- */
+  section("Sculele de luat azi");
+
+  // Drumul înapoi după ferăstrăul uitat acasă costă o oră. Scula se leagă de
+  // tipul de lucrare, iar dimineața lista se face singură.
+  await page.goto(`${BASE}/scule`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: /Sculă nouă/i }).first().click();
+  const toolDialog = page.getByRole("dialog");
+  await toolDialog.getByPlaceholder("Ferăstrău circular").waitFor({ timeout: 10000 });
+  await toolDialog.getByPlaceholder("Ferăstrău circular").fill("Ferăstrău (test)");
+  await toolDialog.getByRole("button", { name: /Scară/ }).click();
+  await toolDialog.getByRole("button", { name: /^Salvează$/ }).click();
+  await page.getByText("Ferăstrău (test)").first().waitFor({ timeout: 10000 });
+  check("scula se salvează cu tipul de lucrare pus", true);
+  check(
+    "tipul se vede pe fișa sculei",
+    (await page.getByText(/Scară/).count()) > 0,
+  );
+
+  // O lucrare de azi, ca lista să aibă pentru ce se face.
+  const todayKey = new Date().toISOString().slice(0, 10);
+  await page.goto(`${BASE}/lucrari/nou`, { waitUntil: "networkidle" });
+  await page.getByPlaceholder("Montaj scară stejar").waitFor({ timeout: 15000 });
+  await page.getByPlaceholder("Montaj scară stejar").fill("Scară de azi (test)");
+  await page.locator("#job-date").fill(todayKey);
+  await page.locator("#job-price").fill("5000");
+  await page.getByRole("button", { name: /Creează lucrarea/i }).click();
+  await page.waitForURL(/\/lucrari\/[0-9a-f-]{36}/, { timeout: 15000 });
+
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+  await page.getByText("De luat azi").first().waitFor({ timeout: 15000 });
+  check("lista de scule apare pe ziua cu lucrări", true);
+  check(
+    "scula legată de tipul zilei intră în listă",
+    (await page.getByRole("button", { name: "Ferăstrău (test)" }).count()) > 0,
+  );
+  await page.getByRole("button", { name: "Ferăstrău (test)" }).click();
+  check(
+    "scula se bifează pe măsură ce încarci mașina",
+    (await page.getByText("1/1").count()) > 0,
+  );
+
+  /* ----------------------------- înainte să pleci ------------------ */
+  section("Lista de dinainte de plecare");
+
+  await page.goto(`${jobUrl}`, { waitUntil: "networkidle" });
+  await page.getByText("Înainte să pleci").first().waitFor({ timeout: 15000 });
+  check("lucrarea începută arată ce mai e de făcut înainte de plecare", true);
+  check(
+    "lista spune câte lucruri au rămas",
+    (await page.getByText(/rămas|rămase|Poți pleca/i).count()) > 0,
+  );
+
+  /* ----------------------------- restul de material ---------------- */
+  section("Materialul rămas se întoarce în depozit");
+
+  // Din zece pachete cumpărate intră opt în podea. Fără pasul ăsta, data
+  // viitoare cumperi din nou ce ai deja în pod.
+  await page.goto(`${BASE}/materiale`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: /Material nou/i }).first().click();
+  const stockDialog = page.getByRole("dialog");
+  await stockDialog.getByPlaceholder("Parchet stejar 14mm").waitFor({ timeout: 10000 });
+  await stockDialog.getByPlaceholder("Parchet stejar 14mm").fill("Parchet stejar (test)");
+  await stockDialog.locator('input[inputmode="decimal"]').first().fill("10");
+  await stockDialog.getByRole("button", { name: /^Salvează$/ }).click();
+  await page.getByText("Parchet stejar (test)").first().waitFor({ timeout: 10000 });
+  check("materialul intră în depozit", true);
+
+  await page.goto(`${jobUrl}?tab=materiale`, { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: /Materiale/i }).click();
+  await page.getByRole("button", { name: /Adaugă material/i }).first().click();
+  const jobMaterialDialog = page.getByRole("dialog");
+  await jobMaterialDialog.getByRole("combobox").first().waitFor({ timeout: 10000 });
+  await jobMaterialDialog.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: /Parchet stejar \(test\)/ }).click();
+  await jobMaterialDialog.locator('input[inputmode="decimal"]').first().fill("8");
+  await jobMaterialDialog.getByRole("button", { name: /^Salvează$/ }).click();
+  await page.getByText("Parchet stejar (test)").first().waitFor({ timeout: 10000 });
+
+  await page
+    .getByRole("checkbox", { name: /Marchează Parchet stejar \(test\) drept cumpărat/i })
+    .click();
+  const leftoverButton = page.getByRole("button", { name: /a rămas material/i });
+  await leftoverButton.waitFor({ timeout: 10000 });
+  check("materialul cumpărat poate fi pus înapoi în depozit", true);
+
+  await leftoverButton.click();
+  const leftoverInput = page.getByLabel(/Cât a rămas din Parchet stejar/i);
+  await leftoverInput.waitFor({ timeout: 10000 });
+  await leftoverInput.fill("2");
+  await page.getByRole("button", { name: /Pune în stoc/i }).click();
+  await page
+    .getByRole("button", { name: /pus la loc 2/i })
+    .waitFor({ timeout: 10000 });
+  check("cantitatea întoarsă rămâne scrisă pe linie", true);
+
+  await page.goto(`${BASE}/materiale`, { waitUntil: "networkidle" });
+  await page.getByText("Parchet stejar (test)").first().waitFor({ timeout: 10000 });
+  check(
+    "stocul crește cu ce s-a întors",
+    (await page.getByText(/\b12\b/).count()) > 0,
+  );
+
+  /* ----------------------------- prețul clientului ----------------- */
+  section("Prețul pe clientul din fața ta");
+
+  await page.goto(`${BASE}/clienti`, { waitUntil: "networkidle" });
+  await page.getByText("Ion Popescu (test)").first().click();
+  await page.waitForURL(/\/clienti\/[0-9a-f-]{36}/, { timeout: 15000 });
+  await page.getByRole("button", { name: /Editează/i }).first().click();
+  const clientDialog = page.getByRole("dialog");
+  const adjustInput = clientDialog
+    .locator("input[inputmode='decimal'], input[type='number']")
+    .last();
+  await adjustInput.waitFor({ timeout: 10000 });
+  await adjustInput.fill("-10");
+  await clientDialog.getByRole("button", { name: /Salvează/i }).click();
+  await clientDialog.waitFor({ state: "hidden", timeout: 10000 });
+  check("clientul primește o reducere pe fișa lui", true);
+
+  await page.goto(`${BASE}/calculator`, { waitUntil: "networkidle" });
+  await page.getByRole("combobox", { name: "Client" }).waitFor({ timeout: 15000 });
+  await page.waitForTimeout(1500);
+  await page.getByRole("combobox", { name: "Client" }).click();
+  await page.getByRole("option", { name: /Ion Popescu \(test\)/ }).click();
+  check(
+    "reducerea clientului se vede în calculator",
+    (await page.getByText(/−10%/).count()) > 0,
+  );
+  check(
+    "calculatorul spune limpede că prețurile sunt deja ajustate",
+    (await page.getByText(/sunt deja cu/i).count()) > 0,
+  );
+
+  /* ----------------------------- săptămâna ------------------------- */
+  section("Cât ai liber săptămâna asta");
+
+  await page.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
+  await page.getByText("Săptămâna asta").first().waitFor({ timeout: 15000 });
+  check("capacitatea săptămânii apare în calendar", true);
+
+  const blockToday = page.getByRole("button", { name: `Blochează ziua de ${todayKey}` });
+  await blockToday.waitFor({ timeout: 10000 });
+  await blockToday.click();
+  await page
+    .getByRole("button", { name: `Eliberează ziua de ${todayKey}` })
+    .waitFor({ timeout: 10000 });
+  check("o zi se poate bloca dintr-o apăsare", true);
+  await page.getByRole("button", { name: `Eliberează ziua de ${todayKey}` }).click();
+  await blockToday.waitFor({ timeout: 10000 });
+  check("și se eliberează la loc", true);
+
+  /* ----------------------------- linkuri publice ------------------- */
+  section("Linkurile publice");
+
+  await page.goto(`${BASE}/setari`, { waitUntil: "networkidle" });
+  await page.getByText("Linkuri publice").first().waitFor({ timeout: 15000 });
+  check("setările au secțiunea de linkuri publice", true);
+
+  const portfolioSwitch = page.getByRole("switch", {
+    name: /Pornește linkul pentru portofoliul/i,
+  });
+  await portfolioSwitch.waitFor({ timeout: 10000 });
+  await portfolioSwitch.click();
+  const publicLink = page.getByText(/\/lucrari-publice\//).first();
+  await publicLink.waitFor({ timeout: 10000 });
+  check("linkul de portofoliu se face la o apăsare", true);
+
+  await portfolioSwitch.click();
+  await publicLink.waitFor({ state: "hidden", timeout: 10000 });
+  check("oprirea linkului îl face să dispară pe loc", true);
+
   /* ----------------------------- zona sigură ----------------------- */
   section("Zona sigură (telefon cu aplicația instalată)");
 

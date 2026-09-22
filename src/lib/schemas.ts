@@ -38,6 +38,8 @@ export const clientSchema = z.object({
   source: z.enum(CLIENT_SOURCES).nullable().optional(),
   /** Când sursa e „recomandare”: clientul care l-a trimis. */
   referred_by_client_id: z.string().uuid().nullable().optional(),
+  /** Ce plătește față de lista ta, în procente. Negativ = reducere. */
+  price_adjust: z.number().min(-99).max(100).optional(),
 });
 
 export const jobSchema = z.object({
@@ -50,6 +52,8 @@ export const jobSchema = z.object({
   scheduled_date: z.string().nullable().optional(),
   scheduled_time: z.string().nullable().optional(),
   estimated_hours: z.number().min(0).nullable().optional(),
+  /** Kilometrii chiar făcuți la lucrare, dus-întors. */
+  travel_km: z.number().min(0).nullable().optional(),
   price_total: z.number().min(0, "Prețul nu poate fi negativ"),
   advance: z.number().min(0).optional(),
   notes: optionalText,
@@ -94,6 +98,7 @@ export const jobMaterialSchema = z.object({
 
 export const toolSchema = z.object({
   name: z.string().trim().min(2, "Adaugă numele sculei"),
+  job_types: z.array(z.enum(JOB_TYPES)).default([]),
   brand: optionalText,
   model: optionalText,
   price: z.number().min(0).nullable().optional(),
