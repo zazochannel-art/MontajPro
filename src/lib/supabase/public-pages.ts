@@ -65,6 +65,37 @@ export function portfolioPhotoUrl(storagePath: string): string | null {
   return data?.publicUrl ?? null;
 }
 
+/* ------------------------- lucrarea, la client ----------------------- */
+
+export interface PublicJob {
+  title: string;
+  type: string;
+  status: string;
+  address: string | null;
+  scheduled_date: string | null;
+  scheduled_time: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  issuer: { name: string | null; phone: string | null };
+  tasks: { title: string; done: boolean }[];
+  photos: { path: string; stage: string }[];
+}
+
+export function fetchJob(token: string) {
+  return callRpc<PublicJob>("job_by_token", { token });
+}
+
+/**
+ * Adresa publică a unei poze de pe o lucrare partajată.
+ *
+ * Aceeași alegere ca la portofoliu: bucket-ul rămâne privat, iar o politică
+ * lasă rolul anonim să citească exact pozele lucrărilor cu link pornit.
+ * Ștergi tokenul de pe lucrare și se închid la loc.
+ */
+export function jobPhotoUrl(storagePath: string): string | null {
+  return portfolioPhotoUrl(storagePath);
+}
+
 /* --------------------------- proces-verbal --------------------------- */
 
 export interface PublicHandover {

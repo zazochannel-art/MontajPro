@@ -23,6 +23,7 @@ import { MaterialDialog } from "@/components/forms/material-dialog";
 import { useJobs, useTable } from "@/hooks/use-data";
 import { deleteMaterial, toggleJobMaterial } from "@/lib/db/actions";
 import { groupBySupplier, orderText, whatsappHref } from "@/lib/order";
+import { PriceTrend } from "@/components/materials/price-trend";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
 import type { Material } from "@/lib/types";
@@ -163,6 +164,7 @@ export default function MaterialsPage() {
                         {formatMoney(material.price, currency)}/{material.unit}
                         {material.supplier && ` · ${material.supplier}`}
                       </p>
+                      <PriceTrend materialId={material.id} />
                     </div>
                     <div className="flex shrink-0 gap-0.5">
                       <Button

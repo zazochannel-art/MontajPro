@@ -73,6 +73,7 @@ export const NOTIFICATION_KINDS = [
   "job_warranty",
   "quote_viewed",
   "acclimatization_done",
+  "quote_expired",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
@@ -167,6 +168,13 @@ export interface Job extends BaseRow {
    * nu. Fără cifra asta, mașina e o cheltuială fără adresă.
    */
   travel_km: number | null;
+  /**
+   * Cheia linkului prin care clientul își vede lucrarea.
+   *
+   * Gol până la prima partajare. Ștergerea lui închide linkul pe loc, poze
+   * cu tot — funcția din bază nu mai întoarce nimic.
+   */
+  public_token: string | null;
 }
 
 /** Valorile măsurătorilor, în funcție de tip. Stocate ca JSON. */
@@ -553,6 +561,8 @@ export interface NotificationPrefs {
   job_warranty: boolean;
   /** Materialul s-a aclimatizat, se poate monta. */
   acclimatization_done: boolean;
+  /** Oferta a trecut de termen: clientul nu mai poate deschide linkul. */
+  quote_expired: boolean;
 }
 
 export interface Settings extends BaseRow {

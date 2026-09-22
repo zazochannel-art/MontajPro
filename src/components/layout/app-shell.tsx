@@ -8,6 +8,7 @@ import { useApp } from "@/lib/app-provider";
 import { Sidebar } from "./sidebar";
 import { BottomNav } from "./bottom-nav";
 import { AppHeader } from "./app-header";
+import { SyncProblem } from "./sync-problem";
 import { QuickAdd } from "./quick-add";
 import { ActiveWorkBar } from "./active-work-bar";
 import { Logo } from "./logo";
@@ -113,6 +114,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
 
         <ActiveWorkBar />
+        <SyncProblem />
 
         <main
           key={pathname}

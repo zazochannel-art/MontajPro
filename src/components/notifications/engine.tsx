@@ -7,6 +7,7 @@ import { useTable } from "@/hooks/use-data";
 import { daysUntil, warrantyEndDate } from "@/lib/calc";
 import { DEFAULT_HOURS, acclimatizationFor } from "@/lib/acclimatization";
 import { formatDateShort, todayKey, toDateKey } from "@/lib/format";
+import { quoteExpiry } from "@/lib/expiry";
 import type { NotificationKind } from "@/lib/types";
 
 /**
@@ -245,6 +246,27 @@ export function NotificationEngine() {
               body: `${quote.title} — trimisă acum ${Math.abs(days)} zile`,
               job_id: quote.job_id,
               due_date: null,
+            });
+          }
+        }
+
+        /*
+         * Oferta trecută de termen. Baza o refuză deja — `quote_by_token` și
+         * `accept_quote` filtrează amândouă după `valid_until` —, deci
+         * clientul deschide linkul și nu vede nimic. Fără rândul ăsta, tu îi
+         * dai ghes fără să știi că n-are ce deschide.
+         */
+        if (prefs.quote_expired) {
+          for (const quote of quotes) {
+            const expiry = quoteExpiry(quote, today);
+            if (!expiry?.expired) continue;
+            candidates.push({
+              key: `quote_expired:${quote.id}`,
+              kind: "quote_expired",
+              title: "Ofertă trecută de termen",
+              body: `${quote.title} — clientul nu mai poate deschide linkul`,
+              job_id: quote.job_id,
+              due_date: quote.valid_until,
             });
           }
         }

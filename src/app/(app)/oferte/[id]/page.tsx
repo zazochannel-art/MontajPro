@@ -34,6 +34,7 @@ import {
 } from "@/lib/db/actions";
 import { publicQuoteUrl } from "@/lib/supabase/public-quote";
 import { RejectDialog } from "@/components/quotes/reject-dialog";
+import { ExpiryNotice } from "@/components/quotes/expiry-notice";
 import { REJECT_REASON_LABELS, isRejectReason } from "@/lib/quote-stats";
 import { reminderText, whatsappHref } from "@/lib/order";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
@@ -321,6 +322,8 @@ export default function QuotePage({
           </p>
         )}
       </article>
+
+      <ExpiryNotice quote={quote} />
 
       {quote.public_token && isSupabaseConfigured && (
         <div className="no-print flex items-center gap-2 rounded-xl surface p-3 text-xs">

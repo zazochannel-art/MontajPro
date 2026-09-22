@@ -184,6 +184,7 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   job_warranty: true,
   quote_viewed: true,
   acclimatization_done: true,
+  quote_expired: true,
 };
 
 /**
