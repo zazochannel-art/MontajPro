@@ -123,3 +123,32 @@ export function reminderText(input: {
     `Rămân la dispoziție dacă aveți întrebări.${signature}`
   );
 }
+
+/**
+ * Mesajul prin care ceri restul de bani.
+ *
+ * Se scria de mână de fiecare dată, adică de multe ori nu se scria deloc și
+ * banii stăteau. Tonul e cel pe care îl folosești tu: nu somație, ci un
+ * mesaj între oameni care s-au înțeles deja asupra prețului.
+ *
+ * Nu conține cifre pe care clientul nu le știe — doar restul și, dacă e
+ * trecută, scadența.
+ */
+export function moneyRequestText(input: {
+  clientName: string | null;
+  jobTitle: string;
+  rest: string;
+  dueDate: string | null;
+  from: string | null;
+}): string {
+  const hello = input.clientName?.trim()
+    ? `Bună ziua, ${input.clientName.trim()}!`
+    : "Bună ziua!";
+  const when = input.dueDate ? ` Termenul înțeles a fost ${input.dueDate}.` : "";
+  const signature = input.from?.trim() ? `\n\n${input.from.trim()}` : "";
+  return (
+    `${hello}\n\n` +
+    `Vă scriu pentru „${input.jobTitle}”. A rămas de achitat ${input.rest}.${when}\n\n` +
+    `Mulțumesc, și o zi bună!${signature}`
+  );
+}

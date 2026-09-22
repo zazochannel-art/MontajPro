@@ -189,6 +189,12 @@ try {
     "restul de plată se recalculează (12.000 − 5.000 − 3.000)",
     (await page.getByText(/4\.000 MDL/).count()) > 0,
   );
+  // Mesajul prin care ceri restul: se scria de mână, adică de multe ori
+  // nu se scria deloc.
+  check(
+    "ai de unde cere restul, cu suma deja scrisă în buton",
+    (await page.getByRole("button", { name: /Cere restul de 4\.000 MDL/ }).count()) > 0,
+  );
 
   /* ----------------------------- pașii lucrării --------------------- */
   section("Pașii lucrării");
@@ -281,6 +287,7 @@ try {
   );
   await page.getByRole("button", { name: /Creează oferta/i }).click();
   await page.waitForURL(/\/oferte\/[0-9a-f-]{36}/, { timeout: 15000 });
+  const quoteUrl = page.url();
   check("oferta s-a creat", true);
   check("oferta are număr", (await page.getByText(/OFERTĂ #00001/).count()) > 0);
   check("oferta are total", (await page.getByText(/7\.500 MDL/).count()) > 0);
@@ -310,6 +317,14 @@ try {
   check(
     "restul de plată este tot prețul lucrării",
     (await page.getByText(/7\.500 MDL/).count()) > 0,
+  );
+
+  // Liniile ofertei erau poziții de scară, deci lucrarea e o scară — nu
+  // „Altceva”, cum ieșea înainte, cu tot ce trage după sine: șablonul de
+  // pași, lista de scule, media pe unitate.
+  check(
+    "lucrarea din ofertă știe ce fel de lucrare e",
+    (await page.getByText(/Scară/).count()) > 0,
   );
 
   /* ----------------------------- factură --------------------------- */
@@ -776,6 +791,93 @@ try {
   await portfolioSwitch.click();
   await publicLink.waitFor({ state: "hidden", timeout: 10000 });
   check("oprirea linkului îl face să dispară pe loc", true);
+
+  /* ----------------------------- ce mai am de făcut ---------------- */
+  section("De terminat, pe toate lucrările");
+
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+  await page.getByText("De terminat").first().waitFor({ timeout: 15000 });
+  check("dimineața vezi toți pașii nebifați, din toate lucrările", true);
+
+  const firstStep = page.getByRole("checkbox", { name: /Bifează / }).first();
+  await firstStep.waitFor({ timeout: 10000 });
+  const stepLabel = await firstStep.getAttribute("aria-label");
+  await firstStep.click();
+  await page.waitForTimeout(1200);
+  check(
+    "pasul se bifează de pe prima pagină, fără să intri în lucrare",
+    (await page.getByRole("checkbox", { name: stepLabel }).count()) === 0,
+    `„${stepLabel}” ar fi trebuit să dispară din listă`,
+  );
+
+  /* ----------------------------- portofoliul public ---------------- */
+  section("Portofoliul public");
+
+  // Bifa asta e singurul lucru care hotărăște ce se vede prin linkul public.
+  // Fără ea, linkul din Setări duce la o pagină goală.
+  await page.goto(`${BASE}/portofoliu`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Portofoliu" }).waitFor({ timeout: 15000 });
+  check(
+    "fără nicio lucrare bifată, se spune limpede că nu vede nimeni nimic",
+    (await page.getByText(/linkul public e oprit|bifează lucrările/i).count()) > 0,
+  );
+
+  // Portofoliul arată lucrările terminate, iar până aici niciuna nu e.
+  await page.goto(`${jobUrl}/editare`, { waitUntil: "networkidle" });
+  await page.locator("#job-title").waitFor({ timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(1500);
+  const statusSelect = page.getByRole("combobox").last();
+  await statusSelect.click();
+  await page.getByRole("option", { name: /^Finalizată$/ }).click();
+  await page.getByRole("button", { name: /Salvează/i }).click();
+  await page.waitForURL(/\/lucrari\/[0-9a-f-]{36}$/, { timeout: 15000 });
+
+  await page.goto(`${BASE}/portofoliu`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Portofoliu" }).waitFor({ timeout: 15000 });
+  await page.waitForTimeout(1200);
+
+  const portfolioSwitches = page.getByRole("switch", { name: /în portofoliul public/i });
+  const hasFinished = (await portfolioSwitches.count()) > 0;
+  check("lucrarea terminată are bifa de portofoliu public", hasFinished);
+
+  if (hasFinished) {
+    await portfolioSwitches.first().click();
+    await page.getByText("Se vede public").first().waitFor({ timeout: 10000 });
+    check("lucrarea se poate arăta public dintr-o apăsare", true);
+    check(
+      "se spune și că linkul e încă oprit",
+      (await page.getByText(/linkul public e oprit/i).count()) > 0,
+    );
+    await portfolioSwitches.first().click();
+    await page.getByText("Doar pentru tine").first().waitFor({ timeout: 10000 });
+    check("și se scoate la loc", true);
+  }
+
+  /* ----------------------------- oferta pierdută ------------------- */
+  section("De ce n-a ieșit oferta");
+
+  await page.goto(quoteUrl, { waitUntil: "networkidle" });
+  await page.getByText(/OFERTĂ #00001/).waitFor({ timeout: 15000 });
+
+  await page.getByRole("button", { name: /Refuzată/i }).click();
+  const rejectDialog = page.getByRole("dialog");
+  await rejectDialog.getByText(/De ce n-a ieșit/i).waitFor({ timeout: 10000 });
+  check("refuzul întreabă motivul, cât încă îl mai știi", true);
+
+  await rejectDialog.getByRole("button", { name: /Prea scump/i }).click();
+  await rejectDialog.getByRole("button", { name: /^Salvează$/ }).click();
+  await rejectDialog.waitFor({ state: "hidden", timeout: 10000 });
+  await page.getByRole("button", { name: /Prea scump/i }).waitFor({ timeout: 10000 });
+  check("motivul rămâne scris pe ofertă", true);
+
+  await page.goto(`${BASE}/rapoarte`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Rapoarte" }).waitFor({ timeout: 15000 });
+  await page.getByRole("heading", { name: "Oferte" }).waitFor({ timeout: 15000 });
+  check("rapoartele numără ofertele câștigate și pierdute", true);
+  check(
+    "motivul refuzului se vede în raport",
+    (await page.getByText(/Prea scump/i).count()) > 0,
+  );
 
   /* ----------------------------- zona sigură ----------------------- */
   section("Zona sigură (telefon cu aplicația instalată)");

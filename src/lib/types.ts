@@ -338,6 +338,15 @@ export interface Quote extends BaseRow {
   view_count: number;
   /** Când i-ai dat ultima oară ghes clientului pentru oferta asta. */
   reminder_sent_at: string | null;
+  /**
+   * De ce n-a ieșit.
+   *
+   * Una dintre valorile din `REJECT_REASONS`, sau gol pentru ofertele
+   * refuzate înainte să existe întrebarea. Se ține ca text, nu ca enum în
+   * bază: o listă de motive se mai lungește, iar o migrație pentru fiecare
+   * motiv nou n-ar merita.
+   */
+  rejected_reason: string | null;
 }
 
 export interface Invoice extends BaseRow {

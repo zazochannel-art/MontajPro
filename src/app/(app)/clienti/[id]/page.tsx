@@ -24,6 +24,7 @@ import { ClientDialog } from "@/components/forms/client-dialog";
 import { JobCard } from "@/components/jobs/job-card";
 import { AssetImage } from "@/components/photo/asset-image";
 import { useRow, useStoreReady, useTable } from "@/hooks/use-data";
+import { PunctualityCard } from "@/components/clients/punctuality-card";
 import { deleteClient, mergeClients } from "@/lib/db/actions";
 import { findDuplicates } from "@/lib/clients";
 import { formatDateShort, formatMoney } from "@/lib/format";
@@ -175,6 +176,8 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
           <EmptyState icon={Plus} title="Nicio lucrare pentru acest client" />
         )}
       </section>
+
+      <PunctualityCard jobs={data.jobs} />
 
       {data.payments.length > 0 && (
         <section className="space-y-2">
