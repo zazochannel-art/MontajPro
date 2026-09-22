@@ -14,6 +14,7 @@ import { useTable } from "@/hooks/use-data";
 import { deleteTool } from "@/lib/db/actions";
 import { daysUntil, warrantyEndDate } from "@/lib/calc";
 import { formatDateShort, formatMoney, toDateKey } from "@/lib/format";
+import { JOB_TYPE_EMOJI, JOB_TYPE_LABELS } from "@/lib/constants";
 import { useApp } from "@/lib/app-provider";
 import type { Tool } from "@/lib/types";
 import { sum } from "@/lib/utils";
@@ -105,6 +106,14 @@ export default function ToolsPage() {
                       {formatMoney(tool.price, currency)}
                     </span>
                   ) : null}
+                  {(tool.job_types ?? []).map((type) => (
+                    <span
+                      key={type}
+                      className="rounded-full border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground"
+                    >
+                      {JOB_TYPE_EMOJI[type]} {JOB_TYPE_LABELS[type]}
+                    </span>
+                  ))}
                   {end && days !== null && (
                     <Badge variant={days < 0 ? "outline" : days <= 30 ? "warning" : "success"}>
                       {days < 0 ? (

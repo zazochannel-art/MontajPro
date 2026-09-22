@@ -112,7 +112,7 @@ export function QuoteForm({ quote }: { quote?: Quote | null }) {
 
   const form = useZodForm(quoteSchema, {
     title: quote?.title ?? (draft ? "Ofertă lucrare" : ""),
-    client_id: quote?.client_id ?? null,
+    client_id: quote?.client_id ?? draft?.client_id ?? null,
     valid_until: quote?.valid_until ?? "",
     advance: quote?.advance ?? 0,
     discount: quote?.discount ?? 0,

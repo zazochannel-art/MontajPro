@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Move } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/page-header";
+import { WeekCapacity } from "@/components/calendar/week-capacity";
 import { useT } from "@/hooks/use-t";
 import { DayRoute } from "@/components/calendar/day-route";
 import { Button } from "@/components/ui/button";
@@ -104,6 +105,8 @@ export default function CalendarPage() {
   return (
     <div className="space-y-4">
       <PageHeader title={t("Calendar")} description={t("Programul tău pe zile")} />
+
+      <WeekCapacity />
 
       <div className="flex items-center gap-2">
         <Button variant="outline" size="icon" aria-label="Înapoi" onClick={() => shift(-1)}>

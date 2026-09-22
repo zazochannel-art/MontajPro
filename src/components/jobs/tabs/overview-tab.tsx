@@ -43,6 +43,8 @@ import { formatDate, formatDuration, formatMoney } from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
 import { TaskList } from "@/components/jobs/task-list";
 import { AcclimatizationCard } from "@/components/jobs/acclimatization-card";
+import { ClosingCard } from "@/components/jobs/closing-card";
+import { useTable } from "@/hooks/use-data";
 import { mapsHref, telHref } from "@/lib/utils";
 
 /** Rezumatul lucrării: cine, unde, când, cât. */
@@ -60,6 +62,11 @@ export function OverviewTab({
   const { currency } = useApp();
   const router = useRouter();
   const phone = telHref(client?.phone);
+  const photos = useTable("job_photos");
+  const handovers = useTable("handovers");
+  const handover =
+    handovers.find((row) => !row.deleted_at && row.job_id === job.id) ?? null;
+
   const maps = mapsHref(job.address || client?.address);
   const whatsapp = client?.phone
     ? `https://wa.me/${client.phone.replace(/[^\d]/g, "")}`
@@ -70,6 +77,13 @@ export function OverviewTab({
       <TaskList job={job} />
 
       <AcclimatizationCard job={job} />
+
+      <ClosingCard
+        job={job}
+        photos={photos}
+        handover={handover}
+        rest={money.rest}
+      />
 
       <section className="rounded-2xl surface p-4">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">

@@ -42,6 +42,9 @@ function handover(patch: Partial<Handover> & { id: string; job_id: string }): Ha
     signature: null,
     signer_name: null,
     signed_at: null,
+    public_token: null,
+    client_signature_image: null,
+    signed_by_client_at: null,
     ...patch,
   };
 }
@@ -69,6 +72,7 @@ function job(id: string, patch: Partial<Job> = {}): Job {
     portfolio_description: null,
     warranty_of_job_id: null,
     material_delivered_at: null,
+    travel_km: null,
     ...patch,
   };
 }
@@ -84,6 +88,7 @@ function client(id: string, patch: Partial<Client> = {}): Client {
     notes: null,
     source: null,
     referred_by_client_id: null,
+    price_adjust: 0,
     ...patch,
   };
 }

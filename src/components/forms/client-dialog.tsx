@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field } from "@/components/ui/field";
 import { useZodForm } from "@/hooks/use-zod-form";
@@ -78,6 +79,7 @@ function ClientForm({
     notes: client?.notes ?? "",
     source: client?.source ?? null,
     referred_by_client_id: client?.referred_by_client_id ?? null,
+    price_adjust: client?.price_adjust ?? 0,
   });
 
   // Cine poate fi „cel care a trimis”: oricine din agendă, în afară de el.
@@ -252,6 +254,20 @@ function ClientForm({
             </Select>
           </Field>
         )}
+
+        <Field
+          label="Preț față de lista ta"
+          hint="Minus pentru reducere, plus pentru adaos. Se aplică singur în calculator și pe ofertă."
+        >
+          <NumberInput
+            value={form.values.price_adjust ?? 0}
+            onChange={(value) => form.set("price_adjust", value)}
+            suffix="%"
+            step={5}
+            min={-99}
+            max={100}
+          />
+        </Field>
 
         <Field label="Notițe" htmlFor="client-notes">
           <Textarea

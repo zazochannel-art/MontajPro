@@ -116,6 +116,7 @@ const RU: Record<string, string> = {
   "Nicio lucrare programată azi": "На сегодня работ не назначено",
   "Ruta zilei": "Маршрут дня",
   "Deschide în hartă": "Открыть на карте",
+  "De luat azi": "Взять сегодня",
 
   /* ----------------------------- bani ------------------------------- */
   Preț: "Цена",

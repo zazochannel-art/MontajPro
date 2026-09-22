@@ -11,6 +11,7 @@ import {
   Plus,
   Save,
   Settings2,
+  UserRound,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -36,12 +37,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useJobs, useTable } from "@/hooks/use-data";
+import { useClients, useJobs, useTable } from "@/hooks/use-data";
 import { buildJobRows, priceHistory } from "@/lib/reports";
 import { useApp } from "@/lib/app-provider";
 import { calcTotal, lineTotal, type CalcLine, type CalcSeed } from "@/lib/calc";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { JOB_TYPE_LABELS } from "@/lib/constants";
+import { adjustLabel, adjustedPrice } from "@/lib/pricing";
 import {
   allPositions,
   builtinId,
@@ -52,7 +54,7 @@ import {
   TRAVEL_UNIT,
   type Position,
 } from "@/lib/price-list";
-import type { DefaultRates, JobType } from "@/lib/types";
+import type { Client, DefaultRates, JobType } from "@/lib/types";
 import { updateJob } from "@/lib/db/actions";
 import { clearCalcSeed, peekCalcSeed, saveCalcDraft } from "@/lib/calc-draft";
 import { uid } from "@/lib/utils";
@@ -92,6 +94,27 @@ function lineFrom(position: Position | undefined, quantity: number): CalcLine {
     unit: position.unit,
     unit_price: position.price,
   };
+}
+
+/** Valoarea „fără client” din select; Radix nu primește șir gol. */
+const NO_CLIENT = "none";
+
+/**
+ * Aceeași linie, la prețul clientului ales.
+ *
+ * Prețul se ia mereu din listă și abia apoi se ajustează, deci trecerea de la
+ * un client la altul nu adună reducere peste reducere. Linia scrisă de mână
+ * n-are poziție în listă, așa că rămâne neatinsă.
+ */
+function priced(
+  line: CalcLine,
+  positions: Position[],
+  client: Client | null,
+): CalcLine {
+  if (!line.item_id || line.item_id === CUSTOM_POSITION) return line;
+  const position = findPosition(positions, line.item_id);
+  if (!position) return line;
+  return { ...line, unit_price: adjustedPrice(position.price, client) };
 }
 
 function presetLines(kind: JobType, positions: Position[]): CalcLine[] {
@@ -134,6 +157,16 @@ export default function CalculatorPage() {
 
   // Cantitățile venite dintr-o măsurătoare; citite o singură dată, la montare.
   const [seed] = useState(() => peekCalcSeed());
+
+  const clients = useClients();
+  /*
+   * Clientul se alege aici, nu la sfârșit: reducerea pe care i-ai promis-o
+   * trebuie să se vadă în prețul pe unitate, nu într-un rând de scăzământ
+   * pus la urmă. „—” înseamnă preț de listă, ca până acum.
+   */
+  const [clientId, setClientId] = useState<string>(NO_CLIENT);
+  const client = clients.find((row) => row.id === clientId) ?? null;
+  const adjust = adjustLabel(client);
 
   const [kind, setKind] = useState<JobType>(seed?.kind ?? "stairs");
   const [lines, setLines] = useState<CalcLine[]>(() =>
@@ -178,7 +211,19 @@ export default function CalculatorPage() {
 
   const switchKind = (next: JobType) => {
     setKind(next);
-    setLines(presetLines(next, positions));
+    setLines(presetLines(next, positions).map((line) => priced(line, positions, client)));
+  };
+
+  /*
+   * Schimbarea clientului repune prețurile, dar numai pe liniile venite din
+   * listă. Ce ai scris de mână rămâne cum ai scris: dacă ai bătut un preț
+   * anume, nu ți-l rescrie nimeni. Recalculul pornește mereu din listă, deci
+   * două schimbări de client nu compun două reduceri.
+   */
+  const chooseClient = (value: string) => {
+    setClientId(value);
+    const next = clients.find((row) => row.id === value) ?? null;
+    setLines((current) => current.map((line) => priced(line, positions, next)));
   };
 
   const update = (id: string, patch: Partial<CalcLine>) =>
@@ -198,7 +243,7 @@ export default function CalculatorPage() {
       item_id: position.id,
       description: position.name,
       unit: position.unit,
-      unit_price: position.price,
+      unit_price: adjustedPrice(position.price, client),
     });
   };
 
@@ -215,7 +260,7 @@ export default function CalculatorPage() {
       return;
     }
     if (targetJob === "new") {
-      saveCalcDraft({ kind, lines: usableLines, total });
+      saveCalcDraft({ kind, lines: usableLines, total, client_id: client?.id ?? null });
       router.push("/lucrari/nou");
       return;
     }
@@ -230,7 +275,7 @@ export default function CalculatorPage() {
       toast.error("Adaugă cel puțin o linie cu preț");
       return;
     }
-    saveCalcDraft({ kind, lines: usableLines, total });
+    saveCalcDraft({ kind, lines: usableLines, total, client_id: client?.id ?? null });
     router.push("/oferte/nou");
   };
 
@@ -262,6 +307,38 @@ export default function CalculatorPage() {
             și apoi vin singure aici.
           </p>
         </div>
+      )}
+
+      <div className="flex items-center gap-2 rounded-2xl surface p-3">
+        <UserRound className="size-4 shrink-0 text-muted-foreground" />
+        <Select value={clientId} onValueChange={chooseClient}>
+          <SelectTrigger className="h-10 flex-1" aria-label="Client">
+            <SelectValue placeholder="Preț de listă" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NO_CLIENT}>Preț de listă</SelectItem>
+            {clients.map((row) => (
+              <SelectItem key={row.id} value={row.id}>
+                {row.name}
+                {adjustLabel(row) && (
+                  <span className="text-muted-foreground"> · {adjustLabel(row)}</span>
+                )}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {adjust && (
+          <span className="shrink-0 rounded-full border border-primary/40 bg-primary/12 px-2.5 py-1 text-xs font-medium text-primary">
+            {adjust}
+          </span>
+        )}
+      </div>
+
+      {adjust && (
+        <p className="text-xs text-muted-foreground">
+          Prețurile de mai jos sunt deja cu {adjust} față de lista ta, cât ai pus
+          pe fișa lui {client?.name}.
+        </p>
       )}
 
       <Tabs value={kind} onValueChange={(value) => switchKind(value as JobType)}>

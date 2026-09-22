@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { FixedCosts } from "@/components/finance/fixed-costs";
 import { ForecastSection } from "@/components/finance/forecast-section";
+import { CrewLedger } from "@/components/finance/crew-ledger";
 import { ExpenseDialog } from "@/components/forms/expense-dialog";
 import { PaymentDialog } from "@/components/forms/payment-dialog";
 import {
@@ -467,6 +468,8 @@ export default function FinancePage() {
 
         <TabsContent value="fixed">
           <FixedCosts monthKey={monthKey} />
+
+          <CrewLedger />
         </TabsContent>
 
       </Tabs>

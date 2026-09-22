@@ -297,6 +297,10 @@ export interface JobMoney {
   profit: number;
   margin: number;
   /** Ore lucrate, din cronometru. */
+  /** Ce te-a costat echipa. Se scade din profit. */
+  crewCost: number;
+  /** Ce te-a costat drumul. Se scade din profit. */
+  travelCost: number;
   hours: number;
   /** Cât a rămas pe oră: profitul împărțit la ore. `null` fără ore. */
   perHour: number | null;
@@ -312,6 +316,10 @@ export interface JobMoney {
  * scădea-o și pe ea, am număra același lucru de două ori. Orele servesc la
  * altceva — împart profitul ca să iasă câștigul pe oră, singura cifră care
  * spune dacă prețul a fost bun.
+ *
+ * Ora ajutorului e altceva și se scade: sunt bani care chiar pleacă din
+ * buzunar. Fără `crewCost`, lucrarea la care a muncit altcineva arăta un
+ * profit mai mare decât adevărul.
  */
 export function jobMoney(input: {
   price: number;
@@ -321,6 +329,10 @@ export function jobMoney(input: {
   extraMaterialCost?: number | null;
   workedMinutes?: number | null;
   hourlyTarget?: number | null;
+  /** Ce te-a costat echipa la lucrarea asta. Vezi `lib/crew.ts`. */
+  crewCost?: number | null;
+  /** Kilometrii făcuți × tariful pe kilometru. */
+  travelCost?: number | null;
 }): JobMoney {
   const price = num(input.price);
   const paid = input.payments.reduce((acc, p) => acc + num(p.amount), 0);
@@ -333,7 +345,9 @@ export function jobMoney(input: {
       0,
     ) + num(input.extraMaterialCost);
   const expensesCost = input.expenses.reduce((acc, e) => acc + num(e.amount), 0);
-  const profit = price - materialsCost - expensesCost;
+  const crewCost = num(input.crewCost);
+  const travelCost = num(input.travelCost);
+  const profit = price - materialsCost - expensesCost - crewCost - travelCost;
   const hours = num(input.workedMinutes) / 60;
   const target = num(input.hourlyTarget);
   return {
@@ -343,6 +357,8 @@ export function jobMoney(input: {
     rest: price - paid,
     materialsCost,
     expensesCost,
+    crewCost,
+    travelCost,
     profit,
     margin: price > 0 ? (profit / price) * 100 : 0,
     hours,

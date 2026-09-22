@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, Check, Gauge, Plus } from "lucide-react";
+import { CalendarClock, Check, Gauge, Plus, Scale } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,11 +30,14 @@ import { JOB_STATUSES, JOB_TYPES } from "@/lib/types";
 import type { Job, JobStatus, JobType } from "@/lib/types";
 import { useApp } from "@/lib/app-provider";
 import {
+  useAveragePerHour,
   useClients,
   usePaceEstimate,
   useProjects,
   useTable,
 } from "@/hooks/use-data";
+import { rateCheck } from "@/lib/pricing";
+import { formatMoney } from "@/lib/format";
 import { dayLoad } from "@/lib/route";
 import { formatDuration } from "@/lib/format";
 import { clearCalcDraft, peekCalcDraft } from "@/lib/calc-draft";
@@ -51,7 +54,7 @@ export function JobForm({
   projectId?: string | null;
 }) {
   const router = useRouter();
-  const { currency } = useApp();
+  const { currency, settings } = useApp();
   const clients = useClients();
   const projects = useProjects();
   const allJobs = useTable("jobs");
@@ -60,11 +63,20 @@ export function JobForm({
   // Când vii din calculator, tipul și prețul sunt deja calculate.
   const [draft] = useState(() => (job ? null : peekCalcDraft()));
 
+  /*
+   * „Merită lucrarea asta?” — comparația cu tine însuți, în clipa în care
+   * scrii prețul, nu în raportul de luna viitoare. Apare doar când ai și ore
+   * estimate, și o medie din trecut: fără ele n-ar fi o comparație, ar fi o
+   * părere.
+   */
+  const average = useAveragePerHour(job?.id ?? null);
+  const travelRate = settings?.default_rates?.travel_km ?? 0;
+
   const form = useZodForm(jobSchema, {
     title:
       job?.title ??
       (draft ? `Montaj ${JOB_TYPE_LABELS[draft.kind].toLowerCase()}` : ""),
-    client_id: job?.client_id ?? null,
+    client_id: job?.client_id ?? draft?.client_id ?? null,
     project_id: job?.project_id ?? projectId ?? null,
     type: (job?.type ?? draft?.kind ?? "stairs") as JobType,
     status: (job?.status ?? "quote") as JobStatus,
@@ -72,6 +84,7 @@ export function JobForm({
     scheduled_date: job?.scheduled_date ?? "",
     scheduled_time: job?.scheduled_time ?? "",
     estimated_hours: job?.estimated_hours ?? 0,
+    travel_km: job?.travel_km ?? 0,
     price_total: job?.price_total ?? draft?.total ?? 0,
     advance: 0,
     notes:
@@ -307,6 +320,20 @@ export function JobForm({
             )}
           </Field>
 
+          <Field
+            label="Kilometri"
+            htmlFor="job-km"
+            hint="Dus-întors. Se înmulțesc cu tariful pe km din setări și intră în profit."
+          >
+            <NumberInput
+              id="job-km"
+              value={form.values.travel_km ?? 0}
+              onChange={(value) => form.set("travel_km", value)}
+              step={5}
+              suffix="km"
+            />
+          </Field>
+
           <Field label="Status">
             <Select
               value={form.values.status}
@@ -340,6 +367,14 @@ export function JobForm({
               currency={currency}
             />
           </Field>
+
+          <RateHint
+            price={form.values.price_total}
+            hours={form.values.estimated_hours ?? 0}
+            travelCost={(form.values.travel_km ?? 0) * travelRate}
+            average={average}
+            currency={currency}
+          />
 
           {!job && (
             <Field
@@ -404,5 +439,51 @@ export function JobForm({
         onSaved={(id) => form.set("client_id", id)}
       />
     </>
+  );
+}
+
+/**
+ * Cât îți rămâne pe oră la prețul ăsta, față de cât îți rămâne de obicei.
+ *
+ * Nu spune „refuză” — spune doar unde stai. O lucrare sub media ta poate fi
+ * bună din alte motive (e aproape, e un client care aduce alții), dar e bine
+ * s-o știi înainte de a da prețul.
+ */
+function RateHint({
+  price,
+  hours,
+  travelCost,
+  average,
+  currency,
+}: {
+  price: number;
+  hours: number;
+  travelCost: number;
+  average: number;
+  currency: string;
+}) {
+  const check = rateCheck({ price, otherCost: travelCost, hours, average });
+  if (!check) return null;
+
+  const tone =
+    check.verdict === "bun"
+      ? "text-emerald-300"
+      : check.verdict === "slab"
+        ? "text-amber-300"
+        : "text-muted-foreground";
+
+  return (
+    <p className={cn("flex items-start gap-2 text-xs", tone)}>
+      <Scale className="mt-0.5 size-3.5 shrink-0" />
+      <span>
+        Îți rămân{" "}
+        <strong>{formatMoney(check.perHour, currency)}</strong> pe oră.{" "}
+        {check.verdict === "la_fel"
+          ? `Cam cât de obicei (${formatMoney(check.average, currency)}).`
+          : check.verdict === "bun"
+            ? `Cu ${formatMoney(check.diff, currency)} peste media ta.`
+            : `Cu ${formatMoney(Math.abs(check.diff), currency)} sub media ta de ${formatMoney(check.average, currency)}.`}
+      </span>
+    </p>
   );
 }

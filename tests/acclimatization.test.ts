@@ -42,6 +42,7 @@ function job(id: string, patch: Partial<Job> = {}): Job {
     portfolio_description: null,
     warranty_of_job_id: null,
     material_delivered_at: null,
+    travel_km: null,
     ...patch,
   };
 }

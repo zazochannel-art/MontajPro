@@ -21,6 +21,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "notes",
     "source",
     "referred_by_client_id",
+    "price_adjust",
   ],
   projects: [...BASE, "name", "client_id", "address", "notes"],
   jobs: [
@@ -44,6 +45,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "portfolio_description",
     "warranty_of_job_id",
     "material_delivered_at",
+    "travel_km",
   ],
   job_measurements: [...BASE, "job_id", "client_id", "kind", "label", "data", "notes"],
   job_photos: [
@@ -65,6 +67,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "unit_price",
     "purchased",
     "taken_from_stock",
+    "returned_quantity",
   ],
   materials: [
     ...BASE,
@@ -87,6 +90,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "note",
     "receipt_path",
     "receipt_local_key",
+    "member_id",
   ],
   quotes: [
     ...BASE,
@@ -138,8 +142,10 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "notes",
     "photo_path",
     "photo_local_key",
+    "job_types",
   ],
   work_sessions: [...BASE, "job_id", "started_at", "ended_at", "duration_minutes", "note"],
+  day_blocks: [...BASE, "day", "reason"],
   notifications: [...BASE, "kind", "title", "body", "job_id", "due_date", "read_at"],
   job_tasks: [...BASE, "job_id", "title", "done", "done_at", "position"],
   fixed_costs: [...BASE, "name", "amount", "started_at", "ended_at", "notes"],
@@ -167,6 +173,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "signature",
     "signer_name",
     "signed_at",
+    "public_token",
   ],
   settings: [
     ...BASE,
@@ -194,6 +201,10 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "photo_stamp",
     "acclimatization_hours",
     "stair_limits",
+    "member_rates",
+    "portfolio_token",
+    "portfolio_intro",
+    "calendar_token",
   ],
 };
 
