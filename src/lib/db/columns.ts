@@ -12,7 +12,16 @@ import type { TableName } from "../types";
 const BASE = ["id", "user_id", "created_at", "updated_at", "deleted_at"] as const;
 
 export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
-  clients: [...BASE, "name", "phone", "email", "address", "notes"],
+  clients: [
+    ...BASE,
+    "name",
+    "phone",
+    "email",
+    "address",
+    "notes",
+    "source",
+    "referred_by_client_id",
+  ],
   projects: [...BASE, "name", "client_id", "address", "notes"],
   jobs: [
     ...BASE,
@@ -33,6 +42,8 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "archived_at",
     "in_portfolio",
     "portfolio_description",
+    "warranty_of_job_id",
+    "material_delivered_at",
   ],
   job_measurements: [...BASE, "job_id", "client_id", "kind", "label", "data", "notes"],
   job_photos: [
@@ -55,7 +66,17 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "purchased",
     "taken_from_stock",
   ],
-  materials: [...BASE, "name", "category", "quantity", "unit", "price", "supplier", "notes"],
+  materials: [
+    ...BASE,
+    "name",
+    "category",
+    "quantity",
+    "unit",
+    "price",
+    "supplier",
+    "notes",
+    "pack_size",
+  ],
   payments: [...BASE, "job_id", "client_id", "amount", "kind", "method", "paid_at", "note"],
   expenses: [
     ...BASE,
@@ -164,8 +185,15 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "material_categories",
     "notification_prefs",
     "vat_percent",
+    // `tax_percent` și `language` existau în baza de date, dar lipseau de aici,
+    // deci nu plecau niciodată spre server: schimbai limba pe un telefon și pe
+    // celălalt rămânea cum era. Lista asta e singurul filtru la trimitere.
+    "tax_percent",
+    "language",
     "quote_terms",
     "photo_stamp",
+    "acclimatization_hours",
+    "stair_limits",
   ],
 };
 

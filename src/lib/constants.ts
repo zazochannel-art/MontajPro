@@ -1,4 +1,5 @@
 import type {
+  ClientSource,
   DefaultRates,
   ExpenseCategory,
   JobStatus,
@@ -182,6 +183,22 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   follow_up: true,
   job_warranty: true,
   quote_viewed: true,
+  acclimatization_done: true,
+};
+
+/**
+ * De unde a venit clientul.
+ *
+ * Lista e scurtă dinadins: cu cincisprezece rubrici n-ar completa-o nimeni,
+ * iar un câmp necompletat nu răspunde la nicio întrebare.
+ */
+export const CLIENT_SOURCE_LABELS: Record<ClientSource, string> = {
+  recommendation: "Recomandare",
+  returning: "Client vechi",
+  social: "Facebook / Instagram",
+  walk_in: "A trecut pe la lucrare",
+  ad: "Reclamă",
+  other: "Altfel",
 };
 
 export const DEFAULT_MATERIAL_CATEGORIES = [

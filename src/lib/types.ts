@@ -72,6 +72,7 @@ export const NOTIFICATION_KINDS = [
   "follow_up",
   "job_warranty",
   "quote_viewed",
+  "acclimatization_done",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
@@ -85,7 +86,28 @@ export interface Client extends BaseRow {
   email: string | null;
   address: string | null;
   notes: string | null;
+  /** Canalul prin care a ajuns la tine. Gol = nu s-a notat. */
+  source: ClientSource | null;
+  /** Când sursa e „recomandare”: clientul care l-a trimis. */
+  referred_by_client_id: ID | null;
 }
+
+/**
+ * De unde vine treaba.
+ *
+ * Lista e scurtă dinadins: dacă ar avea cincisprezece rubrici, n-ar completa-o
+ * nimeni. Răspunsul care contează — „cine îmi aduce de lucru?” — iese din
+ * `recommendation` plus clientul care a trimis.
+ */
+export const CLIENT_SOURCES = [
+  "recommendation",
+  "returning",
+  "social",
+  "walk_in",
+  "ad",
+  "other",
+] as const;
+export type ClientSource = (typeof CLIENT_SOURCES)[number];
 
 export interface Job extends BaseRow {
   client_id: ID | null;
@@ -116,6 +138,20 @@ export interface Job extends BaseRow {
   /** Vizibil în portofoliu (doar lucrări finalizate). */
   in_portfolio: boolean;
   portfolio_description: string | null;
+  /**
+   * Lucrarea pe care o repară aceasta, dacă e o revenire în garanție.
+   *
+   * Dacă a fost gratis sau plătită nu se ține într-un bifat separat: se vede
+   * din banii lucrării. Un bifat ar putea ajunge să contrazică încasările.
+   */
+  warranty_of_job_id: ID | null;
+  /**
+   * Când a ajuns materialul la client — pornește ceasul de aclimatizare.
+   *
+   * Parchetul trebuie să stea în camera în care se montează, ca să ajungă la
+   * umiditatea ei. Montat prea devreme, se umflă peste câteva luni.
+   */
+  material_delivered_at: string | null;
 }
 
 /** Valorile măsurătorilor, în funcție de tip. Stocate ca JSON. */
@@ -211,6 +247,13 @@ export interface Material extends BaseRow {
   price: number;
   supplier: string | null;
   notes: string | null;
+  /**
+   * Cât are un pachet, în unitatea materialului.
+   *
+   * Parchetul se vinde în pachete, nu la metru pătrat: un pachet de 2,18 m²
+   * înseamnă `2.18`. Gol înseamnă că se ia la bucată, fără rotunjiri.
+   */
+  pack_size: number | null;
 }
 
 export interface Payment extends BaseRow {
@@ -458,6 +501,8 @@ export interface NotificationPrefs {
   quote_viewed: boolean;
   /** Garanția lucrării stă să expire. */
   job_warranty: boolean;
+  /** Materialul s-a aclimatizat, se poate monta. */
+  acclimatization_done: boolean;
 }
 
 export interface Settings extends BaseRow {
@@ -491,6 +536,29 @@ export interface Settings extends BaseRow {
   quote_terms: string | null;
   /** Scrie data peste pozele făcute din aplicație. */
   photo_stamp: boolean;
+  /**
+   * Cât stă materialul la aclimatizat, în ore.
+   *
+   * 48 e minimul obișnuit pentru parchet. Depinde de material, de anotimp și
+   * de cât de uscată e casa, deci rămâne reglabil.
+   */
+  acclimatization_hours: number;
+  /** Ce se cere unei trepte ca să se urce bine. Vezi `lib/stairs.ts`. */
+  stair_limits: StairLimits;
+}
+
+/**
+ * Limitele după care se judecă o treaptă, în centimetri.
+ *
+ * Stau în setări fiindcă o scară de beci și una de living nu se fac la fel, și
+ * fiindcă omul de pe șantier știe mai bine decât aplicația ce se cere la el.
+ */
+export interface StairLimits {
+  riser_min: number;
+  riser_max: number;
+  tread_min: number;
+  sum_min: number;
+  sum_max: number;
 }
 
 /**

@@ -23,6 +23,7 @@ import {
   DEFAULT_RATES,
 } from "./constants";
 import { EXPENSE_CATEGORIES } from "./types";
+import { DEFAULT_STAIR_LIMITS } from "./stairs";
 import type { Settings } from "./types";
 import { uid } from "./utils";
 
@@ -164,6 +165,8 @@ function defaultSettings(userId: string): Settings {
     language: "ro",
     quote_terms: null,
     photo_stamp: true,
+    acclimatization_hours: 48,
+    stair_limits: { ...DEFAULT_STAIR_LIMITS },
   };
 }
 

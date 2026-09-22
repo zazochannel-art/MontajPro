@@ -20,7 +20,16 @@ import { clientSchema } from "@/lib/schemas";
 import { saveClient } from "@/lib/db/actions";
 import { useClients } from "@/hooks/use-data";
 import { findDuplicates } from "@/lib/clients";
-import type { Client } from "@/lib/types";
+import { CLIENT_SOURCE_LABELS } from "@/lib/constants";
+import { CLIENT_SOURCES } from "@/lib/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { Client, ClientSource } from "@/lib/types";
 
 export function ClientDialog({
   open,
@@ -67,7 +76,14 @@ function ClientForm({
     email: client?.email ?? "",
     address: client?.address ?? "",
     notes: client?.notes ?? "",
+    source: client?.source ?? null,
+    referred_by_client_id: client?.referred_by_client_id ?? null,
   });
+
+  // Cine poate fi „cel care a trimis”: oricine din agendă, în afară de el.
+  const referrers = clients.filter(
+    (row) => !row.deleted_at && row.id !== client?.id,
+  );
 
   /*
    * Dacă omul e deja în agendă, mai bine îl folosești decât să-l adaugi încă o
@@ -186,6 +202,56 @@ function ClientForm({
             placeholder="str. Ismail 45, Chișinău"
           />
         </Field>
+
+        <Field
+          label="De unde a venit"
+          hint="Ca să știi la sfârșit de an cine îți aduce de lucru."
+        >
+          <Select
+            value={form.values.source ?? "none"}
+            onValueChange={(value) =>
+              form.set("source", value === "none" ? null : (value as ClientSource))
+            }
+          >
+            <SelectTrigger id="client-source">
+              <SelectValue placeholder="Nu știu" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Nu știu</SelectItem>
+              {CLIENT_SOURCES.map((source) => (
+                <SelectItem key={source} value={source}>
+                  {CLIENT_SOURCE_LABELS[source]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+
+        {form.values.source === "recommendation" && referrers.length > 0 && (
+          <Field
+            label="Recomandat de"
+            hint="Omul ăsta merită un telefon de sărbători."
+          >
+            <Select
+              value={form.values.referred_by_client_id ?? "none"}
+              onValueChange={(value) =>
+                form.set("referred_by_client_id", value === "none" ? null : value)
+              }
+            >
+              <SelectTrigger id="client-referrer">
+                <SelectValue placeholder="Nu știu de la cine" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Nu știu de la cine</SelectItem>
+                {referrers.map((row) => (
+                  <SelectItem key={row.id} value={row.id}>
+                    {row.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        )}
 
         <Field label="Notițe" htmlFor="client-notes">
           <Textarea

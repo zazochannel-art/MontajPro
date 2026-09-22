@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, Navigation, Play, Square } from "lucide-react";
@@ -7,8 +8,13 @@ import { toast } from "sonner";
 import { JOB_TYPE_EMOJI, JOB_TYPE_LABELS } from "@/lib/constants";
 import { formatDuration, formatMoney } from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
-import { useActiveSession, useClientName } from "@/hooks/use-data";
+import {
+  useActiveSession,
+  useClientName,
+  useHasBeforePhoto,
+} from "@/hooks/use-data";
 import { startWork, stopWork } from "@/lib/db/actions";
+import { BeforePhotoPrompt } from "@/components/photo/before-photo-prompt";
 import { mapsHref } from "@/lib/utils";
 import type { Job } from "@/lib/types";
 import { StatusBadge } from "@/components/jobs/status-badge";
@@ -22,11 +28,14 @@ export function TodayJobCard({ job }: { job: Job }) {
   const router = useRouter();
   const clientName = useClientName(job.client_id);
   const activeSession = useActiveSession();
+  const hasBefore = useHasBeforePhoto(job.id);
+  const [askPhoto, setAskPhoto] = useState(false);
   const running = activeSession?.job_id === job.id ? activeSession : null;
   const maps = mapsHref(job.address);
 
   return (
-    <div className="rounded-2xl surface p-4">
+    <>
+      <div className="rounded-2xl surface p-4">
       <div className="flex items-start gap-3">
         <div className="flex flex-col items-center gap-1">
           <span className="font-mono text-lg font-bold tabular-nums text-primary">
@@ -90,6 +99,8 @@ export function TodayJobCard({ job }: { job: Job }) {
             type="button"
             onClick={async () => {
               await startWork(job.id);
+              // Cerută abia după pornire: cronometrul nu așteaptă după o poză.
+              if (!hasBefore) setAskPhoto(true);
               toast.success("Cronometru pornit");
               router.refresh();
             }}
@@ -117,6 +128,13 @@ export function TodayJobCard({ job }: { job: Job }) {
           <Navigation className="size-4" /> Navighează
         </a>
       </div>
-    </div>
+      </div>
+
+      <BeforePhotoPrompt
+        jobId={job.id}
+        open={askPhoto}
+        onOpenChange={setAskPhoto}
+      />
+    </>
   );
 }

@@ -46,6 +46,8 @@ import { PushToggle } from "@/components/settings/push-toggle";
 import { TeamSection } from "@/components/settings/team-section";
 import { useArchivedJobs, useTable } from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
+import { DEFAULT_STAIR_LIMITS } from "@/lib/stairs";
+import type { StairLimits } from "@/lib/types";
 import { useInstallPrompt } from "@/hooks/use-install-prompt";
 import {
   CURRENCIES,
@@ -73,6 +75,7 @@ const NOTIFICATION_LABELS: Record<keyof NotificationPrefs, string> = {
   follow_up: "Revino la client",
   job_warranty: "Garanția lucrării",
   quote_viewed: "Clientul a deschis oferta",
+  acclimatization_done: "Materialul s-a aclimatizat",
 };
 
 export default function SettingsPage() {
@@ -104,6 +107,19 @@ export default function SettingsPage() {
   }
 
   const rates = settings.default_rates;
+
+  /*
+   * Limitele treptei sunt un singur câmp în setări, deci se scriu înapoi
+   * întregi. Un obiect gol înseamnă „n-a schimbat nimeni nimic”, iar atunci
+   * arătăm valorile obișnuite, nu zerouri.
+   */
+  const stairLimits = {
+    ...DEFAULT_STAIR_LIMITS,
+    ...(settings.stair_limits ?? {}),
+  };
+  const setStairLimit = (key: keyof StairLimits, value: number) =>
+    void updateSettings({ stair_limits: { ...stairLimits, [key]: value } });
+
   const priceList = settings.price_list ?? [];
   const templates = settings.task_templates ?? {};
   const prefs = settings.notification_prefs;
@@ -292,6 +308,78 @@ export default function SettingsPage() {
             />
           </Field>
         </FieldRow>
+      </section>
+
+      <section className="space-y-3.5 rounded-2xl surface p-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
+          <Ruler className="size-4 text-primary" /> Cum se măsoară
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          După cifrele astea judecă aplicația dacă o scară se urcă bine și când
+          se poate monta parchetul. Sunt valorile obișnuite la interior — dacă
+          la tine se cere altceva, le schimbi aici.
+        </p>
+
+        <Field
+          label="Aclimatizarea parchetului"
+          hint="Cât stă materialul în camera în care se montează"
+        >
+          <NumberInput
+            value={settings.acclimatization_hours}
+            onChange={(value) =>
+              void updateSettings({ acclimatization_hours: value })
+            }
+            suffix="ore"
+            step={12}
+          />
+        </Field>
+
+        <FieldRow>
+          <Field label="Treaptă, minim">
+            <NumberInput
+              value={stairLimits.riser_min}
+              onChange={(value) => setStairLimit("riser_min", value)}
+              suffix="cm"
+              step={0.5}
+            />
+          </Field>
+          <Field label="Treaptă, maxim">
+            <NumberInput
+              value={stairLimits.riser_max}
+              onChange={(value) => setStairLimit("riser_max", value)}
+              suffix="cm"
+              step={0.5}
+            />
+          </Field>
+        </FieldRow>
+
+        <FieldRow>
+          <Field label="Călcătură, minim">
+            <NumberInput
+              value={stairLimits.tread_min}
+              onChange={(value) => setStairLimit("tread_min", value)}
+              suffix="cm"
+              step={0.5}
+            />
+          </Field>
+          <Field label="Pasul, minim" hint="2 × înălțime + adâncime">
+            <NumberInput
+              value={stairLimits.sum_min}
+              onChange={(value) => setStairLimit("sum_min", value)}
+              suffix="cm"
+              step={1}
+            />
+          </Field>
+        </FieldRow>
+
+        <Field label="Pasul, maxim">
+          <NumberInput
+            value={stairLimits.sum_max}
+            onChange={(value) => setStairLimit("sum_max", value)}
+            suffix="cm"
+            step={1}
+          />
+        </Field>
       </section>
 
       <section className="space-y-3.5 rounded-2xl surface p-4">

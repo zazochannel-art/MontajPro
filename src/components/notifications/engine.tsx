@@ -5,6 +5,7 @@ import { store } from "@/lib/db/store";
 import { useApp } from "@/lib/app-provider";
 import { useTable } from "@/hooks/use-data";
 import { daysUntil, warrantyEndDate } from "@/lib/calc";
+import { DEFAULT_HOURS, acclimatizationFor } from "@/lib/acclimatization";
 import { formatDateShort, todayKey, toDateKey } from "@/lib/format";
 import type { NotificationKind } from "@/lib/types";
 
@@ -188,6 +189,24 @@ export function NotificationEngine() {
               kind: "follow_up",
               title: "Sună clientul",
               body: `${client?.name ?? "Client"} — au trecut 6 luni de la „${job.title}”`,
+              job_id: job.id,
+              due_date: null,
+            });
+          }
+        }
+
+        // Materialul care și-a făcut orele în cameră: se poate monta.
+        if (prefs.acclimatization_done) {
+          const hours = settings?.acclimatization_hours ?? DEFAULT_HOURS;
+          for (const job of jobs) {
+            if (job.deleted_at || job.status === "done") continue;
+            const state = acclimatizationFor(job, hours);
+            if (!state?.ready) continue;
+            candidates.push({
+              key: `acclimatization_done:${job.id}`,
+              kind: "acclimatization_done",
+              title: "Materialul s-a aclimatizat",
+              body: `„${job.title}” — parchetul a stat ${hours} de ore în cameră, poți monta.`,
               job_id: job.id,
               due_date: null,
             });

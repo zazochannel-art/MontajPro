@@ -104,6 +104,18 @@ try {
   /* ----------------------------- cronometru ------------------------ */
   section("Start / stop lucrare");
   await page.getByRole("button", { name: /START LUCRARE/i }).click();
+
+  // De la pornire, aplicația cere poza „înainte” — peretele deja zgâriat,
+  // parchetul vechi umflat. Apare o singură dată pe lucrare.
+  const beforePrompt = page.getByRole("dialog").filter({
+    hasText: /Fă o poză înainte/i,
+  });
+  await beforePrompt.waitFor({ timeout: 10000 });
+  check("la START se cere poza „înainte”", true);
+  await page.getByRole("button", { name: /Mai târziu/i }).click();
+  await beforePrompt.waitFor({ state: "hidden", timeout: 10000 });
+  check("„Mai târziu” închide fereastra fără să oprească cronometrul", true);
+
   await page.getByRole("button", { name: /FINALIZEAZ/i }).waitFor({ timeout: 10000 });
   check("cronometrul pornește", true);
   await page.getByRole("button", { name: /FINALIZEAZ/i }).click();
@@ -127,6 +139,24 @@ try {
     "unghiul se calculează automat",
     await page.getByText("Unghi calculat").isVisible(),
   );
+
+  // Semaforul treptei. 15 trepte de 18 cm cu călcătura de 30: 2×18+30 = 66,
+  // adică exact la limita de sus — încă se urcă bine.
+  check(
+    "treapta bună primește verde",
+    await page.getByText("Treptele se urcă bine").isVisible(),
+  );
+
+  // Treapta de 22 cm iese din orice limită: trebuie oprită, nu doar semnalată.
+  await page.locator("#m-height").fill("22");
+  await page.getByText("Treptele nu se vor urca bine").waitFor({ timeout: 10000 });
+  check("treapta prea înaltă primește roșu", true);
+  check(
+    "i se spune și cum se repară",
+    (await page.getByText(/trepte în loc de/).count()) > 0,
+  );
+  await page.locator("#m-height").fill("18");
+  await page.getByText("Treptele se urcă bine").waitFor({ timeout: 10000 });
   await page.getByRole("button", { name: /^Salvează$/ }).click();
   await page.getByText(/15 trepte|Suprafață trepte/).first().waitFor({ timeout: 10000 });
   check("măsurătoarea s-a salvat", true);
@@ -526,6 +556,17 @@ try {
   await page.goto(`${BASE}/lucrari`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Lucrări" }).waitFor({ timeout: 10000 });
   check("comutarea înapoi în română merge", true);
+
+  /* ----------------------------- garanții -------------------------- */
+  section("Garanții");
+
+  await page.goto(`${BASE}/garantii`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Garanții" }).waitFor({ timeout: 15000 });
+  check("pagina de garanții se deschide", true);
+  check(
+    "fără predări, spune limpede de unde vin garanțiile",
+    (await page.getByText(/procesul-verbal de predare/i).count()) > 0,
+  );
 
   /* ----------------------------- clientul deja în agendă ----------- */
   section("Clientul deja în agendă, adăugat din lucrare");

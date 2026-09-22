@@ -12,6 +12,7 @@ import {
   Package,
   PhoneCall,
   ShieldAlert,
+  Thermometer,
   Wallet,
   X,
 } from "lucide-react";
@@ -37,6 +38,7 @@ const ICONS: Record<NotificationKind, LucideIcon> = {
   follow_up: PhoneCall,
   job_warranty: ShieldAlert,
   quote_viewed: Eye,
+  acclimatization_done: Thermometer,
 };
 
 const TONES: Record<NotificationKind, string> = {
@@ -50,6 +52,7 @@ const TONES: Record<NotificationKind, string> = {
   follow_up: "bg-emerald-500/10 text-emerald-300",
   job_warranty: "bg-red-500/10 text-red-300",
   quote_viewed: "bg-emerald-500/10 text-emerald-300",
+  acclimatization_done: "bg-sky-500/12 text-sky-300",
 };
 
 export default function NotificationsPage() {

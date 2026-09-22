@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { EXPENSE_CATEGORIES, JOB_STATUSES, JOB_TYPES, PAYMENT_KINDS, PAYMENT_METHODS } from "./types";
+import {
+  CLIENT_SOURCES,
+  EXPENSE_CATEGORIES,
+  JOB_STATUSES,
+  JOB_TYPES,
+  PAYMENT_KINDS,
+  PAYMENT_METHODS,
+} from "./types";
 
 /** Schemele de validare pentru formularele aplicației. */
 
@@ -27,6 +34,10 @@ export const clientSchema = z.object({
     .transform((value) => (value ? value : null)),
   address: optionalText,
   notes: optionalText,
+  /** Canalul prin care a ajuns la tine. Gol = nu s-a notat. */
+  source: z.enum(CLIENT_SOURCES).nullable().optional(),
+  /** Când sursa e „recomandare”: clientul care l-a trimis. */
+  referred_by_client_id: z.string().uuid().nullable().optional(),
 });
 
 export const jobSchema = z.object({
@@ -68,6 +79,8 @@ export const materialSchema = z.object({
   price: z.number().min(0),
   supplier: optionalText,
   notes: optionalText,
+  /** Cât are un pachet, în unitatea materialului. 0 sau gol = la bucată. */
+  pack_size: z.number().min(0).nullable().optional(),
 });
 
 export const jobMaterialSchema = z.object({

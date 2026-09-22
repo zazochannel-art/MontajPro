@@ -12,6 +12,7 @@ import { syncNow } from "./sync";
 import { deleteAsset } from "../storage";
 import { CLIENT_TABLES } from "../clients";
 import type {
+  ClientSource,
   Client,
   ExpenseCategory,
   Job,
@@ -43,6 +44,8 @@ export async function saveClient(input: {
   email?: string | null;
   address?: string | null;
   notes?: string | null;
+  source?: ClientSource | null;
+  referred_by_client_id?: string | null;
 }) {
   const payload = {
     name: input.name.trim(),
@@ -50,6 +53,11 @@ export async function saveClient(input: {
     email: input.email?.trim() || null,
     address: input.address?.trim() || null,
     notes: input.notes?.trim() || null,
+    source: input.source ?? null,
+    // Cine l-a trimis are sens doar la o recomandare; altfel rămâne gol, ca
+    // să nu ținem o legătură care nu mai înseamnă nimic.
+    referred_by_client_id:
+      input.source === "recommendation" ? (input.referred_by_client_id ?? null) : null,
   };
   const row = input.id
     ? await store.update("clients", input.id, payload)
@@ -480,6 +488,8 @@ export async function saveMaterial(input: {
   price: number;
   supplier?: string | null;
   notes?: string | null;
+  /** Cât are un pachet, în unitatea materialului. Gol = se ia la bucată. */
+  pack_size?: number | null;
 }) {
   const payload = {
     name: input.name.trim(),
@@ -489,6 +499,7 @@ export async function saveMaterial(input: {
     price: num(input.price),
     supplier: input.supplier?.trim() || null,
     notes: input.notes?.trim() || null,
+    pack_size: input.pack_size && input.pack_size > 0 ? input.pack_size : null,
   };
   const row = input.id
     ? await store.update("materials", input.id, payload)
@@ -1323,6 +1334,43 @@ export async function deleteHandover(id: string) {
  * Se copiază ce se repetă (tip, preț, materiale, măsurători), nu ce ține de
  * lucrarea trecută: date, plăți, poze, ore lucrate.
  */
+/**
+ * Revenirea în garanție.
+ *
+ * Nu e o copie a lucrării: e o lucrare nouă, mică, legată de cea veche. Începe
+ * cu prețul zero, fiindcă asta înseamnă garanția; dacă se dovedește că omul a
+ * stricat el podeaua, prețul se pune și devine muncă plătită. Cât te-au costat
+ * revenirile se citește apoi din bani, nu dintr-un bifat.
+ */
+export async function createWarrantyCallback(jobId: string) {
+  const source = store.getTable("jobs").find((row) => row.id === jobId);
+  if (!source) return null;
+
+  const job = await store.insert("jobs", {
+    client_id: source.client_id,
+    project_id: source.project_id ?? null,
+    title: `Revenire — ${source.title}`,
+    type: source.type,
+    status: "confirmed",
+    address: source.address,
+    scheduled_date: null,
+    scheduled_time: null,
+    estimated_hours: null,
+    price_total: 0,
+    material_cost: null,
+    start_date: null,
+    end_date: null,
+    notes: null,
+    in_portfolio: false,
+    portfolio_description: null,
+    warranty_of_job_id: source.id,
+    material_delivered_at: null,
+  });
+
+  kick();
+  return job;
+}
+
 export async function duplicateJob(id: string) {
   const source = store.getTable("jobs").find((row) => row.id === id);
   if (!source) return null;

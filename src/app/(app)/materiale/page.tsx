@@ -78,6 +78,11 @@ export default function MaterialsPage() {
         supplier: material.material_id
           ? (stockById.get(material.material_id)?.supplier ?? null)
           : null,
+        // La fel și mărimea pachetului: e o însușire a materialului din
+        // inventar, nu a cantității cerute de o lucrare.
+        packSize: material.material_id
+          ? (stockById.get(material.material_id)?.pack_size ?? null)
+          : null,
       }));
   }, [jobMaterials, jobs, materials]);
 
