@@ -695,7 +695,10 @@ try {
   await jobMaterialDialog.getByRole("combobox").first().waitFor({ timeout: 10000 });
   await jobMaterialDialog.getByRole("combobox").first().click();
   await page.getByRole("option", { name: /Parchet stejar \(test\)/ }).click();
-  await jobMaterialDialog.locator('input[inputmode="decimal"]').first().fill("8");
+  const firstNumbers = jobMaterialDialog.locator('input[inputmode="decimal"]');
+  await firstNumbers.nth(0).fill("8");
+  // Prețul contează și pentru istoricul de preț, verificat mai jos.
+  await firstNumbers.nth(1).fill("160");
   await jobMaterialDialog.getByRole("button", { name: /^Salvează$/ }).click();
   await page.getByText("Parchet stejar (test)").first().waitFor({ timeout: 10000 });
 
@@ -877,6 +880,129 @@ try {
   check(
     "motivul refuzului se vede în raport",
     (await page.getByText(/Prea scump/i).count()) > 0,
+  );
+
+  /* ----------------------------- oferta expirată ------------------- */
+  section("Oferta trecută de termen");
+
+  // Baza refuză deja o ofertă expirată — `quote_by_token` filtrează după
+  // `valid_until`. Până acum aplicația tăcea, deci îi dădeai ghes unui om
+  // care n-avea ce deschide.
+  await page.goto(`${quoteUrl}/editare`, { waitUntil: "networkidle" });
+  await page.getByPlaceholder("Montaj scară stejar").waitFor({ timeout: 15000 });
+  await page.waitForTimeout(1500);
+  await page.locator('input[type="date"]').first().fill("2026-09-01");
+  await page.getByRole("button", { name: /^Salvează$/ }).click();
+  await page.waitForURL(/\/oferte\/[0-9a-f-]{36}$/, { timeout: 15000 });
+
+  // Oferta e refuzată din secțiunea de mai devreme; o punem înapoi pe „trimisă”,
+  // fiindcă doar una încă în joc poate expira.
+  await page.getByRole("button", { name: /Marchează trimisă/i }).click();
+  await page.waitForTimeout(1200);
+
+  const expiredNotice = page.getByText(/Termenul a trecut pe/i);
+  await expiredNotice.waitFor({ timeout: 10000 });
+  check("oferta expirată o spune pe față, nu tace", true);
+  check(
+    "se explică de ce contează: clientul nu mai vede nimic",
+    (await page.getByText(/nu mai vede nimic/i).count()) > 0,
+  );
+
+  await page.getByRole("button", { name: /Încă 14 zile/i }).click();
+  await expiredNotice.waitFor({ state: "hidden", timeout: 10000 });
+  check("prelungirea repune oferta în joc dintr-o apăsare", true);
+
+  await page.goto(`${BASE}/oferte`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(1200);
+  check(
+    "după prelungire, lista n-o mai arată expirată",
+    (await page.getByText(/expirată de/i).count()) === 0,
+  );
+
+  /* ----------------------------- legenda pozei --------------------- */
+  section("Legenda pe poză");
+
+  await page.goto(`${jobUrl}?tab=poze`, { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: /Poze/i }).click();
+  await page.waitForTimeout(1200);
+  /*
+   * O poză adevărată, pusă prin inputul de fișier — același pe care îl
+   * deschide butonul „Adaugă”. Un PNG de 8×8 e destul: ne interesează
+   * legenda, nu poza.
+   */
+  const PNG_8x8 = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAJUlEQVR4nGP8//8/AzGAiShVoxpHNY5qHNU4qnFU46jGUY3DUSMANmsD/XdCPRAAAAAASUVORK5CYII=",
+    "base64",
+  );
+  await page
+    .locator('input[type="file"]:not([capture])')
+    .first()
+    .setInputFiles({ name: "poza.png", mimeType: "image/png", buffer: PNG_8x8 });
+  await page.waitForTimeout(2500);
+
+  const anyPhoto = page.locator("button.relative.aspect-square").first();
+  const hasPhoto = (await anyPhoto.count()) > 0;
+  check("poza se adaugă de pe telefon", hasPhoto);
+
+  if (hasPhoto) {
+    await anyPhoto.click();
+    const captionInput = page.getByLabel("Legenda pozei");
+    await captionInput.waitFor({ timeout: 10000 });
+    check("poza deschisă poate primi o legendă", true);
+    await captionInput.fill("Crăpătura era înainte să venim (test)");
+    await page.getByRole("button", { name: /^Salvează$/ }).click();
+    await page.getByText(/Legendă salvată/i).waitFor({ timeout: 10000 });
+    await page.getByRole("button", { name: /Închide/i }).click();
+    await page.waitForTimeout(800);
+    check(
+      "legenda se vede pe miniatură, fără să deschizi poza",
+      (await page.getByText("Crăpătura era înainte să venim (test)").count()) > 0,
+    );
+  }
+
+  /* ----------------------------- lucrarea, la client --------------- */
+  section("Clientul își vede lucrarea");
+
+  await page.goto(`${jobUrl}`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(1200);
+  // Fără cloud configurat, butonul nu apare deloc: un link public fără server
+  // n-ar duce nicăieri.
+  const shareButton = page.getByRole("button", { name: /Arată-i clientului lucrarea/i });
+  check(
+    "fără cloud, linkul pentru client nu se oferă degeaba",
+    (await shareButton.count()) === 0,
+  );
+
+  /* ----------------------------- prețul materialului --------------- */
+  section("Prețul materialului, în timp");
+
+  // O a doua lucrare cu același material din depozit, la alt preț: abia
+  // atunci există o tendință.
+  await page.goto(`${BASE}/lucrari/nou`, { waitUntil: "networkidle" });
+  await page.getByPlaceholder("Montaj scară stejar").waitFor({ timeout: 15000 });
+  await page.getByPlaceholder("Montaj scară stejar").fill("A doua lucrare (test)");
+  await page.locator("#job-price").fill("3000");
+  await page.getByRole("button", { name: /Creează lucrarea/i }).click();
+  await page.waitForURL(/\/lucrari\/[0-9a-f-]{36}/, { timeout: 15000 });
+
+  await page.getByRole("tab", { name: /Materiale/i }).click();
+  await page.getByRole("button", { name: /Adaugă material/i }).first().click();
+  const secondDialog = page.getByRole("dialog");
+  await secondDialog.getByRole("combobox").first().waitFor({ timeout: 10000 });
+  await secondDialog.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: /Parchet stejar \(test\)/ }).click();
+  const secondNumbers = secondDialog.locator('input[inputmode="decimal"]');
+  await secondNumbers.nth(0).fill("5");
+  await secondNumbers.nth(1).fill("200");
+  await secondDialog.getByRole("button", { name: /^Salvează$/ }).click();
+  await page.getByText("Parchet stejar (test)").first().waitFor({ timeout: 10000 });
+
+  await page.goto(`${BASE}/materiale`, { waitUntil: "networkidle" });
+  await page.getByText("Parchet stejar (test)").first().waitFor({ timeout: 15000 });
+  await page.waitForTimeout(1200);
+  check(
+    "materialul cumpărat de două ori arată cât s-a schimbat prețul",
+    (await page.getByText(/% față de/).count()) > 0,
   );
 
   /* ----------------------------- zona sigură ----------------------- */

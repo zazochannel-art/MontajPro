@@ -55,6 +55,7 @@ function job(id: string, clientId: string | null): Job {
     warranty_of_job_id: null,
     material_delivered_at: null,
     travel_km: null,
+    public_token: null,
   };
 }
 

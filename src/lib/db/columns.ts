@@ -46,6 +46,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "warranty_of_job_id",
     "material_delivered_at",
     "travel_km",
+    "public_token",
   ],
   job_measurements: [...BASE, "job_id", "client_id", "kind", "label", "data", "notes"],
   job_photos: [

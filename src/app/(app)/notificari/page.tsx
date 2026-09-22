@@ -15,6 +15,7 @@ import {
   Thermometer,
   Wallet,
   X,
+  CalendarX,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -39,6 +40,7 @@ const ICONS: Record<NotificationKind, LucideIcon> = {
   job_warranty: ShieldAlert,
   quote_viewed: Eye,
   acclimatization_done: Thermometer,
+  quote_expired: CalendarX,
 };
 
 const TONES: Record<NotificationKind, string> = {
@@ -53,6 +55,7 @@ const TONES: Record<NotificationKind, string> = {
   job_warranty: "bg-red-500/10 text-red-300",
   quote_viewed: "bg-emerald-500/10 text-emerald-300",
   acclimatization_done: "bg-sky-500/12 text-sky-300",
+  quote_expired: "bg-zinc-500/12 text-zinc-300",
 };
 
 export default function NotificationsPage() {

@@ -57,6 +57,7 @@ function job(id: string, type: JobType, patch: Partial<Job> = {}): Job {
     warranty_of_job_id: null,
     material_delivered_at: null,
     travel_km: null,
+    public_token: null,
     ...patch,
   };
 }

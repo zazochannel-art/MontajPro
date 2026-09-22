@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Camera, Trash2, X } from "lucide-react";
+import { Camera, Check, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Confirm } from "@/components/ui/confirm";
@@ -11,12 +11,20 @@ import { AssetImage } from "@/components/photo/asset-image";
 import { PHOTO_STAGE_LABELS } from "@/lib/constants";
 import { PHOTO_STAGES } from "@/lib/types";
 import type { Job, JobPhoto, PhotoStage } from "@/lib/types";
-import { addPhoto, deletePhoto } from "@/lib/db/actions";
+import { addPhoto, deletePhoto, setPhotoCaption } from "@/lib/db/actions";
+import { Input } from "@/components/ui/input";
 import { deleteAsset } from "@/lib/storage";
 
 /** Pozele lucrării, grupate pe etape: înainte, în timpul, după. */
 export function PhotosTab({ job, photos }: { job: Job; photos: JobPhoto[] }) {
-  const [preview, setPreview] = useState<JobPhoto | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  /*
+   * Poza deschisă se caută în listă la fiecare randare, nu se copiază la
+   * deschidere: altfel legenda scrisă acum ar rămâne nevăzută în fereastră
+   * până la închiderea ei.
+   */
+  const preview = photos.find((photo) => photo.id === previewId) ?? null;
+  const setPreview = (photo: JobPhoto | null) => setPreviewId(photo?.id ?? null);
 
   return (
     <div className="space-y-6">
@@ -49,6 +57,11 @@ export function PhotosTab({ job, photos }: { job: Job; photos: JobPhoto[] }) {
                   {!photo.storage_path && (
                     <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1 text-[9px] text-amber-300">
                       local
+                    </span>
+                  )}
+                  {photo.caption && (
+                    <span className="absolute inset-x-0 bottom-0 truncate bg-black/70 px-1.5 py-1 text-left text-[10px] text-white">
+                      {photo.caption}
                     </span>
                   )}
                 </button>
@@ -88,6 +101,8 @@ export function PhotosTab({ job, photos }: { job: Job; photos: JobPhoto[] }) {
                   className="max-h-[70dvh] object-contain"
                 />
               </div>
+              <CaptionField photo={preview} />
+
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm text-muted-foreground">
                   {PHOTO_STAGE_LABELS[preview.stage]}
@@ -133,6 +148,51 @@ export function PhotosTab({ job, photos }: { job: Job; photos: JobPhoto[] }) {
           Fotografiile se salvează și offline, apoi se urcă automat.
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * Ce se vede în poză, scris lângă ea.
+ *
+ * „Crăpătura asta din perete era înainte să venim noi” e rândul care te apără
+ * peste șase luni, când nimeni nu-și mai amintește cum arăta. Se scrie o dată,
+ * pe loc, cât mai ai poza în față.
+ *
+ * Se salvează la apăsare, nu la fiecare literă: pe telefon, o scriere la
+ * fiecare tastă ar umple coada de trimis cu zeci de versiuni ale aceleiași
+ * legende.
+ */
+function CaptionField({ photo }: { photo: JobPhoto }) {
+  const [text, setText] = useState(photo.caption ?? "");
+  const [saving, setSaving] = useState(false);
+  const dirty = text.trim() !== (photo.caption ?? "");
+
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        placeholder="Ce se vede în poză"
+        aria-label="Legenda pozei"
+        className="flex-1"
+      />
+      <Button
+        size="sm"
+        disabled={!dirty}
+        loading={saving}
+        onClick={async () => {
+          setSaving(true);
+          try {
+            await setPhotoCaption(photo.id, text);
+            toast.success(text.trim() ? "Legendă salvată" : "Legendă ștearsă");
+          } finally {
+            setSaving(false);
+          }
+        }}
+      >
+        <Check /> Salvează
+      </Button>
     </div>
   );
 }

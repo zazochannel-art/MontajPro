@@ -77,6 +77,7 @@ const NOTIFICATION_LABELS: Record<keyof NotificationPrefs, string> = {
   job_warranty: "Garanția lucrării",
   quote_viewed: "Clientul a deschis oferta",
   acclimatization_done: "Materialul s-a aclimatizat",
+  quote_expired: "Ofertă trecută de termen",
 };
 
 export default function SettingsPage() {

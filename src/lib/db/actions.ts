@@ -29,6 +29,7 @@ import type {
 } from "../types";
 import { nowISO, num, uid } from "../utils";
 import { planFromQuote } from "../quote-convert";
+import { extendedUntil } from "../expiry";
 import { allPositions } from "../price-list";
 import { todayKey } from "../format";
 
@@ -1611,5 +1612,63 @@ export async function payCrewMember(input: {
  */
 export async function setJobInPortfolio(jobId: string, on: boolean) {
   await store.update("jobs", jobId, { in_portfolio: on });
+  kick();
+}
+
+/* ------------------------ lucrarea, la client ---------------------- */
+
+/**
+ * Linkul prin care clientul își vede lucrarea.
+ *
+ * Îi arată exact atât cât îl privește: când e programată, dacă s-a început,
+ * ce pași s-au făcut, pozele. Nimic despre bani. Tokenul se face o singură
+ * dată și rămâne același, ca linkul trimis azi să meargă și peste o lună.
+ */
+export async function shareJob(jobId: string): Promise<string | null> {
+  const job = store.getTable("jobs").find((row) => row.id === jobId);
+  if (!job) return null;
+
+  const token = job.public_token || freshToken();
+  if (!job.public_token) {
+    await store.update("jobs", jobId, { public_token: token });
+    kick();
+  }
+  return token;
+}
+
+/** Oprește linkul lucrării. Pozele se închid la loc în aceeași clipă. */
+export async function unshareJob(jobId: string) {
+  await store.update("jobs", jobId, { public_token: null });
+  kick();
+}
+
+/* --------------------------- oferta expirată ----------------------- */
+
+/**
+ * Prelungește termenul unei oferte.
+ *
+ * Se numără de azi, nu din termenul vechi: o ofertă care a stat două luni ar
+ * primi altfel un termen tot trecut. Cât timp e trimisă, linkul public
+ * redevine bun în aceeași clipă — funcția din bază citește aceeași coloană.
+ */
+export async function extendQuote(quoteId: string, days = 14) {
+  const until = extendedUntil(todayKey(), days);
+  await store.update("quotes", quoteId, { valid_until: until });
+  kick();
+  return until;
+}
+
+/* ---------------------------- legenda pozei ------------------------ */
+
+/**
+ * Ce se vede în poză, scris lângă ea.
+ *
+ * „Crăpătura asta era înainte să venim noi” e rândul care te apără peste
+ * șase luni, când nimeni nu-și mai amintește. Gol șterge legenda.
+ */
+export async function setPhotoCaption(photoId: string, caption: string) {
+  await store.update("job_photos", photoId, {
+    caption: caption.trim() || null,
+  });
   kick();
 }

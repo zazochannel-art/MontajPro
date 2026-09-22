@@ -46,6 +46,7 @@ import { AcclimatizationCard } from "@/components/jobs/acclimatization-card";
 import { ClosingCard } from "@/components/jobs/closing-card";
 import { useTable } from "@/hooks/use-data";
 import { mapsHref, telHref } from "@/lib/utils";
+import { ShareJob } from "@/components/jobs/share-job";
 
 /** Rezumatul lucrării: cine, unde, când, cât. */
 export function OverviewTab({
@@ -84,6 +85,8 @@ export function OverviewTab({
         handover={handover}
         rest={money.rest}
       />
+
+      <ShareJob job={job} />
 
       <section className="rounded-2xl surface p-4">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">

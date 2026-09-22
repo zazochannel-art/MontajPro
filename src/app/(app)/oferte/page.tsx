@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Eye, FileText, Plus } from "lucide-react";
+import { CalendarX, ChevronRight, Eye, FileText, Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
@@ -11,6 +11,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useStoreReady, useTable } from "@/hooks/use-data";
 import { quoteTotal } from "@/lib/db/actions";
 import { QUOTE_STATUS_CLASSES, QUOTE_STATUS_LABELS } from "@/lib/constants";
+import { quoteExpiry } from "@/lib/expiry";
+import { todayKey } from "@/lib/format";
+import type { Quote } from "@/lib/types";
 import { QUOTE_STATUSES } from "@/lib/types";
 import type { QuoteStatus } from "@/lib/types";
 import { formatDateShort, formatMoney, formatQuoteNumber } from "@/lib/format";
@@ -20,6 +23,7 @@ import { cn } from "@/lib/utils";
 type Filter = QuoteStatus | "all";
 
 export default function QuotesPage() {
+  const today = todayKey();
   const ready = useStoreReady();
   const quotes = useTable("quotes");
   const items = useTable("quote_items");
@@ -104,6 +108,7 @@ export default function QuotesPage() {
                     >
                       {QUOTE_STATUS_LABELS[quote.status]}
                     </span>
+                    <ExpiryTag quote={quote} today={today} />
                     {quote.status === "sent" && quote.viewed_at && (
                       <span className="inline-flex items-center gap-1 text-[11px] text-emerald-300">
                         <Eye className="size-3" />
@@ -143,5 +148,34 @@ export default function QuotesPage() {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Cum stă oferta cu termenul.
+ *
+ * Expirată nu e o părere: funcția din bază refuză deja linkul, deci clientul
+ * chiar nu mai are ce deschide. „Mai are 2 zile” e avertismentul care-ți dă
+ * timp s-o prelungești înainte să se întâmple asta.
+ */
+function ExpiryTag({ quote, today }: { quote: Quote; today: string }) {
+  const expiry = quoteExpiry(quote, today);
+  if (!expiry || (!expiry.expired && !expiry.soon)) return null;
+
+  return (
+    <span
+      className={
+        expiry.expired
+          ? "inline-flex items-center gap-1 rounded-full border border-zinc-500/40 bg-zinc-500/12 px-2 py-0.5 text-[11px] font-medium text-zinc-300"
+          : "inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/12 px-2 py-0.5 text-[11px] font-medium text-amber-300"
+      }
+    >
+      <CalendarX className="size-3" />
+      {expiry.expired
+        ? `expirată de ${Math.abs(expiry.days)} ${Math.abs(expiry.days) === 1 ? "zi" : "zile"}`
+        : expiry.days === 0
+          ? "expiră azi"
+          : `mai are ${expiry.days} ${expiry.days === 1 ? "zi" : "zile"}`}
+    </span>
   );
 }
