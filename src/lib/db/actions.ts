@@ -11,6 +11,7 @@ import { store } from "./store";
 import { syncNow } from "./sync";
 import { deleteAsset } from "../storage";
 import { CLIENT_TABLES } from "../clients";
+import { TABLE_NAMES } from "../types";
 import type {
   ClientAddress,
   ClientSource,
@@ -464,12 +465,17 @@ export async function takeFromStock(jobMaterialId: string) {
 
   const needed = num(line.quantity);
   const available = num(stock.quantity);
-  await store.update("materials", stock.id, {
-    quantity: Math.max(0, available - needed),
+  // Cât s-a scos de fapt: nu mai mult decât era pe raft, și niciodată
+  // negativ — un stoc intrat cumva sub zero nu are ce să dea.
+  const taken = Math.max(0, Math.min(needed, available));
+  await store.update("materials", stock.id, { quantity: available - taken });
+  await store.update("job_materials", line.id, {
+    taken_from_stock: true,
+    // Se ține minte, ca întoarcerea să pună la loc exact atât.
+    taken_quantity: taken,
   });
-  await store.update("job_materials", line.id, { taken_from_stock: true });
   kick();
-  return { needed, available, short: Math.max(0, needed - available) };
+  return { needed, available, short: needed - taken };
 }
 
 /** Materialul se întoarce pe raft: nu s-a folosit, sau s-a apăsat greșit. */
@@ -483,11 +489,25 @@ export async function returnToStock(jobMaterialId: string) {
     .getTable("materials")
     .find((row) => row.id === line.material_id);
   if (stock) {
+    /*
+     * Se pune la loc cât s-a scos, nu cât cerea lucrarea. Aveai 5 pe raft
+     * pentru o lucrare de 8: se scoteau 5, iar întoarcerea adăuga 8. Din
+     * apăsat greșit și anulat, raftul creștea cu 3 pachete care n-au existat.
+     *
+     * Rândurile scoase înainte de `taken_quantity` n-au cifra notată; pentru
+     * ele se întoarce cantitatea de pe lucrare, ca până acum.
+     */
+    const back = line.taken_quantity === null || line.taken_quantity === undefined
+      ? num(line.quantity)
+      : num(line.taken_quantity);
     await store.update("materials", stock.id, {
-      quantity: num(stock.quantity) + num(line.quantity),
+      quantity: num(stock.quantity) + back,
     });
   }
-  await store.update("job_materials", line.id, { taken_from_stock: false });
+  await store.update("job_materials", line.id, {
+    taken_from_stock: false,
+    taken_quantity: null,
+  });
   kick();
 }
 
@@ -860,14 +880,27 @@ export function exportData() {
   };
 }
 
-/** Import dintr-un backup — rândurile existente se păstrează, restul se adaugă. */
+/**
+ * Import dintr-un backup.
+ *
+ * Rândul cu același `id` se scrie peste cel de acum — asta și înseamnă
+ * „întoarce-te la copia de atunci”. Ce nu e în fișier rămâne pe loc, deci
+ * importul adaugă și înlocuiește, nu golește.
+ *
+ * Numele tabelelor se verifică întâi: un fișier care nu e de aici (sau unul
+ * stricat) ar duce `store.insert` la un obiect care nu există în IndexedDB,
+ * iar aruncarea ar veni la jumătatea drumului, cu jumătate din rânduri deja
+ * scrise. Ce nu recunoaștem se sare.
+ */
 export async function importData(payload: {
   data?: Record<string, unknown[]>;
 }) {
   const data = payload?.data;
   if (!data) throw new Error("Fișier de backup invalid");
+  const known = new Set<string>(TABLE_NAMES);
   let imported = 0;
   for (const [table, rows] of Object.entries(data)) {
+    if (!known.has(table)) continue;
     if (!Array.isArray(rows)) continue;
     for (const row of rows as Record<string, unknown>[]) {
       if (!row || typeof row !== "object") continue;

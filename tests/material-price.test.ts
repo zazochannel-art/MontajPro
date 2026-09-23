@@ -28,6 +28,7 @@ function line(
     job_id: `job-${n}`,
     returned_quantity: 0,
     supplier_return_quantity: 0,
+    taken_quantity: null,
     material_id: "parchet",
     name: "Parchet stejar",
     quantity: 10,

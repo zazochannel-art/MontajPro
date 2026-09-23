@@ -308,6 +308,17 @@ export interface JobMaterial extends BaseRow {
    * nu scadă încă o dată.
    */
   taken_from_stock: boolean;
+  /**
+   * Cât s-a scos chiar de pe raft, când s-a apăsat „scoate din depozit”.
+   *
+   * Poate fi mai puțin decât `quantity`: stocul nu coboară sub zero, deci din
+   * 5 pe raft pentru o lucrare de 8 se scot 5. Fără cifra asta, apăsarea
+   * înapoi punea la loc 8 și raftul creștea din nimic.
+   *
+   * `null` pe rândurile scoase înainte să existe coloana: acolo nu s-a notat
+   * nimic, deci nu se poate ști.
+   */
+  taken_quantity: number | null;
 }
 
 export interface Material extends BaseRow {

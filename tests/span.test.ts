@@ -5,7 +5,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { hoursOnDay, jobDayCount, jobDays, runsOn } from "../src/lib/span.ts";
+import { hoursOnDay, jobDayCount, jobDays, movedTo, runsOn } from "../src/lib/span.ts";
 import type { Job } from "../src/lib/types.ts";
 
 const BASE = {
@@ -127,4 +127,27 @@ test("runsOn spune dacă lucrarea atinge ziua", () => {
   });
   assert.equal(runsOn(long, "2026-09-23"), true);
   assert.equal(runsOn(long, "2026-09-21"), false);
+});
+
+test("mutarea duce durata cu ea", () => {
+  const trei = { scheduled_date: "2026-09-10", scheduled_end_date: "2026-09-12" };
+  assert.deepEqual(movedTo(trei, "2026-10-05"), {
+    scheduled_date: "2026-10-05",
+    scheduled_end_date: "2026-10-07",
+  });
+});
+
+test("lucrarea de o zi rămâne fără sfârșit", () => {
+  const una = { scheduled_date: "2026-09-10", scheduled_end_date: null };
+  assert.deepEqual(movedTo(una, "2026-10-05"), {
+    scheduled_date: "2026-10-05",
+    scheduled_end_date: null,
+  });
+});
+
+test("mutarea peste o lună păstrează numărul de zile", () => {
+  const cinci = { scheduled_date: "2026-09-10", scheduled_end_date: "2026-09-14" };
+  const mutata = movedTo(cinci, "2026-12-30");
+  assert.equal(jobDayCount({ ...cinci, ...mutata }), 5);
+  assert.equal(mutata.scheduled_end_date, "2027-01-03", "trece și peste anul nou");
 });

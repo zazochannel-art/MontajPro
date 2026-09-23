@@ -69,6 +69,30 @@ export function hoursOnDay(
   return Math.round((hours / days.length) * 100) / 100;
 }
 
+/**
+ * Aceeași lucrare, mutată pe altă zi, cu durata ei cu tot.
+ *
+ * Mutarea schimba doar ziua de început, iar verificarea de dinainte primea
+ * lucrarea nemutată: o scară de trei zile dusă în altă săptămână avea ziua
+ * nouă în față și sfârșitul vechi în urmă, deci se socotea ca o zi singură.
+ * Aplicația spunea „ziua ajunge la 24 de ore” pentru o zi care avea să aibă
+ * opt — și tocmai pentru lucrările lungi, singurele unde socoteala contează.
+ */
+export function movedTo(
+  job: Pick<Job, "scheduled_date" | "scheduled_end_date">,
+  day: string,
+): Pick<Job, "scheduled_date" | "scheduled_end_date"> {
+  const span = jobDayCount(job);
+  if (span <= 1) return { scheduled_date: day, scheduled_end_date: null };
+
+  const start = parse(day);
+  if (start === null) return { scheduled_date: day, scheduled_end_date: null };
+  return {
+    scheduled_date: day,
+    scheduled_end_date: key(start + (span - 1) * DAY),
+  };
+}
+
 /** Lucrarea atinge ziua asta? */
 export function runsOn(
   job: Pick<Job, "scheduled_date" | "scheduled_end_date">,

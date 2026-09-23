@@ -55,6 +55,7 @@ function line(jobId: string, patch: Partial<JobMaterial> = {}): JobMaterial {
     job_id: jobId,
     returned_quantity: 0,
     supplier_return_quantity: 0,
+    taken_quantity: null,
     material_id: "parchet",
     name: "Parchet stejar",
     quantity: 10,

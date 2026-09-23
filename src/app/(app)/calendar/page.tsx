@@ -22,7 +22,7 @@ import {
 import { StatusBadge } from "@/components/jobs/status-badge";
 import { useJobs, useTable } from "@/hooks/use-data";
 import { updateJob } from "@/lib/db/actions";
-import { jobDayCount, jobDays } from "@/lib/span";
+import { jobDays, movedTo } from "@/lib/span";
 import { checkDay } from "@/lib/day-guard";
 import { JOB_TYPE_EMOJI } from "@/lib/constants";
 import {
@@ -108,12 +108,8 @@ export default function CalendarPage() {
    */
   const moveJob = async (job: Job, date: string) => {
     const check = checkDay(date, allJobs, blocks, job);
-    const patch: Partial<Job> = { scheduled_date: date };
-
-    const span = jobDayCount(job);
-    if (span > 1) patch.scheduled_end_date = shiftDays(date, span - 1);
-
-    await updateJob(job.id, patch);
+    // Aceeași socoteală ca în verificare: ziua nouă, durata veche.
+    await updateJob(job.id, movedTo(job, date));
 
     if (check.blocked) {
       toast.warning(
@@ -124,7 +120,7 @@ export default function CalendarPage() {
     } else if (check.full) {
       toast.warning(
         `Mutată pe ${formatDateShort(date)} — ziua ajunge la ${formatDuration(
-          (check.hours + (job.estimated_hours ?? 0)) * 60,
+          (check.hours + check.adding) * 60,
         )}`,
       );
     } else {
@@ -423,9 +419,3 @@ function JobRow({
   );
 }
 
-/** Aceeași zi, mutată cu atâtea zile înainte. */
-function shiftDays(day: string, days: number): string {
-  const start = Date.parse(`${day.slice(0, 10)}T00:00:00Z`);
-  if (Number.isNaN(start)) return day;
-  return new Date(start + days * 86_400_000).toISOString().slice(0, 10);
-}
