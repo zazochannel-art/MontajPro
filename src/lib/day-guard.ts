@@ -9,7 +9,7 @@
  * care aplicația nu le știe — poate chiar lucrează în ziua aia.
  */
 
-import { hoursOnDay, runsOn } from "./span";
+import { hoursOnDay, movedTo, runsOn } from "./span";
 import type { DayBlock, Job } from "./types";
 
 /** Cât se lucrează într-o zi obișnuită; peste asta, ziua e plină. */
@@ -23,6 +23,8 @@ export interface DayCheck {
   jobs: Job[];
   /** Orele deja programate în ziua asta. */
   hours: number;
+  /** Cât aduce în ziua asta lucrarea care vine — partea ei, nu tot. */
+  adding: number;
   /** Cu lucrarea care vine, ziua trece de o zi de lucru. */
   full: boolean;
 }
@@ -57,13 +59,25 @@ export function checkDay(
 
   // O lucrare de trei zile aduce în ziua asta doar partea ei de ore.
   const existing = onDay.reduce((acc, job) => acc + hoursOnDay(job, day), 0);
-  const adding = incoming ? hoursOnDay({ ...incoming, scheduled_date: day, scheduled_end_date: incoming.scheduled_end_date }, day) : 0;
+  /*
+   * Lucrarea care vine se socotește mutată, cu durata ei cu tot. Înainte i se
+   * schimba doar ziua de început și i se lăsa sfârșitul vechi — în urmă, deci
+   * o zi singură — iar toate orele cădeau pe ziua asta. O scară de trei zile
+   * dădea „24 de ore” pe o zi care avea să aibă opt.
+   */
+  const adding = incoming
+    ? hoursOnDay(
+        { ...incoming, ...movedTo(incoming, day) },
+        day,
+      )
+    : 0;
 
   return {
     blocked: !!block,
     blockReason: block?.reason ?? null,
     jobs: onDay,
     hours: Math.round(existing * 100) / 100,
+    adding: Math.round(adding * 100) / 100,
     full: existing + adding > FULL_DAY_HOURS,
   };
 }

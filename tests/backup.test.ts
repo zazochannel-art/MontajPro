@@ -140,3 +140,46 @@ test("„mai târziu” amână, nu anulează", async () => {
   await snoozeReminder(-1);
   assert.equal((await backupStatus()).due, true);
 });
+
+/*
+ * Fișierul care nu e de aici.
+ *
+ * Numele tabelelor veneau direct din JSON în `store.insert`. Un fișier străin
+ * (sau unul stricat) ajungea la un obiect care nu există în IndexedDB, iar
+ * aruncarea venea la jumătatea drumului — cu jumătate din rânduri deja
+ * scrise și un mesaj care spunea doar „fișierul nu a putut fi citit”.
+ */
+test("tabelele necunoscute dintr-un fișier de import se sar", async () => {
+  const { importData } = await import("../src/lib/db/actions.ts");
+
+  // Prin `JSON.parse`, ca în aplicație: acolo `__proto__` chiar e o cheie
+  // obișnuită a obiectului, nu o scurtătură de sintaxă.
+  const payload = JSON.parse(
+    '{"clients":[{"id":"c1","name":"Ion Popescu"}],' +
+      '"conturi_bancare":[{"id":"x1","iban":"MD00"}],' +
+      '"__proto__":[{"id":"x2"}]}',
+  );
+  const count = await importData({ data: payload });
+
+  assert.equal(count, 1, "doar clientul s-a importat");
+  assert.equal(store.getTable("clients").length, 1);
+});
+
+test("importul aduce rândurile din fișier", async () => {
+  const { importData } = await import("../src/lib/db/actions.ts");
+
+  const count = await importData({
+    data: {
+      clients: [
+        { id: "c1", name: "Ion Popescu" },
+        { id: "c2", name: "Maria Rusu" },
+      ],
+    } as unknown as Record<string, unknown[]>,
+  });
+
+  assert.equal(count, 2);
+  assert.deepEqual(
+    store.getTable("clients").map((row) => row.name).sort(),
+    ["Ion Popescu", "Maria Rusu"],
+  );
+});

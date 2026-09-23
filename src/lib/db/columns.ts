@@ -71,6 +71,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "unit_price",
     "purchased",
     "taken_from_stock",
+    "taken_quantity",
     "returned_quantity",
     "supplier_return_quantity",
   ],
@@ -131,8 +132,10 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "client_phone",
     "subtotal",
     "vat_percent",
-    "tax_percent",
-    "language",
+    // Aici NU intră `tax_percent` și `language`: alea sunt pe `settings`, nu
+    // pe factură. Au ajuns aici dintr-o copiere, iar PostgREST refuză tot
+    // lotul dacă payload-ul are o coloană care nu există — deci din 21
+    // septembrie nicio factură n-a mai plecat de pe telefon.
     "total",
     "paid_at",
     "notes",

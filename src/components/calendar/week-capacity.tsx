@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useAllJobs, useDayBlocks, useWeekLoad } from "@/hooks/use-data";
 import { jobsBlockedBy } from "@/lib/day-guard";
 import { toggleDayBlock } from "@/lib/db/actions";
-import { formatDuration } from "@/lib/format";
+import { formatDuration, todayKey } from "@/lib/format";
 
 const SHORT = ["L", "Ma", "Mi", "J", "V", "S", "D"];
 
@@ -22,7 +22,10 @@ export function WeekCapacity({ from }: { from?: Date }) {
   const week = useWeekLoad(from ?? new Date());
   const jobs = useAllJobs();
   const blocks = useDayBlocks();
-  const today = new Date().toISOString().slice(0, 10);
+  // `todayKey()`, nu `toISOString()`: zilele benzii se construiesc din ceasul
+  // local (`capacity.ts`), iar UTC le-ar duce cu o zi înapoi noaptea, între
+  // 00:00 și 03:00 — exact orele la care omul își face programul de mâine.
+  const today = todayKey();
 
   const tone =
     week.free < 0

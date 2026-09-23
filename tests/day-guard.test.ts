@@ -161,3 +161,65 @@ test("blocând o zi, se văd lucrările peste care dai", () => {
     "și cea de mai multe zile care trece prin ziua asta",
   );
 });
+
+/*
+ * Lucrarea de mai multe zile, mutată.
+ *
+ * Verificarea primea lucrarea nemutată și îi schimba doar ziua de început,
+ * lăsându-i sfârșitul vechi — în urmă, deci se socotea ca o zi singură și
+ * toate orele cădeau pe ziua nouă. O scară de trei zile dădea „24 de ore”
+ * pe o zi care avea să aibă opt, și tocmai pentru lucrările lungi, singurele
+ * unde socoteala chiar contează.
+ */
+test("lucrarea de trei zile aduce în ziua nouă doar partea ei", () => {
+  const moving = job("scara", {
+    scheduled_date: "2026-09-10",
+    scheduled_end_date: "2026-09-12",
+    estimated_hours: 24,
+  });
+
+  const check = checkDay("2026-10-05", [moving], [], moving);
+
+  assert.equal(check.adding, 8, "24 de ore pe trei zile fac 8 pe zi");
+  assert.equal(check.full, false, "opt ore într-o zi goală nu o umplu");
+});
+
+test("mutată peste o zi care are deja ceva, se adună doar partea", () => {
+  const moving = job("scara", {
+    scheduled_date: "2026-09-10",
+    scheduled_end_date: "2026-09-12",
+    estimated_hours: 24,
+  });
+  const there = job("parchet", {
+    scheduled_date: "2026-10-05",
+    estimated_hours: 3,
+  });
+
+  const check = checkDay("2026-10-05", [moving, there], [], moving);
+
+  assert.equal(check.hours, 3);
+  assert.equal(check.adding, 8);
+  assert.equal(check.full, true, "3 + 8 trece de o zi de lucru");
+});
+
+test("lucrarea de o zi aduce tot ce are", () => {
+  const moving = job("plinta", {
+    scheduled_date: "2026-09-10",
+    estimated_hours: 6,
+  });
+
+  const check = checkDay("2026-10-05", [moving], [], moving);
+  assert.equal(check.adding, 6);
+});
+
+test("mutarea pe o zi din propriul interval nu se numără de două ori", () => {
+  const moving = job("scara", {
+    scheduled_date: "2026-09-10",
+    scheduled_end_date: "2026-09-12",
+    estimated_hours: 24,
+  });
+
+  const check = checkDay("2026-09-11", [moving], [], moving);
+  assert.equal(check.hours, 0, "lucrarea care se mută nu se numără ca fiind deja acolo");
+  assert.equal(check.adding, 8);
+});
