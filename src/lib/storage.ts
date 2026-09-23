@@ -129,7 +129,10 @@ export async function retryUpload(
   if (!supabase || !userId) return null;
   const blob = await blobGet(localKey);
   if (!blob) return null;
-  const path = `${userId}/${folder}/${localKey}.jpg`;
+  // Extensia iese din blob, ca la prima urcare: o poză care n-a trecut prin
+  // comprimare (HEIC, PNG) nu are ce căuta pe disc sub nume de `.jpg`.
+  const extension = blob.type === "image/jpeg" ? "jpg" : (blob.type.split("/")[1] || "jpg");
+  const path = `${userId}/${folder}/${localKey}.${extension}`;
   const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, blob, {
     contentType: blob.type || "image/jpeg",
     upsert: true,
@@ -137,7 +140,33 @@ export async function retryUpload(
   return error ? null : path;
 }
 
-const urlCache = new Map<string, string>();
+/** Cât ține un link semnat de la Storage. */
+export const SIGNED_URL_SECONDS = 60 * 60 * 6;
+
+/**
+ * Cu atâta timp înainte de expirare se cere unul nou.
+ *
+ * Linkul semnat era ținut în memorie pentru totdeauna, iar aplicația stă
+ * deschisă pe telefon zile întregi. După șase ore linkul murea, poza nu se
+ * mai încărca și nimic n-o mai cerea din nou — nici măcar o reîmprospătare a
+ * paginii, fiindcă memoria ținea tot linkul mort. Se vedea doar la pozele
+ * venite de pe server: cele făcute pe telefonul ăsta au blobul lor local.
+ */
+export const REFRESH_MARGIN_MS = 15 * 60 * 1000;
+
+export interface CachedUrl {
+  url: string;
+  /** Clipa după care linkul nu mai e bun. `null` pentru blobul local. */
+  expiresAt: number | null;
+}
+
+const urlCache = new Map<string, CachedUrl>();
+
+/** Linkul e mort, sau atât de aproape încât nu merită dat mai departe. */
+export function expired(cached: CachedUrl, now = Date.now()): boolean {
+  if (cached.expiresAt === null) return false;
+  return now > cached.expiresAt - REFRESH_MARGIN_MS;
+}
 
 /** URL afișabil: întâi blobul local (instant), apoi Storage. */
 export async function resolveAssetUrl(
@@ -145,27 +174,37 @@ export async function resolveAssetUrl(
   localKey: string | null | undefined,
 ): Promise<string | null> {
   if (localKey) {
+    // Blobul local n-are termen: trăiește cât trăiește pagina.
     const cached = urlCache.get(`local:${localKey}`);
-    if (cached) return cached;
+    if (cached) return cached.url;
     const blob = await blobGet(localKey);
     if (blob) {
       const url = URL.createObjectURL(blob);
-      urlCache.set(`local:${localKey}`, url);
+      urlCache.set(`local:${localKey}`, { url, expiresAt: null });
       return url;
     }
   }
   if (storagePath) {
-    const cached = urlCache.get(`remote:${storagePath}`);
-    if (cached) return cached;
+    const key = `remote:${storagePath}`;
+    const cached = urlCache.get(key);
+    if (cached && !expired(cached)) return cached.url;
+
     const supabase = getSupabase();
-    if (!supabase) return null;
+    // Fără client nu se poate cere unul nou; cel vechi, chiar aproape de
+    // expirare, e mai bun decât nimic.
+    if (!supabase) return cached?.url ?? null;
+
     const { data } = await supabase.storage
       .from(PHOTO_BUCKET)
-      .createSignedUrl(storagePath, 60 * 60 * 6);
+      .createSignedUrl(storagePath, SIGNED_URL_SECONDS);
     if (data?.signedUrl) {
-      urlCache.set(`remote:${storagePath}`, data.signedUrl);
+      urlCache.set(key, {
+        url: data.signedUrl,
+        expiresAt: Date.now() + SIGNED_URL_SECONDS * 1000,
+      });
       return data.signedUrl;
     }
+    return cached?.url ?? null;
   }
   return null;
 }
@@ -175,9 +214,9 @@ export async function deleteAsset(
   localKey: string | null | undefined,
 ): Promise<void> {
   if (localKey) {
-    const url = urlCache.get(`local:${localKey}`);
-    if (url) {
-      URL.revokeObjectURL(url);
+    const cached = urlCache.get(`local:${localKey}`);
+    if (cached) {
+      URL.revokeObjectURL(cached.url);
       urlCache.delete(`local:${localKey}`);
     }
     await blobDelete(localKey);

@@ -7,6 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   planFromQuote,
+  quoteHours,
   sizeFromItems,
   typeFromItems,
 } from "../src/lib/quote-convert.ts";
@@ -226,4 +227,34 @@ test("linia scrisă de mână, fără poziție, nu se numără la mărime", () =
     "parquet",
   );
   assert.equal(size, 20);
+});
+
+/* ------------------------------------------------------------------ */
+/* Orele ofertei: cele scrise plus cele care ies din mărime            */
+/* ------------------------------------------------------------------ */
+
+test("fără mărime rămân doar orele scrise", () => {
+  assert.equal(quoteHours({ hours: 6, size: 0 }, 20), 6);
+});
+
+test("fără ore scrise rămâne ce spune ritmul", () => {
+  assert.equal(quoteHours({ hours: 0, size: 45 }, 12), 12);
+});
+
+test("orele scrise se adună la cele din mărime, nu le înlocuiesc", () => {
+  /*
+   * Aici era greșeala: cincisprezece trepte ȘI patru ore de manoperă în plus
+   * se socoteau ca patru ore, deci „cât îți rămâne pe oră” ieșea de câteva
+   * ori mai mare decât adevărul — exact cifra după care se dă prețul.
+   */
+  assert.equal(quoteHours({ hours: 4, size: 15 }, 18), 22);
+});
+
+test("fără ritm învățat se rămâne la orele scrise", () => {
+  assert.equal(quoteHours({ hours: 4, size: 15 }, null), 4);
+  assert.equal(quoteHours({ hours: 4, size: 15 }, 0), 4);
+});
+
+test("o ofertă complet goală nu inventează ore", () => {
+  assert.equal(quoteHours({ hours: 0, size: 0 }, null), 0);
 });

@@ -201,6 +201,20 @@ export function openClosings(input: {
     );
   }
 
+  /*
+   * Pozele se grupează o dată, nu se filtrează pentru fiecare lucrare.
+   * `closingChecklist` trece prin toată lista la fiecare apel, iar aici se
+   * apelează pentru fiecare lucrare: pe un telefon cu doi ani de poze,
+   * socoteala asta se făcea de zeci de mii de ori la fiecare randare.
+   */
+  const photosByJob = new Map<string, JobPhoto[]>();
+  for (const photo of photos) {
+    if (photo.deleted_at || !photo.job_id) continue;
+    const list = photosByJob.get(photo.job_id);
+    if (list) list.push(photo);
+    else photosByJob.set(photo.job_id, [photo]);
+  }
+
   const out: OpenClosing[] = [];
   for (const job of jobs) {
     if (job.deleted_at || job.archived_at) continue;
@@ -210,7 +224,12 @@ export function openClosings(input: {
     const rest = num(job.price_total) - (paidByJob.get(job.id) ?? 0);
     const handover =
       handovers.find((row) => row.job_id === job.id && !row.deleted_at) ?? null;
-    const items = closingChecklist({ job, photos, handover, rest });
+    const items = closingChecklist({
+      job,
+      photos: photosByJob.get(job.id) ?? [],
+      handover,
+      rest,
+    });
     const open = items.filter((item) => !item.done);
     if (!open.length) continue;
 

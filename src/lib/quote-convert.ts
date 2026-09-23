@@ -121,6 +121,27 @@ export function sizeFromItems(
   return Math.round(total * 100) / 100;
 }
 
+/**
+ * Orele lucrării din ofertă: cele scrise, plus cele care ies din mărime.
+ *
+ * Prima variantă lua ori orele scrise, ori pe cele din ritm — niciodată
+ * amândouă. O ofertă cu cincisprezece trepte ȘI patru ore de manoperă în plus
+ * se socotea ca patru ore, deci „îți rămân pe oră” ieșea de câteva ori mai
+ * mare decât adevărul, exact în locul unde omul se uită ca să hotărască
+ * prețul.
+ *
+ * Liniile la oră sunt muncă peste cea din mărime, nu în locul ei: se adună.
+ */
+export function quoteHours(
+  plan: Pick<QuotePlan, "hours" | "size">,
+  pacedHours: number | null | undefined,
+): number {
+  const written = num(plan.hours);
+  // Fără mărime n-are ce spune ritmul: rămân doar orele scrise.
+  if (plan.size <= 0 || !pacedHours || pacedHours <= 0) return written;
+  return Math.round((written + pacedHours) * 100) / 100;
+}
+
 /** Tot ce se poate citi dintr-o ofertă, ca să nu se scrie a doua oară. */
 export function planFromQuote(
   items: ReadableItem[],

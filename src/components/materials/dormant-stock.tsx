@@ -22,10 +22,11 @@ export function DormantStock() {
   const stock = useTable("materials");
   const used = useTable("job_materials");
   const jobs = useAllJobs();
+  const today = todayKey();
 
   const dormant = useMemo(
-    () => dormantStock(stock, used, jobs, todayKey()),
-    [stock, used, jobs],
+    () => dormantStock(stock, used, jobs, today),
+    [stock, used, jobs, today],
   );
 
   if (!dormant.lines.length) return null;

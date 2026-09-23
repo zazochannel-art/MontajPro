@@ -32,7 +32,7 @@ import { useApp } from "@/lib/app-provider";
 import { clearCalcDraft, peekCalcDraft } from "@/lib/calc-draft";
 import { formatMoney } from "@/lib/format";
 import { RateHint } from "@/components/pricing/rate-hint";
-import { planFromQuote } from "@/lib/quote-convert";
+import { planFromQuote, quoteHours } from "@/lib/quote-convert";
 import { JOB_TYPE_LABELS, UNITS } from "@/lib/constants";
 import {
   allPositions,
@@ -145,7 +145,7 @@ export function QuoteForm({ quote }: { quote?: Quote | null }) {
   const plan = useMemo(() => planFromQuote(items, positions), [items, positions]);
   const paced = usePaceFromSize(plan.size, plan.type);
   const average = useAveragePerHour();
-  const hours = plan.hours || paced?.hours || 0;
+  const hours = quoteHours(plan, paced?.hours);
   const travelRate = settings?.default_rates?.travel_km ?? 0;
 
   const update = (key: string, patch: Partial<ItemRow>) =>

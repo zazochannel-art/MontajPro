@@ -32,10 +32,13 @@ export function UnclosedJobs() {
   const handovers = useTable("handovers");
   const payments = useTable("payments");
   const [all, setAll] = useState(false);
+  // Ziua intră în dependențe: altfel socoteala rămâne a zilei de ieri până
+  // se schimbă altceva pe ecran.
+  const today = todayKey();
 
   const open = useMemo(
-    () => openClosings({ jobs, photos, handovers, payments, today: todayKey() }),
-    [jobs, photos, handovers, payments],
+    () => openClosings({ jobs, photos, handovers, payments, today }),
+    [jobs, photos, handovers, payments, today],
   );
   if (!open.length) return null;
 
