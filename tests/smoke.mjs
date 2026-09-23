@@ -38,6 +38,48 @@ function section(title) {
  * stricată, ci fiindcă n-a apucat să deseneze. Așteptarea pe element nu
  * slăbește verificarea: tot cere ca lucrul să fie acolo.
  */
+/**
+ * Alege un material din inventar și scrie cantitatea și prețul.
+ *
+ * Alegerea din inventar aduce cu ea numele, unitatea ȘI prețul din depozit
+ * — toate într-o singură scriere de stare. Dacă începem să tastăm înainte ca
+ * ea să se așeze, prețul nostru e suprascris cu cel din depozit (zero, pe un
+ * material adăugat fără preț), iar linia iese fără preț. Pe mașina mea nu se
+ * vedea; pe un runner mai lent, da — și atunci istoricul de preț rămâne cu un
+ * singur punct, deci fără tendință.
+ *
+ * Așteptăm numele, care vine din aceeași scriere: dacă el e acolo, s-a așezat
+ * tot. Apoi verificăm că prețul chiar a rămas cât am scris.
+ */
+async function pickMaterial(page, dialog, optionName, quantity, price) {
+  await dialog.getByRole("combobox").first().waitFor({ timeout: 10000 });
+  await dialog.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: optionName }).click();
+
+  const nameInput = dialog.getByPlaceholder("Adeziv parchet");
+  await nameInput.waitFor({ timeout: 10000 });
+  await expectValue(nameInput, optionName, 10000);
+
+  const numbers = dialog.locator('input[inputmode="decimal"]');
+  await numbers.nth(0).fill(quantity);
+  await numbers.nth(1).fill(price);
+  await expectValue(numbers.nth(1), new RegExp(`^${price}`), 5000);
+}
+
+/** Așteaptă ca un câmp să aibă valoarea cerută, fără pauze ghicite. */
+async function expectValue(locator, expected, timeout) {
+  const deadline = Date.now() + timeout;
+  let last = "";
+  while (Date.now() < deadline) {
+    last = (await locator.inputValue()) ?? "";
+    if (expected instanceof RegExp ? expected.test(last) : last.includes(expected)) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`câmpul a rămas „${last}”, se aștepta ${expected}`);
+}
+
 async function seen(locator, timeout = 10000) {
   try {
     await locator.first().waitFor({ state: "visible", timeout });
@@ -709,13 +751,14 @@ try {
   await page.getByRole("tab", { name: /Materiale/i }).click();
   await page.getByRole("button", { name: /Adaugă material/i }).first().click();
   const jobMaterialDialog = page.getByRole("dialog");
-  await jobMaterialDialog.getByRole("combobox").first().waitFor({ timeout: 10000 });
-  await jobMaterialDialog.getByRole("combobox").first().click();
-  await page.getByRole("option", { name: /Parchet stejar \(test\)/ }).click();
-  const firstNumbers = jobMaterialDialog.locator('input[inputmode="decimal"]');
-  await firstNumbers.nth(0).fill("8");
   // Prețul contează și pentru istoricul de preț, verificat mai jos.
-  await firstNumbers.nth(1).fill("160");
+  await pickMaterial(
+    page,
+    jobMaterialDialog,
+    /Parchet stejar \(test\)/,
+    "8",
+    "160",
+  );
   await jobMaterialDialog.getByRole("button", { name: /^Salvează$/ }).click();
   await page.getByText("Parchet stejar (test)").first().waitFor({ timeout: 10000 });
 
@@ -1005,12 +1048,13 @@ try {
   await page.getByRole("tab", { name: /Materiale/i }).click();
   await page.getByRole("button", { name: /Adaugă material/i }).first().click();
   const secondDialog = page.getByRole("dialog");
-  await secondDialog.getByRole("combobox").first().waitFor({ timeout: 10000 });
-  await secondDialog.getByRole("combobox").first().click();
-  await page.getByRole("option", { name: /Parchet stejar \(test\)/ }).click();
-  const secondNumbers = secondDialog.locator('input[inputmode="decimal"]');
-  await secondNumbers.nth(0).fill("5");
-  await secondNumbers.nth(1).fill("200");
+  await pickMaterial(
+    page,
+    secondDialog,
+    /Parchet stejar \(test\)/,
+    "5",
+    "200",
+  );
   await secondDialog.getByRole("button", { name: /^Salvează$/ }).click();
   await page.getByText("Parchet stejar (test)").first().waitFor({ timeout: 10000 });
 
