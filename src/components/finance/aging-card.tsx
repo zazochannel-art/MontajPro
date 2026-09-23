@@ -34,10 +34,11 @@ export function AgingCard() {
   const jobs = useAllJobs();
   const payments = useTable("payments");
   const clients = useTable("clients");
+  const today = todayKey();
 
   const result = useMemo(
-    () => aging(jobs, payments, todayKey()),
-    [jobs, payments],
+    () => aging(jobs, payments, today),
+    [jobs, payments, today],
   );
 
   if (!result.rows.length) return null;
