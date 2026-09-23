@@ -19,6 +19,8 @@ import type { QuoteStatus } from "@/lib/types";
 import { formatDateShort, formatMoney, formatQuoteNumber } from "@/lib/format";
 import { useApp } from "@/lib/app-provider";
 import { cn } from "@/lib/utils";
+import { decisionPace } from "@/lib/decision";
+import { Hourglass } from "lucide-react";
 
 type Filter = QuoteStatus | "all";
 
@@ -47,6 +49,15 @@ export default function QuotesPage() {
     [quotes, items, clients, filter],
   );
 
+  /*
+   * Cât stau clienții tăi până se hotărăsc.
+   *
+   * Cifra iese din `sent_at` și ziua acceptării, pe ofertele deja câștigate.
+   * Tot ea decide când „Ofertă neconfirmată” începe să te bată la cap: în
+   * loc de trei zile pentru toată lumea, cu o zi peste obiceiul tău.
+   */
+  const pace = useMemo(() => decisionPace(quotes), [quotes]);
+
   const counts = useMemo(() => {
     const result = { all: quotes.length } as Record<Filter, number>;
     for (const status of QUOTE_STATUSES) {
@@ -68,6 +79,19 @@ export default function QuotesPage() {
           </Button>
         }
       />
+
+      {pace && (
+        <p className="flex items-start gap-2 rounded-2xl surface p-3 text-xs text-muted-foreground">
+          <Hourglass className="mt-0.5 size-3.5 shrink-0 text-primary" />
+          <span>
+            Clienții tăi se hotărăsc, de obicei, în{" "}
+            <strong className="text-foreground">
+              {pace.median} {pace.median === 1 ? "zi" : "zile"}
+            </strong>{" "}
+            de la trimitere — din {pace.quotes} oferte câștigate.
+          </span>
+        </p>
+      )}
 
       <Segmented<Filter>
         value={filter}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, Check, Gauge, MapPin, Plus, Scale } from "lucide-react";
+import { CalendarClock, Check, Gauge, MapPin, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,8 +37,7 @@ import {
   useProjects,
   useTable,
 } from "@/hooks/use-data";
-import { rateCheck } from "@/lib/pricing";
-import { formatMoney } from "@/lib/format";
+import { RateHint } from "@/components/pricing/rate-hint";
 import { dayLoad } from "@/lib/route";
 import { formatDuration } from "@/lib/format";
 import { clearCalcDraft, peekCalcDraft } from "@/lib/calc-draft";
@@ -476,52 +475,6 @@ export function JobForm({
         onSaved={(id) => form.set("client_id", id)}
       />
     </>
-  );
-}
-
-/**
- * Cât îți rămâne pe oră la prețul ăsta, față de cât îți rămâne de obicei.
- *
- * Nu spune „refuză” — spune doar unde stai. O lucrare sub media ta poate fi
- * bună din alte motive (e aproape, e un client care aduce alții), dar e bine
- * s-o știi înainte de a da prețul.
- */
-function RateHint({
-  price,
-  hours,
-  travelCost,
-  average,
-  currency,
-}: {
-  price: number;
-  hours: number;
-  travelCost: number;
-  average: number;
-  currency: string;
-}) {
-  const check = rateCheck({ price, otherCost: travelCost, hours, average });
-  if (!check) return null;
-
-  const tone =
-    check.verdict === "bun"
-      ? "text-emerald-300"
-      : check.verdict === "slab"
-        ? "text-amber-300"
-        : "text-muted-foreground";
-
-  return (
-    <p className={cn("flex items-start gap-2 text-xs", tone)}>
-      <Scale className="mt-0.5 size-3.5 shrink-0" />
-      <span>
-        Îți rămân{" "}
-        <strong>{formatMoney(check.perHour, currency)}</strong> pe oră.{" "}
-        {check.verdict === "la_fel"
-          ? `Cam cât de obicei (${formatMoney(check.average, currency)}).`
-          : check.verdict === "bun"
-            ? `Cu ${formatMoney(check.diff, currency)} peste media ta.`
-            : `Cu ${formatMoney(Math.abs(check.diff), currency)} sub media ta de ${formatMoney(check.average, currency)}.`}
-      </span>
-    </p>
   );
 }
 

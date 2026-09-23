@@ -8,6 +8,7 @@ import { daysUntil, warrantyEndDate } from "@/lib/calc";
 import { DEFAULT_HOURS, acclimatizationFor } from "@/lib/acclimatization";
 import { formatDateShort, todayKey, toDateKey } from "@/lib/format";
 import { quoteExpiry } from "@/lib/expiry";
+import { decisionPace, lateAfterDays } from "@/lib/decision";
 import type { NotificationKind } from "@/lib/types";
 
 /**
@@ -235,10 +236,20 @@ export function NotificationEngine() {
         }
 
         if (prefs.quote_pending) {
+          /*
+           * După câte zile o ofertă chiar întârzie.
+           *
+           * Erau trei, pentru toată lumea — o cifră aleasă din burtă, care
+           * sună la fel pentru o scară de 40.000 și pentru o plintă de 600.
+           * Acum se măsoară din ofertele tale deja câștigate: dacă ai tăi se
+           * hotărăsc de obicei în șase zile, nu are rost să dai ghes în a
+           * patra. Fără destulă istorie se rămâne la trei.
+           */
+          const late = lateAfterDays(decisionPace(quotes));
           for (const quote of quotes) {
             if (quote.status !== "sent" || !quote.sent_at) continue;
             const days = daysUntil(quote.sent_at);
-            if (days === null || days > -3) continue;
+            if (days === null || days > -late) continue;
             candidates.push({
               key: `quote_pending:${quote.id}`,
               kind: "quote_pending",

@@ -25,6 +25,7 @@ import { BackupReminder } from "@/components/backup/backup-reminder";
 import { DayRoute } from "@/components/calendar/day-route";
 import { PackList } from "@/components/dashboard/pack-list";
 import { OpenTasks } from "@/components/dashboard/open-tasks";
+import { UnclosedJobs } from "@/components/dashboard/unclosed-jobs";
 import { LoadingList } from "@/components/materials/loading-list";
 import { FirstRun } from "@/components/onboarding/first-run";
 import { useDashboardData } from "@/hooks/use-data";
@@ -224,6 +225,8 @@ export default function DashboardPage() {
       <LoadingList />
 
       <OpenTasks />
+
+      <UnclosedJobs />
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">

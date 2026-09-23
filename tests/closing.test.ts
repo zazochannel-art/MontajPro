@@ -5,7 +5,12 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { closingChecklist, closingLeft, quoteDeviation } from "../src/lib/closing.ts";
+import {
+  closingChecklist,
+  closingLeft,
+  openClosings,
+  quoteDeviation,
+} from "../src/lib/closing.ts";
 import type { Handover, Job, JobPhoto, Quote, QuoteItem } from "../src/lib/types.ts";
 
 const BASE = {
@@ -236,4 +241,186 @@ test("poza de la altă lucrare nu bifează nimic aici", () => {
     rest: 0,
   });
   assert.equal(items.find((i) => i.key === "after")?.done, false);
+});
+
+/* ------------------------------------------------------------------ */
+/* Ce-a rămas neînchis, pe toate lucrările                             */
+/* ------------------------------------------------------------------ */
+
+const TODAY = "2026-09-23";
+
+/** O plată pe o lucrare, în forma minimă cerută de `openClosings`. */
+function paid(jobId: string, amount: number) {
+  return { job_id: jobId, amount, deleted_at: null };
+}
+
+/** O lucrare închisă complet: poză „după”, proces-verbal semnat, bani luați. */
+function closedJob(id: string) {
+  return {
+    job: job({ id, status: "done", price_total: 1000 }),
+    photos: [photo("after", { id: `p-${id}`, job_id: id })],
+    handover: handover({ id: `h-${id}`, job_id: id, signature: "data:image/png;base64,x" }),
+    payment: paid(id, 1000),
+  };
+}
+
+test("lucrarea închisă complet nu mai apare nicăieri", () => {
+  const closed = closedJob("gata");
+  const open = openClosings({
+    jobs: [closed.job],
+    photos: closed.photos,
+    handovers: [closed.handover],
+    payments: [closed.payment],
+    today: TODAY,
+  });
+  assert.deepEqual(open, []);
+});
+
+test("lucrarea fără proces-verbal apare cu pasul care lipsește", () => {
+  const open = openClosings({
+    jobs: [job({ id: "j1", status: "done", price_total: 1000 })],
+    photos: [photo("after")],
+    handovers: [],
+    payments: [paid("j1", 1000)],
+    today: TODAY,
+  });
+  assert.equal(open.length, 1);
+  const keys = open[0].items.map((item) => item.key);
+  assert.deepEqual(keys, ["handover", "signature"]);
+  assert.equal(open[0].rest, 0);
+});
+
+test("lucrarea neîncepută nu e o scăpare, e ordinea firească", () => {
+  const open = openClosings({
+    jobs: [job({ id: "j1", status: "confirmed" })],
+    photos: [],
+    handovers: [],
+    payments: [],
+    today: TODAY,
+  });
+  assert.deepEqual(open, []);
+});
+
+test("lucrarea începută azi nu e o scăpare, e ordinea firească", () => {
+  const open = openClosings({
+    jobs: [
+      job({
+        id: "j1",
+        status: "in_progress",
+        price_total: 1000,
+        scheduled_date: TODAY,
+      }),
+    ],
+    photos: [],
+    handovers: [],
+    payments: [],
+    today: TODAY,
+  });
+  assert.deepEqual(open, [], "se lucrează la ea chiar acum");
+});
+
+test("lucrarea în lucru care a trecut de ziua ei chiar a rămas atârnată", () => {
+  const open = openClosings({
+    jobs: [
+      job({
+        id: "j1",
+        status: "in_progress",
+        price_total: 1000,
+        scheduled_date: "2026-09-10",
+      }),
+    ],
+    photos: [],
+    handovers: [],
+    payments: [],
+    today: TODAY,
+  });
+  assert.equal(open.length, 1);
+  assert.equal(open[0].left, 5, "toate cinci, inclusiv marcarea ca finalizată");
+  assert.equal(open[0].rest, 1000);
+});
+
+test("lucrarea de mai multe zile se judecă după ultima ei zi", () => {
+  const inca = job({
+    id: "inca",
+    status: "in_progress",
+    price_total: 1000,
+    scheduled_date: "2026-09-21",
+    scheduled_end_date: "2026-09-25",
+  });
+  assert.deepEqual(
+    openClosings({ jobs: [inca], photos: [], handovers: [], payments: [], today: TODAY }),
+    [],
+    "mai are două zile de lucru",
+  );
+});
+
+test("lucrarea în lucru fără nicio zi programată nu poate fi judecată", () => {
+  const open = openClosings({
+    jobs: [job({ id: "j1", status: "in_progress", price_total: 1000 })],
+    photos: [],
+    handovers: [],
+    payments: [],
+    today: TODAY,
+  });
+  assert.deepEqual(open, [], "poate chiar acum se lucrează la ea");
+});
+
+test("arhivata s-a închis dinadins", () => {
+  const open = openClosings({
+    jobs: [job({ id: "j1", status: "done", archived_at: "2026-09-20T00:00:00.000Z" })],
+    photos: [],
+    handovers: [],
+    payments: [],
+    today: TODAY,
+  });
+  assert.deepEqual(open, []);
+});
+
+test("cele mai încurcate stau primele", () => {
+  const open = openClosings({
+    jobs: [
+      job({ id: "aproape", status: "done", price_total: 1000 }),
+      job({ id: "incurcata", status: "done", price_total: 5000 }),
+    ],
+    photos: [photo("after", { id: "p-aproape", job_id: "aproape" })],
+    // Predată, dar nesemnată: îi lipsește un singur pas.
+    handovers: [handover({ id: "h-aproape", job_id: "aproape" })],
+    payments: [paid("aproape", 1000)],
+    today: TODAY,
+  });
+  assert.equal(open.length, 2);
+  assert.equal(open[0].job.id, "incurcata");
+  // Patru, nu cinci: e marcată finalizată, deci pasul acela e bifat.
+  assert.equal(open[0].left, 4);
+  assert.equal(open[1].job.id, "aproape");
+  assert.equal(open[1].left, 1);
+});
+
+test("procesul-verbal al altei lucrări nu bifează nimic aici", () => {
+  const open = openClosings({
+    jobs: [job({ id: "j1", status: "done", price_total: 0 })],
+    photos: [photo("after")],
+    handovers: [handover({ id: "h-alta", job_id: "alta-lucrare", signature: "x" })],
+    payments: [],
+    today: TODAY,
+  });
+  assert.deepEqual(
+    open[0].items.map((item) => item.key),
+    ["handover", "signature"],
+  );
+});
+
+test("plata ștearsă lasă banii neîncasați", () => {
+  const open = openClosings({
+    jobs: [job({ id: "j1", status: "done", price_total: 1000 })],
+    photos: [photo("after")],
+    handovers: [handover({ signature: "x" })],
+    payments: [{ job_id: "j1", amount: 1000, deleted_at: "2026-09-21T00:00:00.000Z" }],
+    today: TODAY,
+  });
+  assert.equal(open[0].rest, 1000);
+  assert.deepEqual(
+    open[0].items.map((item) => item.key),
+    ["money"],
+  );
 });

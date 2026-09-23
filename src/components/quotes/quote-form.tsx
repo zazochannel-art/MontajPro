@@ -22,10 +22,17 @@ import { ClientDialog } from "@/components/forms/client-dialog";
 import { useZodForm } from "@/hooks/use-zod-form";
 import { quoteSchema } from "@/lib/schemas";
 import { saveQuote, quoteTotal, type QuoteItemInput } from "@/lib/db/actions";
-import { useClients, useTable } from "@/hooks/use-data";
+import {
+  useAveragePerHour,
+  useClients,
+  usePaceFromSize,
+  useTable,
+} from "@/hooks/use-data";
 import { useApp } from "@/lib/app-provider";
 import { clearCalcDraft, peekCalcDraft } from "@/lib/calc-draft";
 import { formatMoney } from "@/lib/format";
+import { RateHint } from "@/components/pricing/rate-hint";
+import { planFromQuote } from "@/lib/quote-convert";
 import { JOB_TYPE_LABELS, UNITS } from "@/lib/constants";
 import {
   allPositions,
@@ -126,6 +133,20 @@ export function QuoteForm({ quote }: { quote?: Quote | null }) {
   }, [draft]);
 
   const { subtotal, total } = quoteTotal(items, form.values.discount ?? 0);
+
+  /*
+   * Cât îți rămâne pe oră la prețul ăsta.
+   *
+   * Oferta n-are măsurătoare, dar liniile ei spun deja cât e de mare lucrarea:
+   * 45 de metri pătrați de parchet, cincisprezece trepte. Din mărime și din
+   * ritmul tău ies orele, iar din ore și preț cifra care contează. Dacă oferta
+   * are o linie la oră, aceea bate socoteala: acolo ai scris tu, negru pe alb.
+   */
+  const plan = useMemo(() => planFromQuote(items, positions), [items, positions]);
+  const paced = usePaceFromSize(plan.size, plan.type);
+  const average = useAveragePerHour();
+  const hours = plan.hours || paced?.hours || 0;
+  const travelRate = settings?.default_rates?.travel_km ?? 0;
 
   const update = (key: string, patch: Partial<ItemRow>) =>
     setItems((current) =>
@@ -429,6 +450,14 @@ export function QuoteForm({ quote }: { quote?: Quote | null }) {
               </div>
             )}
           </dl>
+
+          <RateHint
+            price={total}
+            hours={hours}
+            travelCost={plan.travelKm * travelRate}
+            average={average}
+            currency={currency}
+          />
         </div>
 
         <div className="sticky bottom-[calc(var(--bottom-nav-h)+0.75rem)] z-10 flex gap-2 lg:static">

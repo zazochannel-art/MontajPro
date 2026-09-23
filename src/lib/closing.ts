@@ -133,3 +133,90 @@ export function closingChecklist(input: {
 export function closingLeft(items: ClosingItem[]): number {
   return items.filter((item) => !item.done).length;
 }
+
+/* ------------------------------------------------------------------ */
+/* Ce-a rămas neînchis, pe toate lucrările                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Lucrarea „în lucru” a cărei ultimă zi programată a trecut.
+ *
+ * Fără nicio zi programată nu se poate spune că a întârziat: poate chiar
+ * acum se lucrează la ea.
+ */
+function overdue(
+  job: Pick<Job, "scheduled_date" | "scheduled_end_date">,
+  today: string,
+): boolean {
+  const last = job.scheduled_end_date ?? job.scheduled_date;
+  if (!last) return false;
+  return last.slice(0, 10) < today.slice(0, 10);
+}
+
+export interface OpenClosing {
+  job: Job;
+  /** Pașii rămași nefăcuți, din aceeași listă ca pe șantier. */
+  items: ClosingItem[];
+  /** Câți au rămas. */
+  left: number;
+  /** Rest de încasat, dacă mai e. */
+  rest: number;
+}
+
+/**
+ * Lucrările terminate care au ceva neînchis, toate la un loc.
+ *
+ * `closingChecklist` se vede doar intrând în lucrare — adică exact când ești
+ * deja acolo și îți amintești singur. Aceeași problemă pe care o avea
+ * checklistul înainte de `todo.ts`: dimineața, întrebarea e ce-a rămas atârnat
+ * peste tot, nu ce-a rămas la lucrarea asta.
+ *
+ * Intră doar lucrările a căror treabă ar trebui să fie gata: cele finalizate,
+ * și cele încă „în lucru” a căror ultimă zi programată a trecut. Pe una
+ * începută azi-dimineață, lipsa pozei „după” nu e o scăpare — e ordinea
+ * firească a lucrurilor, iar o listă care strigă despre ea se învață repede
+ * să fie ignorată. Arhivatele nu mai cer nimic: ce s-a arhivat s-a închis
+ * dinadins.
+ */
+export function openClosings(input: {
+  jobs: Job[];
+  photos: JobPhoto[];
+  handovers: Handover[];
+  payments: {
+    job_id: string | null;
+    amount: number;
+    deleted_at?: string | null;
+  }[];
+  /** Ziua de azi, ca să se știe ce-a trecut de termen. */
+  today: string;
+}): OpenClosing[] {
+  const { jobs, photos, handovers, payments, today } = input;
+
+  const paidByJob = new Map<string, number>();
+  for (const payment of payments) {
+    if (payment.deleted_at || !payment.job_id) continue;
+    paidByJob.set(
+      payment.job_id,
+      (paidByJob.get(payment.job_id) ?? 0) + num(payment.amount),
+    );
+  }
+
+  const out: OpenClosing[] = [];
+  for (const job of jobs) {
+    if (job.deleted_at || job.archived_at) continue;
+    if (job.status !== "done" && job.status !== "in_progress") continue;
+    if (job.status === "in_progress" && !overdue(job, today)) continue;
+
+    const rest = num(job.price_total) - (paidByJob.get(job.id) ?? 0);
+    const handover =
+      handovers.find((row) => row.job_id === job.id && !row.deleted_at) ?? null;
+    const items = closingChecklist({ job, photos, handover, rest });
+    const open = items.filter((item) => !item.done);
+    if (!open.length) continue;
+
+    out.push({ job, items: open, left: open.length, rest: Math.max(0, rest) });
+  }
+
+  // Cele mai încurcate întâi; la egalitate, banii neîncasați trag înainte.
+  return out.sort((a, b) => b.left - a.left || b.rest - a.rest);
+}
