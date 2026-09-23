@@ -441,6 +441,25 @@ export function usePaceEstimate(
 }
 
 /**
+ * Cât ar lua o lucrare de mărimea asta, la ritmul tău.
+ *
+ * Aceeași socoteală ca `usePaceEstimate`, dar pornind de la o cifră dată, nu
+ * de la măsurătorile unei lucrări. Oferta n-are încă măsurătoare — are linii,
+ * iar din ele se citește mărimea (`sizeFromItems`). Cu orele scoase de aici,
+ * prețul scris în ofertă poate fi cântărit înainte de a pleca la client.
+ */
+export function usePaceFromSize(size: number, kind: JobType): PaceEstimate | null {
+  const jobs = useAllJobs();
+  const measurements = useTable("job_measurements");
+  const sessions = useTable("work_sessions");
+
+  return useMemo(() => {
+    if (size <= 0) return null;
+    return estimateHours(size, paceFor(kind, jobs, measurements, sessions));
+  }, [size, kind, jobs, measurements, sessions]);
+}
+
+/**
  * Media ta pe oră, din lucrările terminate.
  *
  * Cifra exista în Rapoarte, adică o vedeai o dată pe lună. Aici e răspunsul

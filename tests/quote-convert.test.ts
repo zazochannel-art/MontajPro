@@ -5,7 +5,11 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { planFromQuote, typeFromItems } from "../src/lib/quote-convert.ts";
+import {
+  planFromQuote,
+  sizeFromItems,
+  typeFromItems,
+} from "../src/lib/quote-convert.ts";
 import { allPositions } from "../src/lib/price-list.ts";
 import type { QuoteItem } from "../src/lib/types.ts";
 
@@ -137,7 +141,7 @@ test("linia ștearsă nu intră la socoteală", () => {
 
 test("oferta goală nu se preface că știe ceva", () => {
   const plan = planFromQuote([], POSITIONS);
-  assert.deepEqual(plan, { type: "other", hours: 0, travelKm: 0 });
+  assert.deepEqual(plan, { type: "other", hours: 0, travelKm: 0, size: 0 });
 });
 
 test("la egalitate de bani alegerea e stabilă, nu după ordinea liniilor", () => {
@@ -150,4 +154,76 @@ test("la egalitate de bani alegerea e stabilă, nu după ordinea liniilor", () =
     POSITIONS,
   );
   assert.equal(a, b);
+});
+
+/* ------------------------------------------------------------------ */
+/* Mărimea lucrării, citită din liniile ofertei                        */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Oferta n-are măsurătoare, dar liniile ei spun deja cât e de mare lucrarea.
+ * Din mărime și din ritmul tău ies orele, iar din ore și preț iese cifra care
+ * contează: cât îți rămâne pe oră — înainte să trimiți prețul, nu după.
+ */
+
+test("metrii pătrați se adună din liniile de parchet", () => {
+  const size = sizeFromItems(
+    [item("Montaj parchet", 45, 200), item("Montaj parchet", 12, 200)],
+    POSITIONS,
+    "parquet",
+  );
+  assert.equal(size, 57);
+});
+
+test("liniile altui tip nu intră în mărime", () => {
+  const size = sizeFromItems(
+    [item("Montaj parchet", 45, 200), item("Montaj treaptă", 15, 500)],
+    POSITIONS,
+    "parquet",
+  );
+  assert.equal(size, 45);
+});
+
+test("orele și kilometrii nu sunt mărimea lucrării", () => {
+  const size = sizeFromItems(
+    [
+      item("Montaj parchet", 45, 200),
+      item("Manoperă la oră", 8, 150),
+      item("Deplasare", 84, 5),
+    ],
+    POSITIONS,
+    "parquet",
+  );
+  assert.equal(size, 45, "doar metrii pătrați");
+});
+
+test("linia ștearsă nu mai mărește lucrarea", () => {
+  const size = sizeFromItems(
+    [
+      item("Montaj parchet", 45, 200),
+      item("Montaj parchet", 30, 200, { deleted_at: "2026-09-02" }),
+    ],
+    POSITIONS,
+    "parquet",
+  );
+  assert.equal(size, 45);
+});
+
+test("planul aduce mărimea odată cu tipul", () => {
+  const plan = planFromQuote(
+    [item("Montaj treaptă", 15, 500), item("Manoperă la oră", 6, 150)],
+    POSITIONS,
+  );
+  assert.equal(plan.type, "stairs");
+  assert.equal(plan.size, 15, "cincisprezece trepte");
+  assert.equal(plan.hours, 6);
+});
+
+test("linia scrisă de mână, fără poziție, nu se numără la mărime", () => {
+  const size = sizeFromItems(
+    [item("Ceva pus de mână", 100, 10), item("Montaj parchet", 20, 200)],
+    POSITIONS,
+    "parquet",
+  );
+  assert.equal(size, 20);
 });

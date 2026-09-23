@@ -18,6 +18,8 @@ import {
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/page-header";
 import { SupplierDebt } from "@/components/finance/supplier-debt";
+import { AgingCard } from "@/components/finance/aging-card";
+import { DayThreshold } from "@/components/finance/day-threshold";
 import { Button } from "@/components/ui/button";
 import { Confirm } from "@/components/ui/confirm";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -257,6 +259,8 @@ export default function FinancePage() {
         />
       </section>
 
+      <AgingCard />
+
       <SupplierDebt />
 
       <Tabs defaultValue="income">
@@ -469,7 +473,9 @@ export default function FinancePage() {
           )}
         </TabsContent>
 
-        <TabsContent value="fixed">
+        <TabsContent value="fixed" className="space-y-3">
+          <DayThreshold monthKey={monthKey} />
+
           <FixedCosts monthKey={monthKey} />
 
           <CrewLedger />

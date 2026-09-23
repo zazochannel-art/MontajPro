@@ -1161,6 +1161,82 @@ try {
   await page.getByText("De recuperat de la furnizor").first().waitFor({ timeout: 15000 });
   check("banii de recuperat se văd în finanțe, nu se pierd", true);
 
+  /* ----------------------------- restanța pe vechime --------------- */
+  section("Restanțele pe vechime și ce-a rămas neînchis");
+
+  // O lucrare finalizată, cu preț și fără niciun ban încasat: exact cazul pe
+  // care „Plată restantă” îl semnala fără să spună niciodată de când.
+  await page.goto(`${BASE}/lucrari/nou`, { waitUntil: "networkidle" });
+  await page.getByPlaceholder("Montaj scară stejar").fill("Restanță veche (test)");
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: /Ion Popescu \(test\)/ }).click();
+  await page.locator("#job-price").fill("4000");
+  await page.getByRole("button", { name: /Creează lucrarea/i }).click();
+  await page.waitForURL(/\/lucrari\/[0-9a-f-]{36}/, { timeout: 15000 });
+  const debtUrl = page.url();
+
+  // Statusul se pune de pe pagina de editare, unde selectul lui e ultimul —
+  // la creare, formularul are un câmp în plus și ordinea nu mai ține.
+  await page.goto(`${debtUrl}/editare`, { waitUntil: "networkidle" });
+  await page.locator("#job-title").waitFor({ timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(1500);
+  await page.getByRole("combobox").last().click();
+  await page.getByRole("option", { name: /^Finalizată$/ }).click();
+  await page.getByRole("button", { name: /Salvează/i }).click();
+  await page.waitForURL(/\/lucrari\/[0-9a-f-]{36}$/, { timeout: 15000 });
+  check("lucrarea finalizată fără plată s-a creat", true);
+
+  await page.goto(`${BASE}/finante`, { waitUntil: "networkidle" });
+  check(
+    "restanțele se văd împărțite pe vechime",
+    await seen(page.getByText("De încasat, pe vechime")),
+  );
+  check(
+    "restanța de azi e trecută ca proaspătă, nu ca veche",
+    await seen(page.getByText(/de azi/i)),
+  );
+
+  // Aceeași lucrare n-are nici poză „după”, nici proces-verbal, nici bani:
+  // pe tabloul de bord trebuie să apară printre cele rămase neînchise.
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+  check(
+    "ce-a rămas neînchis se adună pe prima pagină",
+    await seen(page.getByText("Rămase neînchise")),
+  );
+  check(
+    "lucrarea fără proces-verbal apare acolo",
+    await seen(page.getByText("Restanță veche (test)")),
+  );
+
+  /* ----------------------------- pragul zilei ---------------------- */
+  section("Pragul zilei");
+
+  // Cheltuiala fixă a fost adăugată mai devreme, la scadențar.
+  await page.goto(`${BASE}/finante`, { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: /Fixe/i }).click();
+  check(
+    "cheltuielile fixe se întorc ca prag pe zi",
+    await seen(page.getByText("Pragul zilei")),
+  );
+  check(
+    "pragul spune din ce iese",
+    await seen(page.getByText(/zile lucrătoare/i)),
+  );
+
+  /* ----------------------------- raftul care doarme ---------------- */
+  section("Materialul care doarme pe raft");
+
+  // Materialul din testul ăsta a fost adăugat adineauri, deci NU are voie să
+  // apară ca adormit. Verificarea e pe negativ dinadins: o listă care ar
+  // striga „stă de mult” despre ce-ai cumpărat azi ar fi mai rea decât una
+  // care lipsește.
+  await page.goto(`${BASE}/materiale`, { waitUntil: "networkidle" });
+  await page.getByText("Parchet stejar (test)").first().waitFor({ timeout: 15000 });
+  check(
+    "materialul proaspăt nu e trecut ca adormit",
+    (await page.getByText("Stă pe raft de mult").count()) === 0,
+  );
+
   /* ----------------------------- zona sigură ----------------------- */
   section("Zona sigură (telefon cu aplicația instalată)");
 
