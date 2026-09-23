@@ -40,6 +40,10 @@ export const clientSchema = z.object({
   referred_by_client_id: z.string().uuid().nullable().optional(),
   /** Ce plătește față de lista ta, în procente. Negativ = reducere. */
   price_adjust: z.number().min(-99).max(100).optional(),
+  /** Adrese în plus: apartamentul al doilea, șantierul al treilea. */
+  addresses: z
+    .array(z.object({ label: z.string(), address: z.string() }))
+    .default([]),
 });
 
 export const jobSchema = z.object({
@@ -50,7 +54,9 @@ export const jobSchema = z.object({
   status: z.enum(JOB_STATUSES),
   address: optionalText,
   scheduled_date: z.string().nullable().optional(),
+  scheduled_end_date: z.string().nullable().optional(),
   scheduled_time: z.string().nullable().optional(),
+  assigned_member_id: z.string().nullable().optional(),
   estimated_hours: z.number().min(0).nullable().optional(),
   /** Kilometrii chiar făcuți la lucrare, dus-întors. */
   travel_km: z.number().min(0).nullable().optional(),

@@ -5,7 +5,7 @@
  * derulând calendarul. Acum orele estimate se și calculează singure din ritmul
  * tău, deci adunarea are pe ce sta.
  */
-import { num } from "./utils";
+import { hoursOnDay, runsOn } from "./span";
 import type { DayBlock, Job } from "./types";
 
 export interface DayLoad {
@@ -74,18 +74,26 @@ export function weekLoad(
   }
 
   const days: DayLoad[] = keys.map((day) => {
+    /*
+     * O lucrare de trei zile atinge trei zile și aduce în fiecare doar partea
+     * ei de ore. Înainte punea tot pe prima: săptămâna ieșea suprarezervată
+     * luni și liberă marți, deci cifra „cât ai liber” mințea exact pentru
+     * lucrările mari. Cea în așteptare nu se numără deloc — nu se lucrează
+     * la ea.
+     */
     const onDay = jobs.filter(
       (job) =>
         !job.deleted_at &&
         !job.archived_at &&
         job.status !== "done" &&
-        job.scheduled_date === day,
+        job.status !== "on_hold" &&
+        runsOn(job, day),
     );
     const block = blockByDay.get(day);
     return {
       day,
       jobs: onDay.length,
-      hours: onDay.reduce((acc, job) => acc + num(job.estimated_hours), 0),
+      hours: onDay.reduce((acc, job) => acc + hoursOnDay(job, day), 0),
       blocked: !!block,
       blockReason: block?.reason ?? null,
     };

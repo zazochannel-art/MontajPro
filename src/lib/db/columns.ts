@@ -22,6 +22,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "source",
     "referred_by_client_id",
     "price_adjust",
+    "addresses",
   ],
   projects: [...BASE, "name", "client_id", "address", "notes"],
   jobs: [
@@ -33,6 +34,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "status",
     "address",
     "scheduled_date",
+    "scheduled_end_date",
     "scheduled_time",
     "estimated_hours",
     "price_total",
@@ -47,6 +49,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "material_delivered_at",
     "travel_km",
     "public_token",
+    "assigned_member_id",
   ],
   job_measurements: [...BASE, "job_id", "client_id", "kind", "label", "data", "notes"],
   job_photos: [
@@ -69,6 +72,7 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "purchased",
     "taken_from_stock",
     "returned_quantity",
+    "supplier_return_quantity",
   ],
   materials: [
     ...BASE,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -80,6 +80,7 @@ function ClientForm({
     source: client?.source ?? null,
     referred_by_client_id: client?.referred_by_client_id ?? null,
     price_adjust: client?.price_adjust ?? 0,
+    addresses: client?.addresses ?? [],
   });
 
   // Cine poate fi „cel care a trimis”: oricine din agendă, în afară de el.
@@ -254,6 +255,73 @@ function ClientForm({
             </Select>
           </Field>
         )}
+
+        <Field
+          label="Alte adrese"
+          hint="Al doilea apartament, șantierul următor. Le alegi apoi direct pe lucrare."
+        >
+          <div className="space-y-2">
+            {(form.values.addresses ?? []).map((row, index) => (
+              <div key={index} className="flex items-start gap-2">
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Input
+                    value={row.label}
+                    onChange={(event) =>
+                      form.set(
+                        "addresses",
+                        (form.values.addresses ?? []).map((item, at) =>
+                          at === index ? { ...item, label: event.target.value } : item,
+                        ),
+                      )
+                    }
+                    placeholder="Apartamentul 2"
+                    aria-label={`Numele adresei ${index + 1}`}
+                  />
+                  <Input
+                    value={row.address}
+                    onChange={(event) =>
+                      form.set(
+                        "addresses",
+                        (form.values.addresses ?? []).map((item, at) =>
+                          at === index ? { ...item, address: event.target.value } : item,
+                        ),
+                      )
+                    }
+                    placeholder="str. Ismail 45, ap. 2"
+                    aria-label={`Adresa ${index + 1}`}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Șterge adresa ${index + 1}`}
+                  onClick={() =>
+                    form.set(
+                      "addresses",
+                      (form.values.addresses ?? []).filter((_, at) => at !== index),
+                    )
+                  }
+                >
+                  <Trash2 className="text-red-400" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                form.set("addresses", [
+                  ...(form.values.addresses ?? []),
+                  { label: "", address: "" },
+                ])
+              }
+            >
+              <Plus /> Încă o adresă
+            </Button>
+          </div>
+        </Field>
 
         <Field
           label="Preț față de lista ta"

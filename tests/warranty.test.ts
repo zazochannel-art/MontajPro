@@ -73,6 +73,8 @@ function job(id: string, patch: Partial<Job> = {}): Job {
     warranty_of_job_id: null,
     material_delivered_at: null,
     travel_km: null,
+    scheduled_end_date: null,
+    assigned_member_id: null,
     public_token: null,
     ...patch,
   };
@@ -90,6 +92,7 @@ function client(id: string, patch: Partial<Client> = {}): Client {
     source: null,
     referred_by_client_id: null,
     price_adjust: 0,
+    addresses: [],
     ...patch,
   };
 }

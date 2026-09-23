@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/page-header";
+import { SupplierDebt } from "@/components/finance/supplier-debt";
 import { Button } from "@/components/ui/button";
 import { Confirm } from "@/components/ui/confirm";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -255,6 +256,8 @@ export default function FinancePage() {
           }
         />
       </section>
+
+      <SupplierDebt />
 
       <Tabs defaultValue="income">
         <TabsList>

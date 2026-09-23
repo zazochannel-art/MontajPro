@@ -44,7 +44,9 @@ function job(
     warranty_of_job_id: null,
     material_delivered_at: null,
     travel_km: null,
+    scheduled_end_date: null,
     public_token: null,
+    assigned_member_id: null,
     ...patch,
   };
 }

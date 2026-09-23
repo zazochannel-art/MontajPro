@@ -89,6 +89,7 @@ const RU: Record<string, string> = {
   Ofertă: "Предложение",
   Confirmată: "Подтверждена",
   "În lucru": "В работе",
+  "În așteptare": "В ожидании",
   Finalizată: "Завершена",
   Problemă: "Проблема",
   Arhivă: "Архив",
@@ -118,6 +119,7 @@ const RU: Record<string, string> = {
   "Deschide în hartă": "Открыть на карте",
   "De luat azi": "Взять сегодня",
   "De terminat": "Доделать",
+  "De încărcat din depozit": "Загрузить со склада",
 
   /* ----------------------------- bani ------------------------------- */
   Preț: "Цена",

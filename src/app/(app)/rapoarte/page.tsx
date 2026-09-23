@@ -26,6 +26,7 @@ import {
 } from "@/lib/constants";
 import { topReferrers, totalsBySource } from "@/lib/sources";
 import { QuoteReport } from "@/components/reports/quote-report";
+import { LatenessCard } from "@/components/reports/lateness-card";
 import { formatMoney, formatNumber, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -146,6 +147,8 @@ export default function ReportsPage() {
         * mult nevoie să vadă de ce.
         */}
       {ready && <QuoteReport from={cutoff || undefined} />}
+
+      {ready && <LatenessCard from={cutoff || undefined} />}
 
       {!ready ? (
         <Skeleton className="h-48 w-full" />

@@ -9,6 +9,7 @@ import {
   Plus,
   ShoppingCart,
   Trash2,
+  Undo2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,8 +18,10 @@ import { Confirm } from "@/components/ui/confirm";
 import { EmptyState } from "@/components/ui/empty-state";
 import { JobMaterialDialog } from "@/components/forms/job-material-dialog";
 import {
+  clearSupplierReturn,
   deleteJobMaterial,
   returnMaterialToStock,
+  returnToSupplier,
   returnToStock,
   takeFromStock,
   toggleJobMaterial,
@@ -135,6 +138,7 @@ export function MaterialsTab({
                   {material.material_id && (
                     <StockLine material={material} inventory={inventory} />
                   )}
+                  <SupplierLine material={material} />
                 </div>
                 <div className="flex shrink-0 gap-0.5">
                   <Button
@@ -331,6 +335,97 @@ function LeftoverLine({
         }}
       >
         Pune în stoc
+      </Button>
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        className="text-xs text-muted-foreground hover:underline"
+      >
+        Renunță
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Materialul dus înapoi la furnizor.
+ *
+ * Altceva decât „pune în stoc”: ăla intră pe raftul tău, ăsta pleacă de tot
+ * fiindcă a fost adus greșit, și rămân niște bani de recuperat. Banii ăia se
+ * uitau — nu-i ținea nimeni minte.
+ *
+ * Apare doar la materialul cumpărat: ce n-ai plătit n-ai ce să dai înapoi.
+ */
+function SupplierLine({ material }: { material: JobMaterial }) {
+  const { currency } = useApp();
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState(0);
+  const sent = material.supplier_return_quantity ?? 0;
+
+  if (!material.purchased) return null;
+
+  if (sent > 0 && !open) {
+    return (
+      <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-amber-300">
+        <Undo2 className="size-3" />
+        <span>
+          dus înapoi {formatNumber(sent)} {material.unit} ={" "}
+          {formatMoney(sent * material.unit_price, currency)} de recuperat
+        </span>
+        <button
+          type="button"
+          onClick={async () => {
+            await clearSupplierReturn(material.id);
+            toast.success("Șters din ce ai de recuperat");
+          }}
+          className="text-muted-foreground hover:underline"
+        >
+          a plătit
+        </button>
+      </p>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+      >
+        <Undo2 className="size-3" /> ai dus ceva înapoi la furnizor?
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <input
+        type="number"
+        inputMode="decimal"
+        min={0}
+        step="any"
+        autoFocus
+        value={amount || ""}
+        onChange={(event) => setAmount(Number(event.target.value) || 0)}
+        placeholder="0"
+        aria-label={`Cât ai dus înapoi din ${material.name}`}
+        className="w-20 rounded-lg border border-border bg-elevated px-2 py-1 text-right text-sm"
+      />
+      <span className="text-xs text-muted-foreground">{material.unit}</span>
+      <Button
+        size="sm"
+        onClick={async () => {
+          const ok = await returnToSupplier(material.id, amount);
+          if (!ok) return toast.error("Pune o cantitate mai mare ca zero");
+          toast.success(
+            `${formatMoney(amount * material.unit_price, currency)} de recuperat`,
+          );
+          setAmount(0);
+          setOpen(false);
+        }}
+      >
+        Notează
       </Button>
       <button
         type="button"

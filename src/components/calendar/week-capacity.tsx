@@ -2,7 +2,8 @@
 
 import { CalendarRange, Lock } from "lucide-react";
 import { toast } from "sonner";
-import { useDayBlocks, useWeekLoad } from "@/hooks/use-data";
+import { useAllJobs, useDayBlocks, useWeekLoad } from "@/hooks/use-data";
+import { jobsBlockedBy } from "@/lib/day-guard";
 import { toggleDayBlock } from "@/lib/db/actions";
 import { formatDuration } from "@/lib/format";
 
@@ -19,6 +20,7 @@ const SHORT = ["L", "Ma", "Mi", "J", "V", "S", "D"];
  */
 export function WeekCapacity({ from }: { from?: Date }) {
   const week = useWeekLoad(from ?? new Date());
+  const jobs = useAllJobs();
   const blocks = useDayBlocks();
   const today = new Date().toISOString().slice(0, 10);
 
@@ -59,8 +61,26 @@ export function WeekCapacity({ from }: { from?: Date }) {
               type="button"
               onClick={async () => {
                 const block = blocks.find((row) => row.day === day.day);
+                /*
+                 * Blocai ziua și cele două lucrări programate acolo rămâneau
+                 * acolo, tăcute. Blocarea nu le mută — mutarea e o hotărâre,
+                 * nu o consecință — dar nu mai trece nespusă.
+                 */
+                const caught = block ? [] : jobsBlockedBy(day.day, jobs);
                 await toggleDayBlock(day.day);
-                toast.success(block ? "Zi eliberată" : "Zi blocată");
+                if (block) return toast.success("Zi eliberată");
+                if (caught.length) {
+                  toast.warning(
+                    caught.length === 1
+                      ? `Zi blocată, dar „${caught[0].title}” rămâne programată atunci`
+                      : `Zi blocată, dar ${caught.length} lucrări rămân programate atunci`,
+                    {
+                      description: "Mută-le din calendar dacă nu se mai țin.",
+                    },
+                  );
+                } else {
+                  toast.success("Zi blocată");
+                }
               }}
               title={
                 day.blocked
