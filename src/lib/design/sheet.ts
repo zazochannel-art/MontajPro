@@ -12,7 +12,7 @@
  * hârtie, din aceleași cifre. Nicăieri o captură de ecran.
  */
 import { faceSet } from "./solid";
-import type { Vec2, ViewName } from "./solid";
+import type { Tone, Vec2, ViewName } from "./solid";
 import { bestAzimuth, buildStair, footprint, outlineCenter } from "./stair-solid";
 import type { StairBuild } from "./stair-solid";
 import { derive, normalizeSpec } from "./stair-spec";
@@ -20,9 +20,74 @@ import type { StairSpec } from "./stair-spec";
 
 export type Weight = "main" | "detail";
 
+/**
+ * Cum se scrie planșa: cu cerneală sau cu lemn.
+ *
+ * Nu e o schimbare de gust, ci două hârtii pentru doi oameni. Cea tehnică
+ * pleacă la debitat, unde negru pe alb e singurul lucru care se citește lângă
+ * un ferăstrău. Cea de lemn pleacă la client, unde o scară trebuie să arate a
+ * scară, nu a schiță. Geometria e aceeași; se schimbă numai cerneala.
+ */
+export const FINISHES = ["tehnic", "lemn"] as const;
+export type Finish = (typeof FINISHES)[number];
+
+/**
+ * Culorile planșei, scrise o singură dată.
+ *
+ * Canvas-ul, SVG-ul și PDF-ul citesc de aici. Dacă fiecare și-ar ține culorile
+ * lui, planșa de pe ecran și cea de pe hârtie ar începe să se depărteze una de
+ * alta pe nesimțite, iar clientul ar primi altceva decât a văzut.
+ */
+export interface Palette {
+  paper: string;
+  outline: string;
+  /** Liniile de cotă. */
+  thin: string;
+  text: string;
+  frame: string;
+  warn: string;
+  fill: Record<Tone, string>;
+  /** Firul lemnului. `null` pe desenul tehnic: acolo n-are ce căuta. */
+  grain: Record<Tone, string> | null;
+}
+
+export const PALETTES: Record<Finish, Palette> = {
+  tehnic: {
+    paper: "#ffffff",
+    outline: "#09090b",
+    thin: "#52525b",
+    text: "#18181b",
+    frame: "#d4d4d8",
+    warn: "#b45309",
+    // Alb plin, nu transparent: treapta din față trebuie s-o acopere pe cea din spate.
+    fill: { sus: "#ffffff", fata: "#ffffff", lateral: "#ffffff" },
+    grain: null,
+  },
+  lemn: {
+    paper: "#f5f1e8",
+    outline: "#6b4423",
+    thin: "#8a6a4a",
+    text: "#3f2d1c",
+    frame: "#e2d7c4",
+    warn: "#a8510b",
+    /*
+     * Trei tonuri de stejar, nu unul singur. Fața de sus prinde lumina, cea din
+     * față o prinde pieziș, cea laterală stă în umbră — exact regula după care
+     * ochiul citește un obiect ca fiind solid. Cu o singură culoare, scara ar
+     * arăta ca un decupaj din carton maro.
+     */
+    fill: { sus: "#e3b887", fata: "#cd9a5d", lateral: "#a97a45" },
+    grain: { sus: "#c9a06f", fata: "#b4834a", lateral: "#96693a" },
+  },
+};
+
 export interface SheetPolygon {
   points: Vec2[];
   weight: Weight;
+  /** Încotro privește fața. Din el iese umbra, în desenul cu lemn. */
+  tone: Tone;
+  /** Firul lemnului, ca linii — ca să rămână vector și în PDF. */
+  grain: { a: Vec2; b: Vec2 }[];
 }
 
 export interface SheetLine {
@@ -155,6 +220,83 @@ export function dimension(
   return { lines, texts };
 }
 
+/** Cât de multe fire se trag peste o față. Destule cât să se citească lemn. */
+const GRAIN_LINES = 4;
+
+/**
+ * Firul lemnului peste o față, ca linii tăiate exact pe conturul ei.
+ *
+ * Firele merg în lungul laturii lungi, fiindcă așa se debitează un blat: pe
+ * fibră, nu de-a curmezișul. Sunt linii adevărate, nu o umplutură cu poză — de
+ * aceea PDF-ul rămâne vector și se poate mări fără să se îmbâcsească.
+ *
+ * Tăierea se face pe fiecare latură: fața e un patrulater convex, deci o
+ * dreaptă o taie în exact două puncte, iar între ele stă firul.
+ */
+export function grainLines(points: Vec2[], count = GRAIN_LINES): { a: Vec2; b: Vec2 }[] {
+  if (points.length < 3) return [];
+
+  // Latura cea mai lungă dă direcția fibrei.
+  let dir: Vec2 = { x: 1, y: 0 };
+  let longest = 0;
+  for (let i = 0; i < points.length; i += 1) {
+    const from = points[i];
+    const to = points[(i + 1) % points.length];
+    const length = Math.hypot(to.x - from.x, to.y - from.y);
+    if (length > longest) {
+      longest = length;
+      dir = { x: (to.x - from.x) / length, y: (to.y - from.y) / length };
+    }
+  }
+  if (longest < 1e-6) return [];
+
+  const normal: Vec2 = { x: -dir.y, y: dir.x };
+  let low = Infinity;
+  let high = -Infinity;
+  for (const point of points) {
+    const along = point.x * normal.x + point.y * normal.y;
+    if (along < low) low = along;
+    if (along > high) high = along;
+  }
+  if (high - low < 1e-6) return [];
+
+  const out: { a: Vec2; b: Vec2 }[] = [];
+  for (let i = 1; i <= count; i += 1) {
+    const offset = low + ((high - low) * i) / (count + 1);
+    const hits: Vec2[] = [];
+
+    for (let e = 0; e < points.length; e += 1) {
+      const from = points[e];
+      const to = points[(e + 1) % points.length];
+      const fromSide = from.x * normal.x + from.y * normal.y - offset;
+      const toSide = to.x * normal.x + to.y * normal.y - offset;
+      if (fromSide === toSide) continue;
+      const t = fromSide / (fromSide - toSide);
+      if (t < 0 || t > 1) continue;
+      hits.push({ x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t });
+    }
+
+    if (hits.length < 2) continue;
+    // Capetele firului: cele două tăieturi cele mai depărtate una de alta.
+    let a = hits[0];
+    let b = hits[1];
+    let span = -1;
+    for (let i0 = 0; i0 < hits.length; i0 += 1) {
+      for (let i1 = i0 + 1; i1 < hits.length; i1 += 1) {
+        const length = Math.hypot(hits[i1].x - hits[i0].x, hits[i1].y - hits[i0].y);
+        if (length > span) {
+          span = length;
+          a = hits[i0];
+          b = hits[i1];
+        }
+      }
+    }
+    if (span > 1e-6) out.push({ a, b });
+  }
+
+  return out;
+}
+
 function extentOf(pane: Pane): Box2 | null {
   let minX = Infinity;
   let minY = Infinity;
@@ -205,6 +347,9 @@ function viewPane(
   const polygons: SheetPolygon[] = faceSet(build.solid, view, azimuth).map((face) => ({
     points: face.points,
     weight: "main",
+    tone: face.tone,
+    // Fibra se vede pe fețele întoarse spre ochi; pe cele din umbră n-ar spune nimic.
+    grain: face.tone === "lateral" ? [] : grainLines(face.points),
   }));
   return { id, title, polygons, lines: [], texts: [] };
 }
@@ -260,15 +405,16 @@ function frameDimensions(
 function detailPane(spec: StairSpec, rise: number): Pane {
   const { tread, thickness, nosing, riserThickness } = spec;
 
-  const rect = (x0: number, y0: number, x1: number, y1: number): SheetPolygon => ({
-    points: [
+  // Piesele din detaliu sunt secțiuni prin lemn: se văd în plin, cu fibra pe lung.
+  const rect = (x0: number, y0: number, x1: number, y1: number): SheetPolygon => {
+    const points = [
       { x: x0, y: y0 },
       { x: x1, y: y0 },
       { x: x1, y: y1 },
       { x: x0, y: y1 },
-    ],
-    weight: "main",
-  });
+    ];
+    return { points, weight: "main", tone: "fata", grain: grainLines(points, 3) };
+  };
 
   const polygons: SheetPolygon[] = [
     // Blatul de sus, cu nasul ieșit în stânga.
@@ -296,26 +442,38 @@ function detailPane(spec: StairSpec, rise: number): Pane {
     texts.push(...part.texts);
   };
 
+  /*
+   * Fără nas, două dintre cote n-au ce spune: adâncimea întreagă a blatului e
+   * chiar adâncimea pe care calci, iar ieșirea nasului e zero. Scrise oricum,
+   * ar ieși aceeași cifră de două ori și o cotă de „0 mm” între două linii
+   * suprapuse — adică un desen care pare greșit tocmai fiindcă e corect.
+   */
+  const hasNose = nosing > 0;
+
   // Deasupra: adâncimea pe care calci, apoi adâncimea întreagă a blatului.
   add(dimension({ x: 0, y: 0 }, { x: tread, y: 0 }, -one, mm(tread), style));
-  add(dimension({ x: -nosing, y: 0 }, { x: tread, y: 0 }, -two, mm(tread + nosing), style));
+  if (hasNose) {
+    add(dimension({ x: -nosing, y: 0 }, { x: tread, y: 0 }, -two, mm(tread + nosing), style));
+  }
   // În dreapta: grosimea blatului.
   add(dimension({ x: tread, y: thickness }, { x: tread, y: 0 }, one, mm(thickness), style));
   // Dedesubt: ieșirea nasului, apoi grosimea contratreptei.
-  add(
-    dimension(
-      { x: -nosing, y: rise + thickness },
-      { x: 0, y: rise + thickness },
-      one,
-      mm(nosing),
-      style,
-    ),
-  );
+  if (hasNose) {
+    add(
+      dimension(
+        { x: -nosing, y: rise + thickness },
+        { x: 0, y: rise + thickness },
+        one,
+        mm(nosing),
+        style,
+      ),
+    );
+  }
   add(
     dimension(
       { x: 0, y: rise + thickness },
       { x: riserThickness, y: rise + thickness },
-      two,
+      hasNose ? two : one,
       mm(riserThickness),
       style,
     ),

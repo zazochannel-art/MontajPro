@@ -12,8 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { COMFORT, TURNS, TURN_LABELS, derive } from "@/lib/design/stair-spec";
-import type { StairSpec, Turn } from "@/lib/design/stair-spec";
+import { COMFORT, EDGES, EDGE_LABELS, TURNS, TURN_LABELS, derive } from "@/lib/design/stair-spec";
+import type { Edge, StairSpec, Turn } from "@/lib/design/stair-spec";
 import type { DesignDetection } from "@/lib/design/model";
 
 /**
@@ -121,7 +121,23 @@ export function StairForm({
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <Field label="Muchia treptei">
+        <Select value={spec.edge} onValueChange={(value) => set("edge", value as Edge)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {EDGES.map((edge) => (
+              <SelectItem key={edge} value={edge}>
+                {EDGE_LABELS[edge]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+
+      {/* Pe muchie dreaptă nasul e zero prin definiție; un câmp gol ar minți. */}
+      <div className={spec.edge === "nas" ? "grid grid-cols-3 gap-3" : "grid grid-cols-2 gap-3"}>
         <Field label="Grosime blat">
           <NumberInput
             value={spec.thickness}
@@ -132,16 +148,18 @@ export function StairForm({
             suffix="mm"
           />
         </Field>
-        <Field label="Ieșire nas">
-          <NumberInput
-            value={spec.nosing}
-            onChange={(value) => set("nosing", value)}
-            stepper={false}
-            min={0}
-            max={Math.round(spec.tread / 2)}
-            suffix="mm"
-          />
-        </Field>
+        {spec.edge === "nas" && (
+          <Field label="Ieșire nas">
+            <NumberInput
+              value={spec.nosing}
+              onChange={(value) => set("nosing", value)}
+              stepper={false}
+              min={0}
+              max={Math.round(spec.tread / 2)}
+              suffix="mm"
+            />
+          </Field>
+        )}
         <Field label="Contratreaptă">
           <NumberInput
             value={spec.riserThickness}

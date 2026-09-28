@@ -1394,6 +1394,28 @@ try {
   const after = await page.locator("canvas").first().screenshot();
   check("vederea 3D se rotește", !before.equals(after));
 
+  /*
+   * Două hârtii pentru doi oameni: cea de lemn pleacă la client, cea tehnică la
+   * debitat. Geometria e aceeași — se verifică aici că se schimbă doar cerneala,
+   * adică se schimbă ceva pe ecran, dar planșa rămâne planșă.
+   */
+  const wood = await page.locator("canvas").first().screenshot();
+  await page.getByRole("button", { name: "Desen tehnic" }).click();
+  await page.waitForTimeout(400);
+  const ink = await page.locator("canvas").first().screenshot();
+  check("cerneala se schimbă între lemn și desen tehnic", !wood.equals(ink));
+  await page.getByRole("button", { name: "Lemn" }).click();
+
+  // Muchia treptei: cu nas sau dreaptă, fără buza care iese peste contratreaptă.
+  check("nasul are câmpul lui cât timp există", await seen(page.getByText("Ieșire nas")));
+  await page.getByText("Muchia treptei").locator("..").getByRole("combobox").click();
+  await page.getByRole("option", { name: /Muchie dreaptă/ }).click();
+  await page.waitForTimeout(500);
+  check(
+    "fără nas, câmpul lui dispare cu totul",
+    !(await page.getByText("Ieșire nas").isVisible()),
+  );
+
   check(
     "planșa se exportă ca PDF",
     await page.getByRole("button", { name: "PDF" }).isEnabled(),
