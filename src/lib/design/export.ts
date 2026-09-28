@@ -12,6 +12,8 @@
 import { formatMeasure, distance } from "./measure";
 import { bounds, stepPoints } from "./model";
 import type { DesignDoc } from "./model";
+import { layoutSheet, place } from "./sheet";
+import type { Sheet, TextRole, Weight } from "./sheet";
 
 /** Grosimile: conturul se vede de la distanță, detaliile nu-l încarcă. */
 const MAIN_WIDTH = 2;
@@ -254,4 +256,207 @@ export async function downloadPdf(doc: DesignDoc, title: string) {
   pdf.text(note, margin, pageHeight - margin + 4);
 
   pdf.save(fileName(title, "pdf"));
+}
+
+/* ------------------------------------------------------------------ */
+/* Planșa cu vederi                                                    */
+/* ------------------------------------------------------------------ */
+
+
+/** Mărimile de scris, în puncte de pagină. Nu se scalează cu desenul. */
+const TEXT_SIZE: Record<TextRole, number> = { cota: 15, numar: 13, titlu: 19 };
+
+function strokeOf(weight: Weight): number {
+  return weight === "main" ? MAIN_WIDTH : DETAIL_WIDTH;
+}
+
+/**
+ * Planșa ca SVG: pagina întreagă, cu toate vederile.
+ *
+ * Negru pe alb, ca desenul din poza de la care am pornit — și fiindcă foaia
+ * asta se printează și se ține în mână pe șantier, unde tema întunecată a
+ * aplicației n-ajută pe nimeni.
+ */
+export function sheetToSvg(sheet: Sheet, tall = false): string {
+  const { page, panes } = layoutSheet(sheet, tall);
+  const parts: string[] = [];
+
+  parts.push(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${page.width}" height="${page.height}" viewBox="0 0 ${page.width} ${page.height}">`,
+  );
+  parts.push(`<rect width="100%" height="100%" fill="#ffffff"/>`);
+
+  for (const placed of panes) {
+    const { frame } = placed;
+    parts.push(
+      `<rect x="${frame.x + 8}" y="${frame.y + 8}" width="${frame.width - 16}" height="${frame.height - 16}" fill="none" stroke="#d4d4d8" stroke-width="1"/>`,
+    );
+    parts.push(
+      `<text x="${frame.x + 22}" y="${frame.y + 34}" font-family="system-ui, sans-serif" font-size="${TEXT_SIZE.titlu}" fill="#18181b">${escapeXml(placed.pane.title)}</text>`,
+    );
+
+    for (const polygon of placed.pane.polygons) {
+      const points = polygon.points
+        .map((p) => {
+          const q = place(placed, p);
+          return `${q.x.toFixed(1)},${q.y.toFixed(1)}`;
+        })
+        .join(" ");
+      parts.push(
+        `<polygon points="${points}" fill="#ffffff" stroke="#09090b" stroke-width="${strokeOf(polygon.weight)}" stroke-linejoin="round"/>`,
+      );
+    }
+
+    for (const line of placed.pane.lines) {
+      const a = place(placed, line.a);
+      const b = place(placed, line.b);
+      parts.push(
+        `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="#52525b" stroke-width="${strokeOf(line.weight)}"/>`,
+      );
+    }
+
+    for (const text of placed.pane.texts) {
+      const at = place(placed, text.at);
+      const anchor = text.anchor === "middle" ? "middle" : text.anchor;
+      parts.push(
+        `<text x="${at.x.toFixed(1)}" y="${at.y.toFixed(1)}" text-anchor="${anchor}" dominant-baseline="middle" font-family="system-ui, sans-serif" font-size="${TEXT_SIZE[text.role]}" fill="#18181b">${escapeXml(text.value)}</text>`,
+      );
+    }
+  }
+
+  const size = sheet.footprint;
+  parts.push(
+    `<text x="24" y="${page.height - 18}" font-family="system-ui, sans-serif" font-size="14" fill="#52525b">${escapeXml(
+      `${sheet.title} — gabarit ${size.width} × ${size.run} mm, înălțime ${size.height} mm`,
+    )}</text>`,
+  );
+
+  if (sheet.warnings.length) {
+    parts.push(
+      `<text x="${page.width - 24}" y="${page.height - 18}" text-anchor="end" font-family="system-ui, sans-serif" font-size="14" fill="#b45309">${escapeXml(sheet.warnings[0])}</text>`,
+    );
+  }
+
+  parts.push("</svg>");
+  return parts.join("\n");
+}
+
+export function downloadSheetSvg(sheet: Sheet, title: string) {
+  const blob = new Blob([sheetToSvg(sheet)], { type: "image/svg+xml" });
+  download(blob, fileName(title, "svg"));
+}
+
+/**
+ * Planșa ca PDF, scrisă ca linii.
+ *
+ * Aceleași panouri, aceeași așezare, dar pe A4 în format lat: planșa se
+ * printează și se pune pe bancul de lucru. Nu e o captură a ecranului — fiecare
+ * linie e o linie în PDF, deci se poate mări fără să se îmbâcsească și se poate
+ * măsura cu rigla pe hârtie.
+ */
+export async function downloadSheetPdf(sheet: Sheet, title: string) {
+  const { jsPDF } = await import("jspdf");
+  const { page, panes } = layoutSheet(sheet, false);
+
+  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 10;
+
+  const factor = Math.min(
+    (pageWidth - margin * 2) / page.width,
+    (pageHeight - margin * 2) / page.height,
+  );
+  const toPage = (point: { x: number; y: number }) => ({
+    x: margin + point.x * factor,
+    y: margin + point.y * factor,
+  });
+
+  for (const placed of panes) {
+    const frameStart = toPage({ x: placed.frame.x + 8, y: placed.frame.y + 8 });
+    pdf.setDrawColor(200, 200, 205);
+    pdf.setLineWidth(0.1);
+    pdf.rect(
+      frameStart.x,
+      frameStart.y,
+      (placed.frame.width - 16) * factor,
+      (placed.frame.height - 16) * factor,
+    );
+
+    pdf.setTextColor(24, 24, 27);
+    pdf.setFontSize(8);
+    const titleAt = toPage({ x: placed.frame.x + 22, y: placed.frame.y + 34 });
+    pdf.text(placed.pane.title, titleAt.x, titleAt.y);
+
+    pdf.setDrawColor(0, 0, 0);
+    for (const polygon of placed.pane.polygons) {
+      if (polygon.points.length < 2) continue;
+      pdf.setLineWidth(polygon.weight === "main" ? 0.25 : 0.1);
+      const points = polygon.points.map((p) => toPage(place(placed, p)));
+      for (let i = 0; i < points.length; i += 1) {
+        const from = points[i];
+        const to = points[(i + 1) % points.length];
+        pdf.line(from.x, from.y, to.x, to.y);
+      }
+    }
+
+    pdf.setDrawColor(82, 82, 91);
+    pdf.setLineWidth(0.08);
+    for (const line of placed.pane.lines) {
+      const a = toPage(place(placed, line.a));
+      const b = toPage(place(placed, line.b));
+      pdf.line(a.x, a.y, b.x, b.y);
+    }
+
+    for (const text of placed.pane.texts) {
+      const at = toPage(place(placed, text.at));
+      pdf.setFontSize(text.role === "numar" ? 5 : 6);
+      // jsPDF nu cunoaște „start” și „end”, le vrea pe cele de tipar.
+      const align = text.anchor === "middle" ? "center" : text.anchor === "end" ? "right" : "left";
+      pdf.text(text.value, at.x, at.y, { align, baseline: "middle" });
+    }
+  }
+
+  const size = sheet.footprint;
+  pdf.setFontSize(8);
+  pdf.setTextColor(82, 82, 91);
+  pdf.text(
+    `${title || sheet.title} — gabarit ${size.width} × ${size.run} mm, înălțime ${size.height} mm`,
+    margin,
+    pageHeight - margin + 2,
+  );
+  if (sheet.warnings.length) {
+    pdf.text(sheet.warnings[0], pageWidth - margin, pageHeight - margin + 2, { align: "right" });
+  }
+
+  pdf.save(fileName(title, "pdf"));
+}
+
+/** PNG al planșei, din același SVG. La dublu, ca liniile să nu iasă moi. */
+export async function downloadSheetPng(sheet: Sheet, title: string, scale = 2) {
+  const blob = new Blob([sheetToSvg(sheet)], { type: "image/svg+xml" });
+  const url = URL.createObjectURL(blob);
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error("Planșa nu a putut fi redată"));
+      element.src = url;
+    });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(image.width * scale);
+    canvas.height = Math.round(image.height * scale);
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Planșa nu a putut fi redată");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (png) download(png, fileName(title, "png"));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }

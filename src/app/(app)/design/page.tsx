@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   Camera,
   FileDown,
@@ -11,6 +11,7 @@ import {
   RotateCw,
   Ruler,
   Save,
+  Scan,
   SlidersHorizontal,
   Sparkles,
   Undo2,
@@ -44,7 +45,12 @@ import {
   ScaleCard,
   StepList,
 } from "@/components/design/design-tools";
+import { StairForm } from "@/components/design/stair-form";
+import { StairSheet } from "@/components/design/stair-sheet";
 import { detectStairs } from "@/lib/design/detect";
+import { buildSheet } from "@/lib/design/sheet";
+import { defaultSpec, fromDetection } from "@/lib/design/stair-spec";
+import type { StairSpec } from "@/lib/design/stair-spec";
 import {
   addDimension,
   emptyDesign,
@@ -54,7 +60,14 @@ import {
   type DesignDoc,
 } from "@/lib/design/model";
 import { scaleFrom } from "@/lib/design/measure";
-import { downloadPdf, downloadPng, downloadSvg } from "@/lib/design/export";
+import {
+  downloadPdf,
+  downloadPng,
+  downloadSheetPdf,
+  downloadSheetPng,
+  downloadSheetSvg,
+  downloadSvg,
+} from "@/lib/design/export";
 import { saveDesign } from "@/lib/db/actions";
 import { cn } from "@/lib/utils";
 
@@ -80,6 +93,38 @@ const MAX_PHOTO = 2000;
 
 type Busy = "none" | "loading" | "detecting";
 
+/**
+ * Cele două drumuri spre desen.
+ *
+ * Fotografia arată ce e acolo, dar dintr-un singur punct de vedere: cât e de
+ * lată scara, cât intră în perete și în ce parte se cotește nu se văd în ea,
+ * oricât de bună ar fi poza. Cifrele le spun, și din ele iese scara întreagă,
+ * de văzut din toate părțile. De aceea nu e o alegere între ele: poza numără
+ * treptele și măsoară unghiul, apoi le trece în formular, iar cifrele răspund
+ * de ce se taie în lemn.
+ */
+type Stage = "foto" | "cifre";
+
+/**
+ * Ecran îngust sau lat.
+ *
+ * Prin `useSyncExternalStore`, nu printr-un efect care schimbă starea: așa
+ * răspunsul e corect și la prima randare, iar React n-are de ce să se plângă.
+ * Pe server nu există fereastră, deci se pleacă de la lat și se corectează
+ * singur la hidratare.
+ */
+function useNarrow(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const query = window.matchMedia("(max-width: 1023px)");
+      query.addEventListener("change", onChange);
+      return () => query.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia("(max-width: 1023px)").matches,
+    () => false,
+  );
+}
+
 export default function DesignPage() {
   const [photo, setPhoto] = useState<HTMLImageElement | null>(null);
   const [pixels, setPixels] = useState<{ data: Uint8ClampedArray; width: number; height: number } | null>(null);
@@ -100,6 +145,16 @@ export default function DesignPage() {
    */
   const [sheetOpen, setSheetOpen] = useState(false);
   const [realMm, setRealMm] = useState(1000);
+  const [stage, setStage] = useState<Stage>("foto");
+  const [spec, setSpec] = useState<StairSpec>(defaultSpec());
+  /* `null` = unghiul ales de geometrie; o cifră = unghiul cerut cu mâna. */
+  const [azimuth, setAzimuth] = useState<number | null>(null);
+  const narrow = useNarrow();
+
+  const sheet = useMemo(
+    () => buildSheet(spec, title, azimuth ?? undefined),
+    [spec, title, azimuth],
+  );
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
 
@@ -214,20 +269,28 @@ export default function DesignPage() {
     toast.success("Cotă adăugată");
   };
 
+  /**
+   * Salvează și geometria din fotografie, și cifrele scării.
+   *
+   * Amândouă merg în același `doc`, fiindcă sunt același desen văzut din două
+   * părți: conturul cules din poză și mărimile după care se taie. Coloana e
+   * `jsonb` tocmai ca să încapă și ce n-am prevăzut — un desen salvat înainte
+   * de ziua de azi pur și simplu n-are `spec`, și se deschide la fel de bine.
+   */
   const save = async () => {
-    if (isEmpty(doc)) {
+    if (stage === "foto" && isEmpty(doc)) {
       toast.error("Nu e nimic de salvat încă.");
       return;
     }
     await saveDesign({
       title,
-      doc,
+      doc: { ...doc, spec },
       scale_mm: doc.scale,
       detected_steps: doc.detection?.steps ?? null,
       detected_kind: doc.detection?.kind ?? null,
       detected_confidence: doc.detection?.confidence ?? null,
     });
-    toast.success("Desen salvat");
+    toast.success(stage === "cifre" ? "Planșă salvată" : "Desen salvat");
   };
 
   const hasDrawing = !isEmpty(doc);
@@ -237,7 +300,16 @@ export default function DesignPage() {
       <PageHeader
         title="Design"
         description="Transformă fotografia într-un desen tehnic al treptelor"
-        action={hasDrawing ? <ScaleBadge doc={doc} /> : undefined}
+        action={stage === "foto" && hasDrawing ? <ScaleBadge doc={doc} /> : undefined}
+      />
+
+      <Segmented<Stage>
+        value={stage}
+        onChange={setStage}
+        options={[
+          { value: "foto", label: "Din fotografie" },
+          { value: "cifre", label: "Din cifre" },
+        ]}
       />
 
       <input
@@ -264,7 +336,34 @@ export default function DesignPage() {
         }}
       />
 
-      {!photo ? (
+      {stage === "cifre" ? (
+        <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
+          {/*
+            Chenarul ia proporția foii, ca planșa să nu plutească într-un alb
+            degeaba. `min-w-0` nu e podoabă: canvasul își scrie singur lățimea
+            în pixeli, iar o coloană `1fr` se lățește după conținut și împinge
+            panoul cu cifre în afara ecranului — o dată ieșit, nu mai revine.
+          */}
+          <div className="aspect-[9/12.5] max-h-[50vh] w-full min-w-0 lg:aspect-[8/5] lg:max-h-none">
+            <StairSheet sheet={sheet} tall={narrow} />
+          </div>
+
+          <div className={cn("space-y-3", !sheetOpen && "hidden lg:block")}>
+            <Field label="Numele desenului">
+              <Input value={title} onChange={(event) => setTitle(event.target.value)} />
+            </Field>
+            <StairForm
+              spec={spec}
+              onChange={(next) => setSpec(next)}
+              detection={doc.detection}
+              onFromPhoto={() => {
+                setSpec(fromDetection(doc.detection, spec));
+                toast.success("Cifrele au intrat din fotografie — verifică-le");
+              }}
+            />
+          </div>
+        </div>
+      ) : !photo ? (
         <EmptyState
           icon={Camera}
           title="Încarcă fotografia scării"
@@ -391,8 +490,50 @@ export default function DesignPage() {
         </div>
       )}
 
-      {/* ----- jos: acțiunile ----- */}
-      {photo && (
+      {/* ----- jos: acțiunile planșei ----- */}
+      {stage === "cifre" && (
+        <div
+          className={cn(
+            "sticky bottom-[calc(var(--bottom-nav-h)+0.75rem)] z-10 flex flex-wrap gap-2",
+            "rounded-2xl surface p-2 lg:static",
+          )}
+        >
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAzimuth((value) => ((value ?? sheet.azimuth) + Math.PI / 12) % (Math.PI * 2))}
+          >
+            <RotateCw /> Rotește
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setAzimuth(null)} disabled={azimuth === null}>
+            <Scan /> Unghi automat
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="lg:hidden"
+            onClick={() => setSheetOpen((open) => !open)}
+          >
+            <SlidersHorizontal /> {sheetOpen ? "Ascunde cifrele" : "Cifrele scării"}
+          </Button>
+          <div className="flex-1" />
+          <Button variant="outline" size="sm" onClick={() => downloadSheetSvg(sheet, title)}>
+            SVG
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => void downloadSheetPng(sheet, title)}>
+            <ImageDown /> PNG
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => void downloadSheetPdf(sheet, title)}>
+            <FileDown /> PDF
+          </Button>
+          <Button size="sm" onClick={() => void save()}>
+            <Save /> Salvează
+          </Button>
+        </div>
+      )}
+
+      {/* ----- jos: acțiunile desenului din fotografie ----- */}
+      {stage === "foto" && photo && (
         <div
           className={cn(
             "sticky bottom-[calc(var(--bottom-nav-h)+0.75rem)] z-10 flex flex-wrap gap-2",
