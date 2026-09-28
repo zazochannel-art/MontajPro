@@ -6,6 +6,7 @@ import {
   FileDown,
   ImageDown,
   Loader2,
+  Palette,
   Plus,
   RotateCcw,
   RotateCw,
@@ -49,6 +50,7 @@ import { StairForm } from "@/components/design/stair-form";
 import { StairSheet } from "@/components/design/stair-sheet";
 import { detectStairs } from "@/lib/design/detect";
 import { buildSheet } from "@/lib/design/sheet";
+import type { Finish } from "@/lib/design/sheet";
 import { defaultSpec, fromDetection } from "@/lib/design/stair-spec";
 import type { StairSpec } from "@/lib/design/stair-spec";
 import {
@@ -149,6 +151,11 @@ export default function DesignPage() {
   const [spec, setSpec] = useState<StairSpec>(defaultSpec());
   /* `null` = unghiul ales de geometrie; o cifră = unghiul cerut cu mâna. */
   const [azimuth, setAzimuth] = useState<number | null>(null);
+  /*
+   * Două hârtii pentru doi oameni: cea tehnică pleacă la debitat, cea de lemn
+   * la client. Geometria e aceeași — se schimbă numai cerneala.
+   */
+  const [finish, setFinish] = useState<Finish>("lemn");
   const narrow = useNarrow();
 
   const sheet = useMemo(
@@ -345,7 +352,7 @@ export default function DesignPage() {
             panoul cu cifre în afara ecranului — o dată ieșit, nu mai revine.
           */}
           <div className="aspect-[9/12.5] max-h-[50vh] w-full min-w-0 lg:aspect-[8/5] lg:max-h-none">
-            <StairSheet sheet={sheet} tall={narrow} />
+            <StairSheet sheet={sheet} tall={narrow} finish={finish} />
           </div>
 
           <div className={cn("space-y-3", !sheetOpen && "hidden lg:block")}>
@@ -511,19 +518,26 @@ export default function DesignPage() {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setFinish((value) => (value === "lemn" ? "tehnic" : "lemn"))}
+          >
+            <Palette /> {finish === "lemn" ? "Desen tehnic" : "Lemn"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             className="lg:hidden"
             onClick={() => setSheetOpen((open) => !open)}
           >
             <SlidersHorizontal /> {sheetOpen ? "Ascunde cifrele" : "Cifrele scării"}
           </Button>
           <div className="flex-1" />
-          <Button variant="outline" size="sm" onClick={() => downloadSheetSvg(sheet, title)}>
+          <Button variant="outline" size="sm" onClick={() => downloadSheetSvg(sheet, title, finish)}>
             SVG
           </Button>
-          <Button variant="outline" size="sm" onClick={() => void downloadSheetPng(sheet, title)}>
+          <Button variant="outline" size="sm" onClick={() => void downloadSheetPng(sheet, title, finish)}>
             <ImageDown /> PNG
           </Button>
-          <Button variant="outline" size="sm" onClick={() => void downloadSheetPdf(sheet, title)}>
+          <Button variant="outline" size="sm" onClick={() => void downloadSheetPdf(sheet, title, finish)}>
             <FileDown /> PDF
           </Button>
           <Button size="sm" onClick={() => void save()}>

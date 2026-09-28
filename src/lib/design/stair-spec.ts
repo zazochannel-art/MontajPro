@@ -27,6 +27,23 @@ export const TURN_LABELS: Record<Turn, string> = {
   stanga: "Se cotește la stânga",
 };
 
+/**
+ * Muchia din față a treptei.
+ *
+ * Nasul e bucata de blat care iese peste contratreaptă. Se pune fiindcă mărește
+ * călcătura fără să lungească scara, dar nu toată lumea îl vrea: pe o scară
+ * modernă, cu treaptă și contratreaptă la fir, muchia dreaptă e chiar ce se
+ * cere — și e și mai simplu de debitat, fiindcă blatul se taie fix la
+ * adâncimea treptei.
+ */
+export const EDGES = ["nas", "dreapta"] as const;
+export type Edge = (typeof EDGES)[number];
+
+export const EDGE_LABELS: Record<Edge, string> = {
+  nas: "Cu nas, ieșit peste contratreaptă",
+  dreapta: "Muchie dreaptă, fără nas",
+};
+
 export interface StairSpec {
   /** Înălțimea totală, de la podea la podea. */
   totalRise: number;
@@ -38,7 +55,9 @@ export interface StairSpec {
   width: number;
   /** Grosimea blatului de treaptă. */
   thickness: number;
-  /** Cât iese nasul treptei peste contratreapta de sub el. */
+  /** Muchia din față: cu nas sau dreaptă. */
+  edge: Edge;
+  /** Cât iese nasul treptei peste contratreapta de sub el. Zero pe muchie dreaptă. */
   nosing: number;
   /** Grosimea contratreptei. */
   riserThickness: number;
@@ -69,6 +88,7 @@ export function defaultSpec(): StairSpec {
     tread: 280,
     width: 900,
     thickness: 40,
+    edge: "nas",
     nosing: 30,
     riserThickness: 20,
     closedRisers: true,
@@ -96,6 +116,8 @@ export function normalizeSpec(spec: StairSpec): StairSpec {
   const steps = Math.round(clamp(num(spec.steps), 2, 60));
   const tread = clamp(num(spec.tread), 120, 500);
   const turn: Turn = TURNS.includes(spec.turn) ? spec.turn : "fara";
+  // Desenele salvate înainte de a exista alegerea n-au câmpul; aveau nas.
+  const edge: Edge = EDGES.includes(spec.edge) ? spec.edge : "nas";
   // Cotul are nevoie de o treaptă înainte și de una după, altfel nu mai e cot.
   const turnAfter = Math.round(clamp(num(spec.turnAfter), 1, Math.max(1, steps - 2)));
   const winders =
@@ -109,8 +131,10 @@ export function normalizeSpec(spec: StairSpec): StairSpec {
     tread,
     width: clamp(num(spec.width), 400, 2500),
     thickness: clamp(num(spec.thickness), 15, 120),
-    // Nasul nu poate depăși treapta: ar ieși o treaptă care stă pe nimic.
-    nosing: clamp(num(spec.nosing), 0, tread / 2),
+    edge,
+    // Pe muchie dreaptă nasul e zero prin definiție, nu o cifră de ținut minte.
+    // Altfel nu poate depăși treapta: ar ieși o treaptă care stă pe nimic.
+    nosing: edge === "dreapta" ? 0 : clamp(num(spec.nosing), 0, tread / 2),
     riserThickness: clamp(num(spec.riserThickness), 8, 60),
     closedRisers: spec.closedRisers !== false,
     turn,

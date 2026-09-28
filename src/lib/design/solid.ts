@@ -27,6 +27,16 @@ export interface Vec2 {
 /** La ce parte din scară ține o față. Desenul o folosește la grosimea liniei. */
 export type FaceKind = "treapta" | "contratreapta" | "podest";
 
+/**
+ * Încotro privește o față, după ce corpul a fost întors spre ochi.
+ *
+ * Din asta iese umbrirea în desenul cu lemn: fața de sus prinde lumina, cea
+ * din față o prinde pieziș, cea laterală rămâne în umbră. E aceeași regulă
+ * după care ochiul recunoaște un obiect ca fiind solid, iar fără ea trei
+ * dreptunghiuri de aceeași culoare nu arată ca o treaptă, ci ca o pată.
+ */
+export type Tone = "sus" | "fata" | "lateral";
+
 /** O față plană, ca poligon închis. Punctele sunt în ordine, în milimetri. */
 export interface Face {
   points: Vec3[];
@@ -95,8 +105,22 @@ export interface Projected {
   points: Vec2[];
   kind: FaceKind;
   step: number;
+  tone: Tone;
   /** Cât de aproape e fața de ochi. Mai mare = mai în față. */
   depth: number;
+}
+
+/**
+ * Tonul unei fețe, din normala ei — după rotire, nu înainte.
+ *
+ * Contează că se ia normala rotită: aceeași contratreaptă, privită din alt
+ * unghi, chiar primește altă lumină. Dacă s-ar lua normala din model, scara
+ * rotită ar păstra umbrele vechi și ar arăta ca un desen lipit pe un obiect.
+ */
+export function toneOf(normal: Vec3): Tone {
+  if (normal.y > 0.5) return "sus";
+  if (normal.z < -0.35) return "fata";
+  return "lateral";
 }
 
 /**
@@ -220,6 +244,7 @@ export function faceSet(solid: Solid, view: ViewName, azimuth = 0): Projected[] 
       points: flat.map((p) => ({ x: p.x, y: p.y })),
       kind: face.kind,
       step: face.step,
+      tone: toneOf(normal),
       depth: depth / flat.length,
     });
   }

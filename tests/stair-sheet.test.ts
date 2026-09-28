@@ -10,10 +10,19 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildSheet, layoutSheet, mm, paneExtent } from "../src/lib/design/sheet.ts";
+import {
+  FINISHES,
+  PALETTES,
+  buildSheet,
+  grainLines,
+  layoutSheet,
+  mm,
+  paneExtent,
+} from "../src/lib/design/sheet.ts";
 import type { Pane, Sheet } from "../src/lib/design/sheet.ts";
 import { sheetToSvg } from "../src/lib/design/export.ts";
-import { defaultSpec } from "../src/lib/design/stair-spec.ts";
+import { defaultSpec, normalizeSpec } from "../src/lib/design/stair-spec.ts";
+import { buildStair, footprint } from "../src/lib/design/stair-solid.ts";
 
 const STRAIGHT = defaultSpec();
 const TURNED = { ...defaultSpec(), turn: "dreapta" as const, turnAfter: 8, winders: 3, turnAngle: 90 };
@@ -187,4 +196,116 @@ test("aceleași cifre dau aceeași planșă", () => {
   const first = sheetToSvg(buildSheet(TURNED, "Scară"));
   const second = sheetToSvg(buildSheet({ ...TURNED }, "Scară"));
   assert.equal(first, second);
+});
+
+/* ------------------------------------------------------------------ */
+/* Muchia treptei                                                      */
+/* ------------------------------------------------------------------ */
+
+test("muchia dreaptă scoate nasul din geometrie, nu doar de pe desen", () => {
+  const withNose = normalizeSpec({ ...STRAIGHT, edge: "nas", nosing: 30 });
+  const flush = normalizeSpec({ ...STRAIGHT, edge: "dreapta", nosing: 30 });
+  assert.equal(flush.nosing, 0);
+  // Nasul ieșea în față, deci scara scurtează exact cu el.
+  assert.equal(
+    footprint(buildStair(withNose)).run - footprint(buildStair(flush)).run,
+    30,
+  );
+});
+
+test("un desen salvat înainte de alegerea muchiei rămâne cu nas", () => {
+  // Câmpul lipsește cu totul, cum arată datele scrise înainte.
+  const old = { ...STRAIGHT } as Partial<typeof STRAIGHT>;
+  delete old.edge;
+  assert.equal(normalizeSpec(old as typeof STRAIGHT).edge, "nas");
+});
+
+/*
+ * Greșeala pe care o prinde testul ăsta: pe muchie dreaptă, detaliul scria
+ * „0 mm” între două linii suprapuse și repeta adâncimea de două ori. Un desen
+ * corect care pare greșit e tot un desen prost.
+ */
+test("pe muchie dreaptă nu se cotează nasul care nu există", () => {
+  const flush = buildSheet({ ...STRAIGHT, edge: "dreapta" }, "Dreaptă");
+  const written = paneOf(flush, "detaliu").texts.map((text) => text.value);
+  assert.ok(!written.includes("0 mm"), "cotează un nas de zero");
+  assert.equal(
+    written.filter((value) => value === "280 mm").length,
+    1,
+    "scrie adâncimea de două ori",
+  );
+  // Cifrele care chiar există rămân.
+  assert.ok(written.includes("40 mm"));
+  assert.ok(written.includes("20 mm"));
+});
+
+/* ------------------------------------------------------------------ */
+/* Cerneala: lemn sau tehnic                                           */
+/* ------------------------------------------------------------------ */
+
+test("firul lemnului stă în interiorul feței, nu pe lângă ea", () => {
+  const square = [
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 100, y: 60 },
+    { x: 0, y: 60 },
+  ];
+  const grain = grainLines(square, 4);
+  assert.equal(grain.length, 4);
+  for (const line of grain) {
+    for (const point of [line.a, line.b]) {
+      assert.ok(point.x >= -0.001 && point.x <= 100.001, "firul iese pe lateral");
+      assert.ok(point.y >= -0.001 && point.y <= 60.001, "firul iese pe verticală");
+    }
+    // Merge pe lungime, cum se debitează un blat: pe fibră.
+    assert.ok(Math.abs(line.a.x - line.b.x) > Math.abs(line.a.y - line.b.y));
+  }
+});
+
+test("o față degenerată n-are fir", () => {
+  assert.deepEqual(grainLines([{ x: 0, y: 0 }, { x: 1, y: 1 }]), []);
+  assert.deepEqual(grainLines([{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }]), []);
+});
+
+test("fiecare față își știe orientarea, iar cele din umbră n-au fir", () => {
+  const sheet = buildSheet(TURNED, "Scară");
+  const tones = new Set<string>();
+  for (const pane of sheet.panes) {
+    for (const polygon of pane.polygons) {
+      tones.add(polygon.tone);
+      if (polygon.tone === "lateral") {
+        assert.equal(polygon.grain.length, 0, "fața din umbră are fir degeaba");
+      }
+    }
+  }
+  // Izometricul arată toate cele trei orientări; de aia se citește ca un solid.
+  assert.deepEqual([...tones].sort(), ["fata", "lateral", "sus"]);
+});
+
+test("paleta acoperă toate orientările, în ambele cerneli", () => {
+  for (const finish of FINISHES) {
+    const ink = PALETTES[finish];
+    for (const tone of ["sus", "fata", "lateral"] as const) {
+      assert.match(ink.fill[tone], /^#[0-9a-f]{6}$/i, `${finish}/${tone} n-are umplere`);
+      if (ink.grain) assert.match(ink.grain[tone], /^#[0-9a-f]{6}$/i);
+    }
+  }
+  // Desenul tehnic rămâne fără fir: lângă un ferăstrău, liniile în plus încurcă.
+  assert.equal(PALETTES.tehnic.grain, null);
+  assert.notEqual(PALETTES.lemn.grain, null);
+});
+
+test("cerneala schimbă numai culorile, nu și geometria", () => {
+  const sheet = buildSheet(TURNED, "Scară");
+  const wood = sheetToSvg(sheet, false, "lemn");
+  const ink = sheetToSvg(sheet, false, "tehnic");
+
+  const corners = (svg: string) => svg.match(/<polygon points="([^"]+)"/g);
+  assert.deepEqual(corners(wood), corners(ink));
+
+  // Dar hârtia și cerneala diferă, iar firul apare numai pe lemn.
+  assert.ok(wood.includes(PALETTES.lemn.paper));
+  assert.ok(ink.includes(PALETTES.tehnic.paper));
+  assert.ok(wood.includes(PALETTES.lemn.grain!.sus));
+  assert.ok(!ink.includes(PALETTES.lemn.grain!.sus));
 });

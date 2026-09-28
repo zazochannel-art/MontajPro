@@ -12,8 +12,8 @@
 import { formatMeasure, distance } from "./measure";
 import { bounds, stepPoints } from "./model";
 import type { DesignDoc } from "./model";
-import { layoutSheet, place } from "./sheet";
-import type { Sheet, TextRole, Weight } from "./sheet";
+import { PALETTES, layoutSheet, place } from "./sheet";
+import type { Finish, Sheet, TextRole, Weight } from "./sheet";
 
 /** Grosimile: conturul se vede de la distanță, detaliile nu-l încarcă. */
 const MAIN_WIDTH = 2;
@@ -262,7 +262,6 @@ export async function downloadPdf(doc: DesignDoc, title: string) {
 /* Planșa cu vederi                                                    */
 /* ------------------------------------------------------------------ */
 
-
 /** Mărimile de scris, în puncte de pagină. Nu se scalează cu desenul. */
 const TEXT_SIZE: Record<TextRole, number> = { cota: 15, numar: 13, titlu: 19 };
 
@@ -270,29 +269,37 @@ function strokeOf(weight: Weight): number {
   return weight === "main" ? MAIN_WIDTH : DETAIL_WIDTH;
 }
 
+/** `#rrggbb` în cele trei numere pe care le vrea jsPDF. */
+function rgb(hex: string): [number, number, number] {
+  const value = parseInt(hex.replace("#", ""), 16);
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+}
+
 /**
  * Planșa ca SVG: pagina întreagă, cu toate vederile.
  *
- * Negru pe alb, ca desenul din poza de la care am pornit — și fiindcă foaia
- * asta se printează și se ține în mână pe șantier, unde tema întunecată a
- * aplicației n-ajută pe nimeni.
+ * Două cerneli, aceeași geometrie. Cea tehnică, negru pe alb, pleacă la
+ * debitat — lângă un ferăstrău nu se citește altceva. Cea de lemn pleacă la
+ * client, unde o scară trebuie să arate a scară. Firul lemnului e desenat cu
+ * linii, nu cu o poză de fundal: așa rămâne vector și la mărire, și în PDF.
  */
-export function sheetToSvg(sheet: Sheet, tall = false): string {
+export function sheetToSvg(sheet: Sheet, tall = false, finish: Finish = "tehnic"): string {
   const { page, panes } = layoutSheet(sheet, tall);
+  const ink = PALETTES[finish];
   const parts: string[] = [];
 
   parts.push(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${page.width}" height="${page.height}" viewBox="0 0 ${page.width} ${page.height}">`,
   );
-  parts.push(`<rect width="100%" height="100%" fill="#ffffff"/>`);
+  parts.push(`<rect width="100%" height="100%" fill="${ink.paper}"/>`);
 
   for (const placed of panes) {
     const { frame } = placed;
     parts.push(
-      `<rect x="${frame.x + 8}" y="${frame.y + 8}" width="${frame.width - 16}" height="${frame.height - 16}" fill="none" stroke="#d4d4d8" stroke-width="1"/>`,
+      `<rect x="${frame.x + 8}" y="${frame.y + 8}" width="${frame.width - 16}" height="${frame.height - 16}" fill="none" stroke="${ink.frame}" stroke-width="1"/>`,
     );
     parts.push(
-      `<text x="${frame.x + 22}" y="${frame.y + 34}" font-family="system-ui, sans-serif" font-size="${TEXT_SIZE.titlu}" fill="#18181b">${escapeXml(placed.pane.title)}</text>`,
+      `<text x="${frame.x + 22}" y="${frame.y + 34}" font-family="system-ui, sans-serif" font-size="${TEXT_SIZE.titlu}" fill="${ink.text}">${escapeXml(placed.pane.title)}</text>`,
     );
 
     for (const polygon of placed.pane.polygons) {
@@ -303,15 +310,26 @@ export function sheetToSvg(sheet: Sheet, tall = false): string {
         })
         .join(" ");
       parts.push(
-        `<polygon points="${points}" fill="#ffffff" stroke="#09090b" stroke-width="${strokeOf(polygon.weight)}" stroke-linejoin="round"/>`,
+        `<polygon points="${points}" fill="${ink.fill[polygon.tone]}" stroke="${ink.outline}" stroke-width="${strokeOf(polygon.weight)}" stroke-linejoin="round"/>`,
       );
+
+      // Firul se scrie imediat după fața lui, altfel îl acoperă următoarea față.
+      if (ink.grain) {
+        for (const line of polygon.grain) {
+          const a = place(placed, line.a);
+          const b = place(placed, line.b);
+          parts.push(
+            `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${ink.grain[polygon.tone]}" stroke-width="0.7"/>`,
+          );
+        }
+      }
     }
 
     for (const line of placed.pane.lines) {
       const a = place(placed, line.a);
       const b = place(placed, line.b);
       parts.push(
-        `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="#52525b" stroke-width="${strokeOf(line.weight)}"/>`,
+        `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${ink.thin}" stroke-width="${strokeOf(line.weight)}"/>`,
       );
     }
 
@@ -319,21 +337,21 @@ export function sheetToSvg(sheet: Sheet, tall = false): string {
       const at = place(placed, text.at);
       const anchor = text.anchor === "middle" ? "middle" : text.anchor;
       parts.push(
-        `<text x="${at.x.toFixed(1)}" y="${at.y.toFixed(1)}" text-anchor="${anchor}" dominant-baseline="middle" font-family="system-ui, sans-serif" font-size="${TEXT_SIZE[text.role]}" fill="#18181b">${escapeXml(text.value)}</text>`,
+        `<text x="${at.x.toFixed(1)}" y="${at.y.toFixed(1)}" text-anchor="${anchor}" dominant-baseline="middle" font-family="system-ui, sans-serif" font-size="${TEXT_SIZE[text.role]}" fill="${ink.text}">${escapeXml(text.value)}</text>`,
       );
     }
   }
 
   const size = sheet.footprint;
   parts.push(
-    `<text x="24" y="${page.height - 18}" font-family="system-ui, sans-serif" font-size="14" fill="#52525b">${escapeXml(
+    `<text x="24" y="${page.height - 18}" font-family="system-ui, sans-serif" font-size="14" fill="${ink.thin}">${escapeXml(
       `${sheet.title} — gabarit ${size.width} × ${size.run} mm, înălțime ${size.height} mm`,
     )}</text>`,
   );
 
   if (sheet.warnings.length) {
     parts.push(
-      `<text x="${page.width - 24}" y="${page.height - 18}" text-anchor="end" font-family="system-ui, sans-serif" font-size="14" fill="#b45309">${escapeXml(sheet.warnings[0])}</text>`,
+      `<text x="${page.width - 24}" y="${page.height - 18}" text-anchor="end" font-family="system-ui, sans-serif" font-size="14" fill="${ink.warn}">${escapeXml(sheet.warnings[0])}</text>`,
     );
   }
 
@@ -341,22 +359,21 @@ export function sheetToSvg(sheet: Sheet, tall = false): string {
   return parts.join("\n");
 }
 
-export function downloadSheetSvg(sheet: Sheet, title: string) {
-  const blob = new Blob([sheetToSvg(sheet)], { type: "image/svg+xml" });
-  download(blob, fileName(title, "svg"));
+export function downloadSheetSvg(sheet: Sheet, title: string, finish: Finish = "tehnic") {
+  download(new Blob([sheetToSvg(sheet, false, finish)], { type: "image/svg+xml" }), fileName(title, "svg"));
 }
 
 /**
  * Planșa ca PDF, scrisă ca linii.
  *
- * Aceleași panouri, aceeași așezare, dar pe A4 în format lat: planșa se
- * printează și se pune pe bancul de lucru. Nu e o captură a ecranului — fiecare
- * linie e o linie în PDF, deci se poate mări fără să se îmbâcsească și se poate
- * măsura cu rigla pe hârtie.
+ * Aceleași panouri, aceeași așezare, pe A4 lat: foaia se printează și se pune
+ * pe bancul de lucru. Fețele se umplu ca poligoane, nu ca imagini — și cu
+ * umplere, fiindcă altfel treapta din spate s-ar vedea prin cea din față.
  */
-export async function downloadSheetPdf(sheet: Sheet, title: string) {
+export async function downloadSheetPdf(sheet: Sheet, title: string, finish: Finish = "tehnic") {
   const { jsPDF } = await import("jspdf");
   const { page, panes } = layoutSheet(sheet, false);
+  const ink = PALETTES[finish];
 
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -372,9 +389,17 @@ export async function downloadSheetPdf(sheet: Sheet, title: string) {
     y: margin + point.y * factor,
   });
 
+  // Foaia de lemn are fondul ei; cea tehnică rămâne hârtia albă a imprimantei.
+  if (finish !== "tehnic") {
+    const [r, g, b] = rgb(ink.paper);
+    pdf.setFillColor(r, g, b);
+    pdf.rect(0, 0, pageWidth, pageHeight, "F");
+  }
+
   for (const placed of panes) {
     const frameStart = toPage({ x: placed.frame.x + 8, y: placed.frame.y + 8 });
-    pdf.setDrawColor(200, 200, 205);
+    const [fr, fg, fb] = rgb(ink.frame);
+    pdf.setDrawColor(fr, fg, fb);
     pdf.setLineWidth(0.1);
     pdf.rect(
       frameStart.x,
@@ -383,24 +408,42 @@ export async function downloadSheetPdf(sheet: Sheet, title: string) {
       (placed.frame.height - 16) * factor,
     );
 
-    pdf.setTextColor(24, 24, 27);
+    const [tr, tg, tb] = rgb(ink.text);
+    pdf.setTextColor(tr, tg, tb);
     pdf.setFontSize(8);
     const titleAt = toPage({ x: placed.frame.x + 22, y: placed.frame.y + 34 });
     pdf.text(placed.pane.title, titleAt.x, titleAt.y);
 
-    pdf.setDrawColor(0, 0, 0);
+    const [or_, og, ob] = rgb(ink.outline);
     for (const polygon of placed.pane.polygons) {
-      if (polygon.points.length < 2) continue;
-      pdf.setLineWidth(polygon.weight === "main" ? 0.25 : 0.1);
+      if (polygon.points.length < 3) continue;
       const points = polygon.points.map((p) => toPage(place(placed, p)));
-      for (let i = 0; i < points.length; i += 1) {
-        const from = points[i];
-        const to = points[(i + 1) % points.length];
-        pdf.line(from.x, from.y, to.x, to.y);
+
+      const [pr, pg, pb] = rgb(ink.fill[polygon.tone]);
+      pdf.setFillColor(pr, pg, pb);
+      pdf.setDrawColor(or_, og, ob);
+      pdf.setLineWidth(polygon.weight === "main" ? 0.25 : 0.1);
+      // `lines` primește pași de la un punct la altul, nu puncte absolute.
+      const steps: [number, number][] = [];
+      for (let i = 1; i < points.length; i += 1) {
+        steps.push([points[i].x - points[i - 1].x, points[i].y - points[i - 1].y]);
+      }
+      pdf.lines(steps, points[0].x, points[0].y, [1, 1], "FD", true);
+
+      if (ink.grain) {
+        const [gr, gg, gb] = rgb(ink.grain[polygon.tone]);
+        pdf.setDrawColor(gr, gg, gb);
+        pdf.setLineWidth(0.08);
+        for (const line of polygon.grain) {
+          const a = toPage(place(placed, line.a));
+          const b = toPage(place(placed, line.b));
+          pdf.line(a.x, a.y, b.x, b.y);
+        }
       }
     }
 
-    pdf.setDrawColor(82, 82, 91);
+    const [dr, dg, db] = rgb(ink.thin);
+    pdf.setDrawColor(dr, dg, db);
     pdf.setLineWidth(0.08);
     for (const line of placed.pane.lines) {
       const a = toPage(place(placed, line.a));
@@ -408,6 +451,7 @@ export async function downloadSheetPdf(sheet: Sheet, title: string) {
       pdf.line(a.x, a.y, b.x, b.y);
     }
 
+    pdf.setTextColor(tr, tg, tb);
     for (const text of placed.pane.texts) {
       const at = toPage(place(placed, text.at));
       pdf.setFontSize(text.role === "numar" ? 5 : 6);
@@ -418,14 +462,17 @@ export async function downloadSheetPdf(sheet: Sheet, title: string) {
   }
 
   const size = sheet.footprint;
+  const [nr, ng, nb] = rgb(ink.thin);
   pdf.setFontSize(8);
-  pdf.setTextColor(82, 82, 91);
+  pdf.setTextColor(nr, ng, nb);
   pdf.text(
     `${title || sheet.title} — gabarit ${size.width} × ${size.run} mm, înălțime ${size.height} mm`,
     margin,
     pageHeight - margin + 2,
   );
   if (sheet.warnings.length) {
+    const [wr, wg, wb] = rgb(ink.warn);
+    pdf.setTextColor(wr, wg, wb);
     pdf.text(sheet.warnings[0], pageWidth - margin, pageHeight - margin + 2, { align: "right" });
   }
 
@@ -433,8 +480,13 @@ export async function downloadSheetPdf(sheet: Sheet, title: string) {
 }
 
 /** PNG al planșei, din același SVG. La dublu, ca liniile să nu iasă moi. */
-export async function downloadSheetPng(sheet: Sheet, title: string, scale = 2) {
-  const blob = new Blob([sheetToSvg(sheet)], { type: "image/svg+xml" });
+export async function downloadSheetPng(
+  sheet: Sheet,
+  title: string,
+  finish: Finish = "tehnic",
+  scale = 2,
+) {
+  const blob = new Blob([sheetToSvg(sheet, false, finish)], { type: "image/svg+xml" });
   const url = URL.createObjectURL(blob);
 
   try {
@@ -450,7 +502,7 @@ export async function downloadSheetPng(sheet: Sheet, title: string, scale = 2) {
     canvas.height = Math.round(image.height * scale);
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Planșa nu a putut fi redată");
-    context.fillStyle = "#ffffff";
+    context.fillStyle = PALETTES[finish].paper;
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
