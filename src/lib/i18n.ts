@@ -119,6 +119,9 @@ const RU: Record<string, string> = {
   "Deschide în hartă": "Открыть на карте",
   "De luat azi": "Взять сегодня",
   "De terminat": "Доделать",
+  "Design": "Дизайн",
+  "Transformă fotografia într-un desen tehnic al treptelor":
+    "Превращает фотографию в технический чертёж ступеней",
   "Rămase neînchise": "Незакрытые",
   "De încasat, pe vechime": "К получению, по срокам",
   "Pragul zilei": "Порог дня",

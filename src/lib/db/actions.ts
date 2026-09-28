@@ -1759,3 +1759,56 @@ export async function clearSupplierReturn(jobMaterialId: string) {
   });
   kick();
 }
+
+/* ---------------------- desenul scării ----------------------------- */
+
+export interface DesignInput {
+  id?: string;
+  job_id?: string | null;
+  client_id?: string | null;
+  title: string;
+  photo_path?: string | null;
+  photo_local_key?: string | null;
+  /** Documentul vectorial. Vezi `lib/design/model.ts`. */
+  doc: unknown;
+  scale_mm?: number | null;
+  detected_steps?: number | null;
+  detected_kind?: string | null;
+  detected_confidence?: number | null;
+  notes?: string | null;
+}
+
+/**
+ * Salvează desenul scării.
+ *
+ * Geometria pleacă întreagă, ca `doc`. Cifrele detecției se scriu separat ca
+ * să se poată căuta după ele mai târziu („arată-mi desenele în care n-am avut
+ * încredere”), iar `scale_mm` stă la vedere fiindcă el hotărăște dacă desenul
+ * are voie să scrie milimetri.
+ */
+export async function saveDesign(input: DesignInput) {
+  const payload = {
+    job_id: input.job_id ?? null,
+    client_id: input.client_id ?? null,
+    title: input.title.trim() || "Desen scară",
+    photo_path: input.photo_path ?? null,
+    photo_local_key: input.photo_local_key ?? null,
+    doc: input.doc,
+    scale_mm: input.scale_mm ?? null,
+    detected_steps: input.detected_steps ?? null,
+    detected_kind: input.detected_kind ?? null,
+    detected_confidence: input.detected_confidence ?? null,
+    notes: input.notes?.trim() || null,
+  };
+
+  const row = input.id
+    ? await store.update("stair_designs", input.id, payload)
+    : await store.insert("stair_designs", payload);
+  kick();
+  return row;
+}
+
+export async function deleteDesign(id: string) {
+  await store.remove("stair_designs", id);
+  kick();
+}

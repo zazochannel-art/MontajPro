@@ -340,6 +340,25 @@
     "user_id",
     "vat_percent"
   ],
+  "stair_designs": [
+    "client_id",
+    "created_at",
+    "deleted_at",
+    "detected_confidence",
+    "detected_kind",
+    "detected_steps",
+    "doc",
+    "id",
+    "job_id",
+    "notes",
+    "photo_local_key",
+    "photo_path",
+    "scale_mm",
+    "synced_at",
+    "title",
+    "updated_at",
+    "user_id"
+  ],
   "tools": [
     "brand",
     "created_at",

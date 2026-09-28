@@ -215,6 +215,20 @@ export const TABLE_COLUMNS: Record<TableName, readonly string[]> = {
     "portfolio_intro",
     "calendar_token",
   ],
+  stair_designs: [
+    ...BASE,
+    "job_id",
+    "client_id",
+    "title",
+    "photo_path",
+    "photo_local_key",
+    "doc",
+    "scale_mm",
+    "detected_steps",
+    "detected_kind",
+    "detected_confidence",
+    "notes",
+  ],
 };
 
 /** Aduce rândul la forma exactă pe care o așteaptă tabelul. */
