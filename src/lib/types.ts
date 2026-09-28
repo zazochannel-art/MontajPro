@@ -715,6 +715,35 @@ export interface Project extends BaseRow {
 /* Registrul tabelelor sincronizate                                    */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Un desen de scară, scos dintr-o fotografie și corectat cu mâna.
+ *
+ * `doc` ține geometria întreagă — puncte, trepte, cote — fiindcă forma ei se
+ * va mai schimba pe măsură ce se adaugă socoteli (suprafață, material, plan de
+ * debitare), iar o coloană pe fiecare colț de treaptă n-ar avea niciun sens.
+ * Vezi `lib/design/model.ts`.
+ *
+ * `scale_mm` stă separat, deși e și în `doc`: e singura cifră care hotărăște
+ * dacă desenul are voie să scrie milimetri. Cât e `null`, tot ce se vede sunt
+ * proporții.
+ */
+export interface StairDesign extends BaseRow {
+  job_id: ID | null;
+  client_id: ID | null;
+  title: string;
+  photo_path: string | null;
+  photo_local_key: string | null;
+  /** Documentul vectorial, serializat. */
+  doc: unknown;
+  /** Câți milimetri face o unitate de desen. `null` până la calibrare. */
+  scale_mm: number | null;
+  detected_steps: number | null;
+  detected_kind: string | null;
+  /** Între 0 și 1, socotită din fotografie. Vezi `design/detect.ts`. */
+  detected_confidence: number | null;
+  notes: string | null;
+}
+
 export interface Tables {
   clients: Client;
   projects: Project;
@@ -737,6 +766,7 @@ export interface Tables {
   day_blocks: DayBlock;
   notifications: AppNotification;
   settings: Settings;
+  stair_designs: StairDesign;
 }
 
 export type TableName = keyof Tables;
@@ -763,6 +793,7 @@ export const TABLE_NAMES: TableName[] = [
   "day_blocks",
   "notifications",
   "settings",
+  "stair_designs",
 ];
 
 /** Câmpurile pe care le completează stratul de date, nu apelantul. */

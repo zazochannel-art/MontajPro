@@ -1281,6 +1281,82 @@ try {
     (await page.getByText("Stă pe raft de mult").count()) === 0,
   );
 
+  /* ----------------------------- desenul scării -------------------- */
+  section("Fotografia devine desen tehnic");
+
+  await page.goto(`${BASE}/design`, { waitUntil: "networkidle" });
+  check(
+    "pagina Design se deschide",
+    await seen(page.getByRole("heading", { name: "Design" })),
+  );
+  check(
+    "cere o fotografie înainte de orice",
+    await seen(page.getByRole("button", { name: /Încarcă fotografia/i })),
+  );
+
+  /*
+   * O „scară” desenată pe loc: dungi orizontale la distanțe egale. Nu e o
+   * fotografie adevărată, dar are exact ce caută citirea — muchii lungi,
+   * paralele și regulate — iar aici se știe răspunsul corect, ceea ce pe o
+   * poză de pe telefon n-ar fi adevărat.
+   */
+  const stairPng = await page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 600;
+    canvas.height = 450;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#222222";
+    ctx.fillRect(0, 0, 600, 450);
+    ctx.strokeStyle = "#eeeeee";
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 8; i += 1) {
+      const y = 40 + i * 48;
+      ctx.beginPath();
+      ctx.moveTo(60, y);
+      ctx.lineTo(540, y);
+      ctx.stroke();
+    }
+    return canvas.toDataURL("image/png").split(",")[1];
+  });
+
+  await page.setInputFiles('input[type="file"]', {
+    name: "scara.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(stairPng, "base64"),
+  });
+  await page.getByRole("button", { name: /Generează desenul/i }).waitFor({ timeout: 15000 });
+  check("fotografia intră în canvas", true);
+
+  await page.getByRole("button", { name: /Generează desenul/i }).click();
+  check(
+    "din opt muchii ies șapte trepte",
+    await seen(page.getByText(/7 trepte detectate/), 20000),
+  );
+  check(
+    "se spune răspicat că desenul e estimativ până la calibrare",
+    await seen(page.getByText(/Estimativ — necalibrat/i)),
+  );
+
+  await page.getByRole("button", { name: /^Unelte$/ }).click();
+  check(
+    "uneltele se trag de jos pe telefon",
+    await seen(page.getByRole("heading", { name: "Treptele" })),
+  );
+  check(
+    "măsurile stau în unități cât timp nu e calibrat",
+    await seen(page.getByText(/\d+ u × \d+ u/)),
+  );
+  check(
+    "încrederea detectării e afișată",
+    await seen(page.getByText(/Încredere/i)),
+  );
+
+  // Desenul e vectorial, deci se poate scoate ca atare.
+  check(
+    "exportul SVG e disponibil",
+    await page.getByRole("button", { name: "SVG", exact: true }).isEnabled(),
+  );
+
   /* ----------------------------- zona sigură ----------------------- */
   section("Zona sigură (telefon cu aplicația instalată)");
 

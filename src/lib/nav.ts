@@ -8,6 +8,7 @@ import {
   FileText,
   Hammer,
   Image as ImageIcon,
+  PencilRuler,
   LayoutDashboard,
   Package,
   ReceiptText,
@@ -57,6 +58,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/masuratori", label: "Măsurători", icon: Ruler },
       { href: "/calculator", label: "Calculator preț", icon: Calculator },
       { href: "/oferte", label: "Oferte", icon: FileText },
+      { href: "/design", label: "Design", icon: PencilRuler },
     ],
   },
   {
