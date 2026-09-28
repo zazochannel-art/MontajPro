@@ -1357,6 +1357,48 @@ try {
     await page.getByRole("button", { name: "SVG", exact: true }).isEnabled(),
   );
 
+  /* --------------------- scara desenată din cifre ------------------- */
+  section("Scara desenată din cifre");
+
+  /*
+   * Drumul celălalt spre desen, și motivul pentru care există: o fotografie are
+   * un singur punct de vedere, deci nu spune cât e scara de lată, cât intră în
+   * perete și în ce parte se cotește. Din cifre ies toate patru vederile
+   * deodată, potrivite între ele — inclusiv fără nicio poză, ceea ce se
+   * verifică aici pornind de la pagina goală.
+   */
+  await page.goto(`${BASE}/design`, { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "Din cifre" }).click();
+  await page.locator("canvas").first().waitFor({ timeout: 10000 });
+  check("planșa se face fără nicio fotografie", await seen(page.locator("canvas").first()));
+
+  await page.getByRole("button", { name: "Cifrele scării" }).click();
+  check("cifrele scării se trag de jos", await seen(page.getByText("Înălțime totală")));
+
+  const totalRise = page.getByText("Înălțime totală").locator("..").locator("input").first();
+  const stepCount = page.getByText("Număr de trepte").locator("..").locator("input").first();
+  check("cifrele se citesc întregi în câmp", (await totalRise.inputValue()) === "2800");
+
+  // 2800 pe 16 trepte face 175 mm — cifra trebuie să iasă singură.
+  check("înălțimea treptei se socotește singură", await seen(page.getByText("175 mm")));
+
+  await stepCount.fill("10");
+  check("o scară abruptă o spune pe față", await seen(page.getByText(/se urcă greu/), 5000));
+
+  await stepCount.fill("16");
+  await expectValue(stepCount, "16", 5000);
+
+  const before = await page.locator("canvas").first().screenshot();
+  await page.getByRole("button", { name: "Rotește" }).click();
+  await page.waitForTimeout(400);
+  const after = await page.locator("canvas").first().screenshot();
+  check("vederea 3D se rotește", !before.equals(after));
+
+  check(
+    "planșa se exportă ca PDF",
+    await page.getByRole("button", { name: "PDF" }).isEnabled(),
+  );
+
   /* ----------------------------- zona sigură ----------------------- */
   section("Zona sigură (telefon cu aplicația instalată)");
 
