@@ -351,7 +351,12 @@ export default function DesignPage() {
             în pixeli, iar o coloană `1fr` se lățește după conținut și împinge
             panoul cu cifre în afara ecranului — o dată ieșit, nu mai revine.
           */}
-          <div className="aspect-[9/12.5] max-h-[50vh] w-full min-w-0 lg:aspect-[8/5] lg:max-h-none">
+          {/*
+            Meniul de jos și butonul rotund stau lipite de ecran, deci ar cădea
+            peste marginea de jos a planșei: acolo desenul s-ar vedea acoperit
+            și n-ar primi atingerea. Planșa se oprește deasupra lor.
+          */}
+          <div className="aspect-[9/12.5] max-h-[45vh] w-full min-w-0 lg:aspect-[8/5] lg:max-h-none">
             <StairSheet sheet={sheet} tall={narrow} finish={finish} />
           </div>
 
@@ -499,12 +504,14 @@ export default function DesignPage() {
 
       {/* ----- jos: acțiunile planșei ----- */}
       {stage === "cifre" && (
-        <div
-          className={cn(
-            "sticky bottom-[calc(var(--bottom-nav-h)+0.75rem)] z-10 flex flex-wrap gap-2",
-            "rounded-2xl surface p-2 lg:static",
-          )}
-        >
+        /*
+         * Bara stă în pagină, nu lipită de jos. Lipită, se ridica peste ce e
+         * înaintea ei — adică peste planșă — și îi acoperea partea de jos:
+         * degetul nimerea în bară, nu în desen, așa că mutarea cu degetul și
+         * mărirea păreau moarte pe telefon. Mai bine cobori puțin după butoane
+         * decât să pierzi jumătate din desen.
+         */
+        <div className="flex flex-wrap gap-2 rounded-2xl surface p-2">
           <Button
             variant="outline"
             size="sm"
@@ -548,12 +555,7 @@ export default function DesignPage() {
 
       {/* ----- jos: acțiunile desenului din fotografie ----- */}
       {stage === "foto" && photo && (
-        <div
-          className={cn(
-            "sticky bottom-[calc(var(--bottom-nav-h)+0.75rem)] z-10 flex flex-wrap gap-2",
-            "rounded-2xl surface p-2 lg:static",
-          )}
-        >
+        <div className="flex flex-wrap gap-2 rounded-2xl surface p-2">
           <Button variant="outline" size="sm" onClick={() => void generate()} loading={busy === "detecting"}>
             {busy === "detecting" ? <Loader2 className="animate-spin" /> : <Sparkles />} Regenerare
           </Button>

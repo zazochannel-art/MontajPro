@@ -49,6 +49,8 @@ export interface Palette {
   fill: Record<Tone, string>;
   /** Zidăria. Nu e lemn, deci nici culoare de lemn, nici fibră. */
   wall: Record<Tone, string>;
+  /** Betonul. Mai rece și mai închis decât tencuiala, ca la o placă turnată. */
+  concrete: Record<Tone, string>;
   /** Firul lemnului. `null` pe desenul tehnic: acolo n-are ce căuta. */
   grain: Record<Tone, string> | null;
   /** Grosimea liniilor. Lemnul se desenează mai subțire decât cerneala. */
@@ -66,6 +68,7 @@ export const PALETTES: Record<Finish, Palette> = {
     // Alb plin, nu transparent: treapta din față trebuie s-o acopere pe cea din spate.
     fill: { sus: "#ffffff", fata: "#ffffff", lateral: "#ffffff" },
     wall: { sus: "#ffffff", fata: "#ffffff", lateral: "#ffffff" },
+    concrete: { sus: "#ffffff", fata: "#ffffff", lateral: "#ffffff" },
     grain: null,
     weight: { main: 2, detail: 0.6 },
   },
@@ -85,6 +88,7 @@ export const PALETTES: Record<Finish, Palette> = {
     fill: { sus: "#e3b887", fata: "#cd9a5d", lateral: "#a97a45" },
     // Tencuială rece, ca lemnul să iasă în față. Aceleași trei trepte de lumină.
     wall: { sus: "#c3c6b6", fata: "#adb1a0", lateral: "#949889" },
+    concrete: { sus: "#c9c7c2", fata: "#b2b0aa", lateral: "#97958f" },
     grain: { sus: "#c9a06f", fata: "#b4834a", lateral: "#96693a" },
     /*
      * Contur subțire pe lemn, gros pe desenul tehnic.
@@ -282,10 +286,12 @@ function shade(hex: string, amount: number): string {
  * anume — să acopere treapta din spate — și orice nuanță i-ar sta în drum.
  */
 export function fillOf(ink: Palette, kind: FaceKind, tone: Tone, variant: number): string {
-  const base = kind === "perete" ? ink.wall[tone] : ink.fill[tone];
+  const base =
+    kind === "perete" ? ink.wall[tone] : kind === "beton" ? ink.concrete[tone] : ink.fill[tone];
   if (!ink.grain) return base;
-  // Zidul n-are scânduri, deci n-are de ce să difere de la o bucată la alta.
-  if (kind === "perete") return base;
+  // Nici zidul, nici betonul n-au scânduri: n-au de ce să difere de la o bucată
+  // la alta, iar o nuanță pe fiecare le-ar face să arate tot a lemn.
+  if (kind === "perete" || kind === "beton") return base;
   return shade(base, Math.max(-3, Math.min(3, variant)) * 0.05);
 }
 
@@ -410,7 +416,8 @@ function extentOf(pane: Pane, skipWalls = false): Box2 | null {
     if (p.y > maxY) maxY = p.y;
   };
   for (const polygon of pane.polygons) {
-    if (skipWalls && polygon.kind === "perete") continue;
+    // Cota e a scării: nici zidăria, nici betonul din jurul ei n-au ce căuta în ea.
+    if (skipWalls && (polygon.kind === "perete" || polygon.kind === "beton")) continue;
     polygon.points.forEach(eat);
   }
   for (const line of pane.lines) {
@@ -448,15 +455,30 @@ function viewPane(
   title: string,
   azimuth = 0,
 ): Pane {
-  const polygons: SheetPolygon[] = faceSet(build.solid, view, azimuth).map((face) => ({
+  /*
+   * Zidăria stă în plan și în izometric, nu în elevații.
+   *
+   * Planul o are fiindcă ea desenează casa scării, iar izometricul fiindcă îi
+   * dă adâncime. Dar o elevație de scară e o secțiune: te uiți la scară, nu la
+   * peretele din spatele ei. Desenată acolo, zidul umple toată silueta și
+   * acoperă tocmai ce arată vederea — panta, treapta și talpa de beton de sub
+   * ea. Nicio planșă de scări nu-l pune.
+   */
+  const sectioned = view === "fata" || view === "lateral";
+  const polygons: SheetPolygon[] = faceSet(build.solid, view, azimuth)
+    .filter((face) => !(sectioned && face.kind === "perete"))
+    .map((face) => ({
     points: face.points,
     weight: "main",
     kind: face.kind,
     tone: face.tone,
     variant: variantOf(face.step) + (face.kind === "contratreapta" ? RISER_SHADOW : 0),
     // Fibra se vede pe fețele întoarse spre ochi; pe zid și în umbră n-are ce căuta.
-    grain: face.tone === "lateral" || face.kind === "perete" ? [] : grainLines(face.points),
-  }));
+    grain:
+      face.tone === "lateral" || face.kind === "perete" || face.kind === "beton"
+        ? []
+        : grainLines(face.points),
+    }));
   return { id, title, polygons, lines: [], texts: [] };
 }
 

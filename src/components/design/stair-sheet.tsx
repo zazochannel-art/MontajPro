@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PALETTES, fillOf, layoutSheet, place, strokeOf } from "@/lib/design/sheet";
+import {
+  PAGE_TALL,
+  PAGE_WIDE,
+  PALETTES,
+  fillOf,
+  layoutSheet,
+  place,
+  strokeOf,
+} from "@/lib/design/sheet";
 import type { Finish, Palette, PlacedPane, Sheet, TextRole } from "@/lib/design/sheet";
 
 /**
@@ -92,13 +100,22 @@ export function StairSheet({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  /*
+   * Mărirea și mutarea stau într-o singură stare.
+   *
+   * Ținute separat, o apropiere de degete ar cere două schimbări deodată — una
+   * de zoom, una de poziție —, iar a doua ar citi poziția dinainte de prima.
+   * La un deget care se mișcă de zeci de ori pe secundă, desenul ar aluneca
+   * încet în lături fără ca cineva să-l fi tras.
+   */
+  const [view, setView] = useState({ zoom: 1, x: 0, y: 0 });
 
   /* Gestul stă în ref: la fiecare mișcare de deget, un render ar rămâne în urmă. */
-  const drag = useRef<{ x: number; y: number } | null>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
-  const pinch = useRef<number | null>(null);
+  /** Degetul rămas, pentru mutare. Se reașază când unul se ridică. */
+  const last = useRef<{ x: number; y: number } | null>(null);
+  /** Depărtarea și mijlocul dintre două degete, la ultima măsurare. */
+  const pinch = useRef<{ gap: number; x: number; y: number } | null>(null);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -125,11 +142,11 @@ export function StairSheet({
     const { page, panes } = layoutSheet(sheet, tall);
     // Pagina se încadrează în fereastră, iar zoom-ul se adaugă peste.
     const fit = Math.min(width / page.width, height / page.height);
-    const scale = fit * zoom;
+    const scale = fit * view.zoom;
     context.save();
     context.translate(
-      (width - page.width * scale) / 2 + pan.x,
-      (height - page.height * scale) / 2 + pan.y,
+      (width - page.width * scale) / 2 + view.x,
+      (height - page.height * scale) / 2 + view.y,
     );
     context.scale(scale, scale);
 
@@ -152,7 +169,7 @@ export function StairSheet({
     }
 
     context.restore();
-  }, [sheet, tall, finish, zoom, pan]);
+  }, [sheet, tall, finish, view]);
 
   useEffect(() => {
     draw();
@@ -166,11 +183,63 @@ export function StairSheet({
     return () => observer.disconnect();
   }, [draw]);
 
-  const spread = () => {
-    const values = [...pointers.current.values()];
-    if (values.length < 2) return null;
-    return Math.hypot(values[0].x - values[1].x, values[0].y - values[1].y);
+  const MIN_ZOOM = 0.4;
+  const MAX_ZOOM = 8;
+
+  /** Depărtarea și mijlocul dintre primele două degete. */
+  const gesture = () => {
+    const fingers = [...pointers.current.values()];
+    if (fingers.length < 2) return null;
+    return {
+      gap: Math.hypot(fingers[0].x - fingers[1].x, fingers[0].y - fingers[1].y),
+      x: (fingers[0].x + fingers[1].x) / 2,
+      y: (fingers[0].y + fingers[1].y) / 2,
+    };
   };
+
+  const moveBy = useCallback((dx: number, dy: number) => {
+    setView((current) => ({ ...current, x: current.x + dx, y: current.y + dy }));
+  }, []);
+
+  /**
+   * Mărește în jurul unui punct de pe ecran, nu în jurul mijlocului foii.
+   *
+   * Asta e deosebirea dintre o apropiere de degete care se simte firească și
+   * una care fuge: punctul de sub degete trebuie să rămână sub degete. Mărit
+   * față de mijloc, colțul la care te uiți o ia într-o parte și trebuie să
+   * tragi desenul înapoi după fiecare apropiere.
+   */
+  const zoomAt = useCallback(
+    (factor: number, clientX: number, clientY: number) => {
+      const wrap = wrapRef.current;
+      if (!wrap) return;
+      const frame = wrap.getBoundingClientRect();
+      if (frame.width <= 0 || frame.height <= 0) return;
+
+      const screenX = clientX - frame.left;
+      const screenY = clientY - frame.top;
+      const page = tall ? PAGE_TALL : PAGE_WIDE;
+      const fit = Math.min(frame.width / page.width, frame.height / page.height);
+
+      setView((current) => {
+        const zoomed = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, current.zoom * factor));
+        const before = fit * current.zoom;
+        const after = fit * zoomed;
+        if (before <= 0) return current;
+
+        // Punctul din foaie care stă acum sub deget.
+        const sheetX = (screenX - ((frame.width - page.width * before) / 2 + current.x)) / before;
+        const sheetY = (screenY - ((frame.height - page.height * before) / 2 + current.y)) / before;
+
+        return {
+          zoom: zoomed,
+          x: screenX - sheetX * after - (frame.width - page.width * after) / 2,
+          y: screenY - sheetY * after - (frame.height - page.height * after) / 2,
+        };
+      });
+    },
+    [tall],
+  );
 
   return (
     <div
@@ -180,47 +249,60 @@ export function StairSheet({
       onPointerDown={(event) => {
         event.currentTarget.setPointerCapture(event.pointerId);
         pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-        if (pointers.current.size === 2) pinch.current = spread();
-        else drag.current = { x: event.clientX, y: event.clientY };
+        if (pointers.current.size >= 2) {
+          pinch.current = gesture();
+          last.current = null;
+        } else {
+          last.current = { x: event.clientX, y: event.clientY };
+        }
       }}
       onPointerMove={(event) => {
         if (!pointers.current.has(event.pointerId)) return;
         pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
-        if (pointers.current.size === 2) {
-          const now = spread();
-          if (now && pinch.current) {
-            setZoom((value) => Math.min(6, Math.max(0.4, value * (now / pinch.current!))));
+        if (pointers.current.size >= 2) {
+          const now = gesture();
+          const before = pinch.current;
+          if (now && before) {
+            // Întâi mutarea mijlocului, apoi mărirea în jurul lui: două degete
+            // care se plimbă împreună trag foaia, nu doar o măresc pe loc.
+            moveBy(now.x - before.x, now.y - before.y);
+            if (before.gap > 0) zoomAt(now.gap / before.gap, now.x, now.y);
             pinch.current = now;
           }
           return;
         }
 
-        const from = drag.current;
-        if (!from) return;
-        setPan((value) => ({
-          x: value.x + (event.clientX - from.x),
-          y: value.y + (event.clientY - from.y),
-        }));
-        drag.current = { x: event.clientX, y: event.clientY };
+        const from = last.current;
+        if (!from) {
+          last.current = { x: event.clientX, y: event.clientY };
+          return;
+        }
+        moveBy(event.clientX - from.x, event.clientY - from.y);
+        last.current = { x: event.clientX, y: event.clientY };
       }}
       onPointerUp={(event) => {
         pointers.current.delete(event.pointerId);
-        if (pointers.current.size < 2) pinch.current = null;
-        if (pointers.current.size === 0) drag.current = null;
+        pinch.current = gesture();
+        /*
+         * Reazemul se mută pe degetul rămas.
+         *
+         * Fără asta, după ce ridici un deget din apropiere, mutarea pornește de
+         * la locul unde ai pus primul deget cu câteva secunde în urmă — și
+         * desenul sare într-o parte cât toată distanța dintre timp.
+         */
+        const left = [...pointers.current.values()];
+        last.current = left.length === 1 ? { ...left[0] } : null;
       }}
       onPointerCancel={(event) => {
         pointers.current.delete(event.pointerId);
         pinch.current = null;
-        drag.current = null;
+        last.current = null;
       }}
       onWheel={(event) => {
-        setZoom((value) => Math.min(6, Math.max(0.4, value * (event.deltaY < 0 ? 1.1 : 0.9))));
+        zoomAt(event.deltaY < 0 ? 1.12 : 1 / 1.12, event.clientX, event.clientY);
       }}
-      onDoubleClick={() => {
-        setZoom(1);
-        setPan({ x: 0, y: 0 });
-      }}
+      onDoubleClick={() => setView({ zoom: 1, x: 0, y: 0 })}
     >
       <canvas ref={canvasRef} className="block" />
     </div>

@@ -39,6 +39,10 @@ export interface CanvasSelection {
 }
 
 /** Cât de aproape de un punct trebuie apăsat ca să fie prins, în pixeli de ecran. */
+/** Capetele măririi, ca desenul să nu poată fi pierdut de pe ecran. */
+const MIN_SCALE = 0.02;
+const MAX_SCALE = 40;
+
 const GRAB = 18;
 /** Raza punctelor de control, tot în pixeli de ecran. */
 const HANDLE = 6;
@@ -390,11 +394,22 @@ export function DesignCanvas({
       pinch.current = spread;
       const midX = (a.x + b.x) / 2;
       const midY = (a.y + b.y) / 2;
-      setView((current) => ({
-        scale: current.scale * factor,
-        tx: midX - (midX - current.tx) * factor,
-        ty: midY - (midY - current.ty) * factor,
-      }));
+      setView((current) => {
+        /*
+         * Mărirea are capete.
+         *
+         * Fără ele, o apropiere de degete grăbită duce scara la o miime de
+         * pixel — desenul dispare de pe ecran și nu mai ai de ce să-l tragi
+         * înapoi, fiindcă nu se mai vede nimic de apucat.
+         */
+        const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, current.scale * factor));
+        const real = scale / current.scale;
+        return {
+          scale,
+          tx: midX - (midX - current.tx) * real,
+          ty: midY - (midY - current.ty) * real,
+        };
+      });
       return;
     }
 
@@ -431,6 +446,19 @@ export function DesignCanvas({
     if (pointers.current.size < 2) pinch.current = null;
     const state = drag.current;
     drag.current = null;
+
+    /*
+     * Dacă rămâne un deget pe ecran, el preia mutarea.
+     *
+     * Altfel, după o apropiere de degete, ridici unul și celălalt nu mai face
+     * nimic: trebuie să-l ridici și pe el și să atingi din nou. Pe un ecran
+     * mic, unde tocmai ai mărit ca să vezi o treaptă, asta se simte ca și cum
+     * s-ar fi blocat desenul.
+     */
+    const left = [...pointers.current.values()];
+    if (!state && left.length === 1) {
+      drag.current = { kind: "pan", id: null, lastX: left[0].x, lastY: left[0].y };
+    }
     // Abia la ridicarea degetului se scrie în istoric: o mișcare = un pas.
     if (state && state.kind !== "pan") onDocChange(doc, true);
   };

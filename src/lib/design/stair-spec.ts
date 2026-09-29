@@ -80,6 +80,16 @@ export interface StairSpec {
    * ce treapta are forma pe care o are.
    */
   walls: boolean;
+  /**
+   * Talpa de beton de sub trepte.
+   *
+   * Multe scări de casă sunt turnate în beton, iar montatorul le îmbracă în
+   * lemn. Desenată, talpa spune două lucruri deodată: pe ce se așază treptele
+   * și cât gol rămâne dedesubt.
+   */
+  concrete: boolean;
+  /** Grosimea tălpii de beton, măsurată perpendicular pe pantă. */
+  slab: number;
 }
 
 /**
@@ -106,6 +116,8 @@ export function defaultSpec(): StairSpec {
     turnAngle: 90,
     newel: 60,
     walls: true,
+    concrete: false,
+    slab: 120,
   };
 }
 
@@ -153,6 +165,8 @@ export function normalizeSpec(spec: StairSpec): StairSpec {
     newel: clamp(num(spec.newel), 0, 400),
     // Desenele salvate înainte n-au câmpul; acelea au fost făcute fără ziduri.
     walls: spec.walls === true,
+    concrete: spec.concrete === true,
+    slab: clamp(num(spec.slab), 60, 400),
   };
 }
 
