@@ -57,7 +57,8 @@ test("fără cot nu există trepte în evantai", () => {
 });
 
 test("cifrele scrise se regăsesc în corp", () => {
-  const spec = { ...defaultSpec(), totalRise: 2800, steps: 16, width: 900 };
+  // Fără zidărie: aici se măsoară scara, nu casa scării din jurul ei.
+  const spec = { ...defaultSpec(), totalRise: 2800, steps: 16, width: 900, walls: false };
   const box = boundsOf(buildStair(spec).solid);
   assert.ok(box);
   // Treapta de sus stă fix la înălțimea podelei de deasupra.
@@ -146,12 +147,16 @@ test("din fiecare parte se vede altceva, și nimic din spate", () => {
 
 test("de sus se văd exact fețele de sus", () => {
   // Șaisprezece blaturi și șaisprezece capace de contratreaptă, nimic altceva.
-  const build = buildStair({ ...defaultSpec(), steps: 16 });
+  const build = buildStair({ ...defaultSpec(), steps: 16, walls: false });
   assert.equal(faceSet(build.solid, "plan").length, 32);
 });
 
 test("fețele se așază de la depărtare spre apropiere", () => {
-  const faces = faceSet(buildStair(defaultSpec()).solid, "izometric");
+  // Zidăria are regula ei — stă în spate oricât de aproape ar fi — și se
+  // verifică separat. Între fețele scării, ordinea e cea din adâncime.
+  const faces = faceSet(buildStair(defaultSpec()).solid, "izometric").filter(
+    (face) => face.kind !== "perete",
+  );
   for (let i = 1; i < faces.length; i += 1) {
     assert.ok(faces[i].depth >= faces[i - 1].depth);
   }
@@ -221,4 +226,132 @@ test("o scară în evantai citită din poză vine cu cot", () => {
   const spec = fromDetection(detection({ kind: "evantai" }));
   assert.notEqual(spec.turn, "fara");
   assert.ok(spec.winders > 0);
+});
+
+/* ------------------------------------------------------------------ */
+/* Colțul cotului și zidăria                                           */
+/* ------------------------------------------------------------------ */
+
+const CORNER = {
+  ...defaultSpec(),
+  turn: "dreapta" as const,
+  turnAfter: 8,
+  winders: 3,
+  turnAngle: 90,
+  newel: 60,
+  width: 900,
+  tread: 280,
+};
+
+/*
+ * Greșeala pe care o prinde testul ăsta: treptele în evantai se opreau la o
+ * rază constantă în jurul stâlpului, așa că în plan colțul ieșea rotunjit și
+ * rămânea un triunghi de podea nefolosit în spatele lor. O scară se întoarce
+ * într-un colț de zidărie, iar treptele se taie ca să-l umple.
+ */
+test("treptele în evantai ajung până în colțul pătrat", () => {
+  const build = buildStair(CORNER);
+  // După opt trepte drepte, stâlpul e la (0, 8 × adâncime).
+  const pivot = { x: 0, y: 8 * CORNER.tread };
+  const radius = CORNER.newel + CORNER.width;
+
+  let reach = 0;
+  for (const tread of build.treads.filter((row) => row.winder)) {
+    for (const point of tread.outline) {
+      reach = Math.max(reach, Math.hypot(point.x - pivot.x, point.y - pivot.y));
+    }
+  }
+
+  // Colțul a două ziduri la 90° stă la rază × √2, nu la rază.
+  assert.ok(
+    Math.abs(reach - radius * Math.SQRT2) < 2,
+    `colțul e la ${Math.round(reach)} mm, se aștepta ${Math.round(radius * Math.SQRT2)}`,
+  );
+});
+
+test("colțul pătrat umple colțul, dar nu iese din ziduri", () => {
+  /*
+   * Diferența dintre arc și colț e arie, nu gabarit: punctul cel mai depărtat
+   * de stâlp sare de la rază la rază × √2, dar pe fiecare axă în parte
+   * treptele tot se opresc la zid. Dacă ar trece de el, scara ar fi desenată
+   * intrând în zidărie.
+   */
+  const build = buildStair(CORNER);
+  const pivot = { x: 0, y: 8 * CORNER.tread };
+  const radius = CORNER.newel + CORNER.width;
+
+  for (const tread of build.treads.filter((row) => row.winder)) {
+    for (const point of tread.outline) {
+      assert.ok(point.x >= pivot.x - radius - 1, "treapta trece prin zidul din stânga");
+      assert.ok(point.y <= pivot.y + radius + 1, "treapta trece prin zidul de jos");
+    }
+  }
+
+  /*
+   * Iar amprenta iese din brațe, nu din colț: pe lățime, zidul din stânga plus
+   * brațul de după cot; pe lungime, brațul dinainte plus zidul de jos, și
+   * nasul primei trepte, care iese în față.
+   */
+  const after = CORNER.steps - CORNER.turnAfter - CORNER.winders;
+  const size = footprint(build);
+  assert.equal(size.width, radius + after * CORNER.tread);
+  assert.equal(size.run, CORNER.turnAfter * CORNER.tread + radius + CORNER.nosing);
+});
+
+test("o întoarcere la 180° dă trei ziduri, adică o casă de scară în U", () => {
+  const half = buildStair({ ...CORNER, turnAfter: 7, winders: 4, turnAngle: 180 });
+  const pivot = { x: 0, y: 7 * CORNER.tread };
+  const radius = CORNER.newel + CORNER.width;
+
+  let reach = 0;
+  for (const tread of half.treads.filter((row) => row.winder)) {
+    for (const point of tread.outline) {
+      reach = Math.max(reach, Math.hypot(point.x - pivot.x, point.y - pivot.y));
+    }
+  }
+  // Tot colțuri de 90°: cel mai departe punct rămâne la rază × √2.
+  assert.ok(Math.abs(reach - radius * Math.SQRT2) < 2);
+});
+
+test("zidul apare doar când e cerut, și nu intră în gabarit", () => {
+  const withWalls = buildStair({ ...CORNER, walls: true });
+  const bare = buildStair({ ...CORNER, walls: false });
+
+  const walls = withWalls.solid.faces.filter((face) => face.kind === "perete");
+  assert.ok(walls.length > 0, "zidul lipsește");
+  assert.equal(bare.solid.faces.filter((face) => face.kind === "perete").length, 0);
+  // Cota spune cât ține scara; dacă ar cuprinde zidul, n-ar mai fi cifra pe care o tai.
+  assert.deepEqual(footprint(withWalls), footprint(bare));
+});
+
+/*
+ * Greșeala pe care o prinde testul ăsta: sensul „în afară” se lua față de
+ * mijlocul muchiei, iar pe un braț drept mijlocul cade chiar pe muchie, deci
+ * semnul ieșea la întâmplare — zidul fie dispărea, fie se așeza peste trepte.
+ */
+test("pe o scară dreaptă zidul stă lângă scară, nu peste ea", () => {
+  const build = buildStair({ ...defaultSpec(), walls: true, width: 900, newel: 60 });
+  const walls = build.solid.faces.filter((face) => face.kind === "perete");
+  assert.ok(walls.length > 0, "zidul lipsește pe scara dreaptă");
+
+  const outer = 60 + 900;
+  for (const face of walls) {
+    for (const point of face.points) {
+      // Muchia scării e la 960; zidul e dincolo de ea, niciodată înăuntru.
+      assert.ok(point.x >= outer - 1, `zidul intră peste trepte, la x = ${Math.round(point.x)}`);
+    }
+  }
+});
+
+test("zidăria se desenează în spatele scării, în toate vederile", () => {
+  const build = buildStair({ ...CORNER, walls: true });
+  for (const view of ["plan", "fata", "lateral", "izometric"] as const) {
+    const faces = faceSet(build.solid, view);
+    const lastWall = faces.map((face) => face.kind).lastIndexOf("perete");
+    const firstStair = faces.findIndex((face) => face.kind !== "perete");
+    assert.ok(lastWall >= 0, `${view}: zidul lipsește`);
+    assert.ok(firstStair >= 0, `${view}: scara lipsește`);
+    // Desenul e o secțiune: casa scării se taie ca să se vadă ce e înăuntru.
+    assert.ok(lastWall < firstStair, `${view}: zidul acoperă scara`);
+  }
 });

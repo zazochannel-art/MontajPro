@@ -62,6 +62,78 @@ function radial(pivot: Vec2, angle: number, side: number, radius: number): Vec2 
  * față și nu se adună la adâncime: adâncimea pe care calci rămâne cea din
  * formular, nasul e pe deasupra.
  */
+/**
+ * Pereții casei scării, ca unghiuri de normală.
+ *
+ * Scara nu se învârte în aer: se întoarce într-un colț de zidărie. Peretele
+ * dinaintea cotului și cel de după se întâlnesc la 90°, iar treptele în evantai
+ * se taie ca să umple colțul ăla — nu se opresc la o rază constantă. Diferența
+ * se vede cu ochiul liber în plan: cu rază constantă, colțul iese rotunjit și
+ * rămâne un triunghi de podea nefolosit; tăiate pe colț, treptele ajung până
+ * în zid, cum se și montează.
+ *
+ * La fiecare sfert de tură intră un perete nou, așa că o întoarcere la 180° dă
+ * trei pereți — adică exact o casă de scară în formă de U.
+ */
+function wallAngles(from: number, to: number, spin: number): number[] {
+  const quarter = (Math.PI / 2) * spin;
+  const out: number[] = [];
+  const passed = (a: number) => (spin > 0 ? a > to + 1e-9 : a < to - 1e-9);
+
+  for (let k = 0; k < 8; k += 1) {
+    const a = from + quarter * k;
+    if (passed(a)) break;
+    out.push(a);
+  }
+  if (Math.abs(out[out.length - 1] - to) > 1e-9) out.push(to);
+  return out;
+}
+
+/**
+ * Cât de departe de stâlp ajunge o rază până dă de zid.
+ *
+ * Fiecare perete e o dreaptă la distanța `radius` de stâlp; raza se oprește la
+ * primul pe care-l atinge. Din regula asta iese colțul pătrat, fără niciun caz
+ * special: lângă capete raza cade pe zidul din dreptul ei, iar la mijloc taie
+ * chiar colțul, la `radius × √2`.
+ */
+function reachOf(angle: number, walls: number[], radius: number): number {
+  const ray = across(angle);
+  let best = Infinity;
+  for (const wall of walls) {
+    const normal = across(wall);
+    const facing = ray.x * normal.x + ray.y * normal.y;
+    if (facing <= 1e-6) continue;
+    best = Math.min(best, radius / facing);
+  }
+  return Number.isFinite(best) ? best : radius;
+}
+
+/** Unghiurile colțurilor: la mijloc, între doi pereți vecini. */
+function cornerAngles(walls: number[]): number[] {
+  const out: number[] = [];
+  for (let i = 1; i < walls.length; i += 1) out.push((walls[i - 1] + walls[i]) / 2);
+  return out;
+}
+
+function between(from: number, to: number, value: number): boolean {
+  const low = Math.min(from, to);
+  const high = Math.max(from, to);
+  return value > low + 1e-9 && value < high - 1e-9;
+}
+
+/** Grosimea zidului și cât îl ridicăm. */
+const WALL_THICKNESS = 100;
+
+/**
+ * Scara întreagă: blaturi, contratrepte, conturul fiecărei trepte în plan și,
+ * dacă se cer, pereții pe partea din afara cotului.
+ *
+ * Contratreapta se ridică de la treapta de dedesubt până sub blatul de
+ * deasupra, iar nasul iese peste ea — de aceea se scade `nosing` la muchia din
+ * față și nu se adună la adâncime: adâncimea pe care calci rămâne cea din
+ * formular, nasul e pe deasupra.
+ */
 export function buildStair(input: StairSpec): StairBuild {
   const spec = normalizeSpec(input);
   const rise = spec.totalRise / spec.steps;
@@ -77,8 +149,29 @@ export function buildStair(input: StairSpec): StairBuild {
   const noseAngle = spec.nosing / mid;
   const riserAngle = spec.riserThickness / mid;
 
+  /*
+   * Pereții sunt ai casei scării, nu ai fiecărei trepte.
+   *
+   * Socotiți o dată, din unghiul cu care intră scara în cot și din cel cu care
+   * iese. Luați pe treaptă — adică între unghiul de început și cel de sfârșit
+   * al treptei alea — fiecare treaptă și-ar tăia propriul colț de 30°, iar din
+   * ele toate ar ieși tot un arc: exact rotunjirea de care scăpăm.
+   */
+  const turnEnd = (spin * (spec.turnAngle * Math.PI)) / 180;
+  const walls = delta !== 0 ? wallAngles(0, turnEnd, spin) : [0];
+  const corners = cornerAngles(walls);
+
   const faces: Face[] = [];
   const treads: TreadOutline[] = [];
+  /*
+   * Muchia dinspre zid, treaptă cu treaptă, fiecare punct cu stâlpul lui.
+   *
+   * Stâlpul se ține minte fiindcă din el se află încotro e „în afară”. Luat
+   * față de mijlocul muchiei, sensul iese la întâmplare pe un braț drept:
+   * mijlocul unei linii drepte cade chiar pe ea, deci nu spune de care parte e
+   * scara — și zidul fie dispare, fie se așază peste trepte.
+   */
+  const outerPath: { p: Vec2; ref: Vec2 }[] = [];
 
   let pivot: Vec2 = { x: 0, y: 0 };
   let angle = 0;
@@ -95,19 +188,25 @@ export function buildStair(input: StairSpec): StairBuild {
     if (winder) {
       const front = angle - spin * noseAngle;
       const back = angle + delta;
-      outline = [
-        radial(pivot, front, side, inner),
-        radial(pivot, front, side, outer),
-        radial(pivot, back, side, outer),
-        radial(pivot, back, side, inner),
-      ];
+
+      /*
+       * Muchia dinspre zid nu e un arc, ci linia frântă a zidăriei. Unde un
+       * colț cade în mijlocul treptei, intră ca punct în plus — altfel treapta
+       * ar tăia colțul pe diagonală și ar rămâne podea nefolosită în spatele ei.
+       */
+      const edge = [front, ...corners.filter((c) => between(front, back, c)), back];
+      const outerPoints = edge.map((a) => radial(pivot, a, side, reachOf(a, walls, outer)));
+
+      outline = [radial(pivot, front, side, inner), ...outerPoints, radial(pivot, back, side, inner)];
+
       const behind = angle + spin * riserAngle;
       riser = [
         radial(pivot, angle, side, inner),
-        radial(pivot, angle, side, outer),
-        radial(pivot, behind, side, outer),
+        radial(pivot, angle, side, reachOf(angle, walls, outer)),
+        radial(pivot, behind, side, reachOf(behind, walls, outer)),
         radial(pivot, behind, side, inner),
       ];
+      outerPath.push(...outerPoints.map((p) => ({ p, ref: pivot })));
     } else {
       const f = forward(angle);
       const a = radial(pivot, angle, side, inner);
@@ -119,6 +218,7 @@ export function buildStair(input: StairSpec): StairBuild {
         at(a, f, spec.tread),
       ];
       riser = [a, b, at(b, f, spec.riserThickness), at(a, f, spec.riserThickness)];
+      outerPath.push({ p: at(b, f, -spec.nosing), ref: pivot }, { p: at(b, f, spec.tread), ref: pivot });
     }
 
     faces.push(...prism(outline, treadBottom, top, "treapta", step));
@@ -139,7 +239,85 @@ export function buildStair(input: StairSpec): StairBuild {
     }
   }
 
+  if (spec.walls) faces.push(...wallFaces(simplify(outerPath), spec.totalRise));
+
   return { solid: { faces }, treads };
+}
+
+/**
+ * Muchia, fără punctele care nu cotesc nimic.
+ *
+ * Muchia dinspre zid se adună treaptă cu treaptă, deci un braț drept de
+ * șaisprezece trepte vine cu treizeci și două de puncte în linie. Lăsate așa,
+ * ar ieși treizeci și două de lespezi lipite una de alta, fiecare cu conturul
+ * ei — un zid cu dungi, desenat de patru ori mai lent. Rămân numai punctele
+ * unde zidul chiar cotește.
+ */
+function simplify(path: { p: Vec2; ref: Vec2 }[]): { p: Vec2; ref: Vec2 }[] {
+  if (path.length < 3) return path;
+  const out = [path[0]];
+
+  for (let i = 1; i < path.length - 1; i += 1) {
+    const from = out[out.length - 1].p;
+    const here = path[i].p;
+    const next = path[i + 1].p;
+    const ax = here.x - from.x;
+    const ay = here.y - from.y;
+    const bx = next.x - here.x;
+    const by = next.y - here.y;
+    // Produsul încrucișat, raportat la lungimi: cât de tare cotește aici.
+    const cross = Math.abs(ax * by - ay * bx);
+    const scale = Math.hypot(ax, ay) * Math.hypot(bx, by);
+    if (scale > 1e-9 && cross / scale > 1e-3) out.push(path[i]);
+  }
+
+  out.push(path[path.length - 1]);
+  return out;
+}
+
+/**
+ * Zidăria de pe latura dinspre exterior, ca o bandă de-a lungul muchiei.
+ *
+ * Fiecare segment de muchie primește o lespede împinsă în afară, iar „în afară”
+ * se hotărăște față de stâlpul segmentului — singurul punct despre care se știe
+ * sigur că e înăuntru. Pe un cot latura își schimbă direcția, deci o normală
+ * aleasă o dată pentru totdeauna ar întoarce zidul peste trepte tocmai la colț.
+ */
+function wallFaces(path: { p: Vec2; ref: Vec2 }[], height: number): Face[] {
+  if (path.length < 2) return [];
+
+  const faces: Face[] = [];
+  for (let i = 1; i < path.length; i += 1) {
+    const from = path[i - 1].p;
+    const to = path[i].p;
+    const inside = path[i - 1].ref;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const length = Math.hypot(dx, dy);
+    if (length < 1e-6) continue;
+
+    let normal = { x: -dy / length, y: dx / length };
+    const midpoint = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+    const away = { x: midpoint.x - inside.x, y: midpoint.y - inside.y };
+    if (normal.x * away.x + normal.y * away.y < 0) normal = { x: -normal.x, y: -normal.y };
+
+    faces.push(
+      ...prism(
+        [
+          from,
+          to,
+          { x: to.x + normal.x * WALL_THICKNESS, y: to.y + normal.y * WALL_THICKNESS },
+          { x: from.x + normal.x * WALL_THICKNESS, y: from.y + normal.y * WALL_THICKNESS },
+        ],
+        0,
+        height,
+        "perete",
+        0,
+      ),
+    );
+  }
+
+  return faces;
 }
 
 /** Mijlocul unui contur. Acolo se scrie numărul treptei, în plan. */
@@ -180,6 +358,8 @@ export function footprint(build: StairBuild): Footprint {
   let maxY = -Infinity;
 
   for (const face of build.solid.faces) {
+    // Gabaritul e al scării. Zidul o înconjoară, nu face parte din ea.
+    if (face.kind === "perete") continue;
     for (const p of face.points) {
       if (p.x < minX) minX = p.x;
       if (p.z < minZ) minZ = p.z;

@@ -1416,6 +1416,18 @@ try {
     !(await page.getByText("Ieșire nas").isVisible()),
   );
 
+  /*
+   * Pereții casei scării: din ei iese colțul pe care se taie treptele în
+   * evantai, deci se verifică și că se pot scoate, nu doar că există.
+   */
+  const withWalls = await page.locator("canvas").first().screenshot();
+  await page.getByText("Pereții casei scării").locator("..").locator('button[role="switch"]').click();
+  await page.waitForTimeout(500);
+  check(
+    "pereții se pot scoate de pe planșă",
+    !withWalls.equals(await page.locator("canvas").first().screenshot()),
+  );
+
   check(
     "planșa se exportă ca PDF",
     await page.getByRole("button", { name: "PDF" }).isEnabled(),

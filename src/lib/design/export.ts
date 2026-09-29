@@ -306,7 +306,7 @@ export function sheetToSvg(sheet: Sheet, tall = false, finish: Finish = "tehnic"
         })
         .join(" ");
       parts.push(
-        `<polygon points="${points}" fill="${fillOf(ink, polygon.tone, polygon.variant)}" stroke="${ink.outline}" stroke-width="${strokeOf(ink, polygon.weight)}" stroke-linejoin="round"/>`,
+        `<polygon points="${points}" fill="${fillOf(ink, polygon.kind, polygon.tone, polygon.variant)}" stroke="${ink.outline}" stroke-width="${strokeOf(ink, polygon.weight)}" stroke-linejoin="round"/>`,
       );
 
       // Firul se scrie imediat după fața lui, altfel îl acoperă următoarea față.
@@ -415,7 +415,7 @@ export async function downloadSheetPdf(sheet: Sheet, title: string, finish: Fini
       if (polygon.points.length < 3) continue;
       const points = polygon.points.map((p) => toPage(place(placed, p)));
 
-      const [pr, pg, pb] = rgb(fillOf(ink, polygon.tone, polygon.variant));
+      const [pr, pg, pb] = rgb(fillOf(ink, polygon.kind, polygon.tone, polygon.variant));
       pdf.setFillColor(pr, pg, pb);
       pdf.setDrawColor(or_, og, ob);
       // Grosimile planșei, aduse la milimetrii hârtiei.

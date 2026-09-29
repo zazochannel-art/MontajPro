@@ -25,7 +25,7 @@ export interface Vec2 {
 }
 
 /** La ce parte din scară ține o față. Desenul o folosește la grosimea liniei. */
-export type FaceKind = "treapta" | "contratreapta" | "podest";
+export type FaceKind = "treapta" | "contratreapta" | "podest" | "perete";
 
 /**
  * Încotro privește o față, după ce corpul a fost întors spre ochi.
@@ -249,7 +249,21 @@ export function faceSet(solid: Solid, view: ViewName, azimuth = 0): Projected[] 
     });
   }
 
-  out.sort((a, b) => a.depth - b.depth);
+  /*
+   * Zidăria stă în spate, întotdeauna, oricât de aproape ar fi de ochi.
+   *
+   * E convenția desenului în secțiune: casa scării se taie ca să se vadă ce e
+   * înăuntru. Fără ea, din orice unghi în care zidul cade între ochi și trepte
+   * n-ar mai rămâne de văzut decât un dreptunghi gri — și chiar așa ieșea
+   * vederea laterală.
+   *
+   * O regulă mai blândă, care taie numai zidul mai apropiat decât cea mai
+   * apropiată treaptă, nu e de ajuns: un zid poate fi mai departe decât treapta
+   * din față și totuși să le acopere pe cele din mijloc. Aici nu se caută
+   * exactitate fizică, ci un desen din care se înțelege scara.
+   */
+  const rank = (face: Projected) => (face.kind === "perete" ? 0 : 1);
+  out.sort((a, b) => rank(a) - rank(b) || a.depth - b.depth);
   return out;
 }
 

@@ -185,6 +185,16 @@ export function StairForm({
         />
       </label>
 
+      <label className="flex items-center justify-between rounded-lg border border-border p-3">
+        <span className="text-sm">
+          Pereții casei scării
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            Dau colțul pe care se taie treptele în evantai. Se desenează în spate.
+          </span>
+        </span>
+        <Switch checked={spec.walls} onCheckedChange={(on) => set("walls", on)} />
+      </label>
+
       <Field label="Cot">
         <Select value={spec.turn} onValueChange={(value) => set("turn", value as Turn)}>
           <SelectTrigger>
