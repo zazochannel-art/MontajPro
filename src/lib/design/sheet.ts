@@ -47,6 +47,8 @@ export interface Palette {
   frame: string;
   warn: string;
   fill: Record<Tone, string>;
+  /** Zidăria. Nu e lemn, deci nici culoare de lemn, nici fibră. */
+  wall: Record<Tone, string>;
   /** Firul lemnului. `null` pe desenul tehnic: acolo n-are ce căuta. */
   grain: Record<Tone, string> | null;
   /** Grosimea liniilor. Lemnul se desenează mai subțire decât cerneala. */
@@ -63,6 +65,7 @@ export const PALETTES: Record<Finish, Palette> = {
     warn: "#b45309",
     // Alb plin, nu transparent: treapta din față trebuie s-o acopere pe cea din spate.
     fill: { sus: "#ffffff", fata: "#ffffff", lateral: "#ffffff" },
+    wall: { sus: "#ffffff", fata: "#ffffff", lateral: "#ffffff" },
     grain: null,
     weight: { main: 2, detail: 0.6 },
   },
@@ -80,6 +83,8 @@ export const PALETTES: Record<Finish, Palette> = {
      * arăta ca un decupaj din carton maro.
      */
     fill: { sus: "#e3b887", fata: "#cd9a5d", lateral: "#a97a45" },
+    // Tencuială rece, ca lemnul să iasă în față. Aceleași trei trepte de lumină.
+    wall: { sus: "#c3c6b6", fata: "#adb1a0", lateral: "#949889" },
     grain: { sus: "#c9a06f", fata: "#b4834a", lateral: "#96693a" },
     /*
      * Contur subțire pe lemn, gros pe desenul tehnic.
@@ -276,9 +281,12 @@ function shade(hex: string, amount: number): string {
  * Pe desenul tehnic nu se întâmplă nimic: acolo umplerea albă are o treabă
  * anume — să acopere treapta din spate — și orice nuanță i-ar sta în drum.
  */
-export function fillOf(ink: Palette, tone: Tone, variant: number): string {
-  if (!ink.grain) return ink.fill[tone];
-  return shade(ink.fill[tone], Math.max(-3, Math.min(3, variant)) * 0.05);
+export function fillOf(ink: Palette, kind: FaceKind, tone: Tone, variant: number): string {
+  const base = kind === "perete" ? ink.wall[tone] : ink.fill[tone];
+  if (!ink.grain) return base;
+  // Zidul n-are scânduri, deci n-are de ce să difere de la o bucată la alta.
+  if (kind === "perete") return base;
+  return shade(base, Math.max(-3, Math.min(3, variant)) * 0.05);
 }
 
 /** Grosimea unei linii în cerneala dată. */
@@ -390,7 +398,7 @@ export function grainLines(points: Vec2[], count?: number): { a: Vec2; b: Vec2 }
   return out;
 }
 
-function extentOf(pane: Pane): Box2 | null {
+function extentOf(pane: Pane, skipWalls = false): Box2 | null {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -401,7 +409,10 @@ function extentOf(pane: Pane): Box2 | null {
     if (p.x > maxX) maxX = p.x;
     if (p.y > maxY) maxY = p.y;
   };
-  for (const polygon of pane.polygons) polygon.points.forEach(eat);
+  for (const polygon of pane.polygons) {
+    if (skipWalls && polygon.kind === "perete") continue;
+    polygon.points.forEach(eat);
+  }
   for (const line of pane.lines) {
     eat(line.a);
     eat(line.b);
@@ -443,8 +454,8 @@ function viewPane(
     kind: face.kind,
     tone: face.tone,
     variant: variantOf(face.step) + (face.kind === "contratreapta" ? RISER_SHADOW : 0),
-    // Fibra se vede pe fețele întoarse spre ochi; pe cele din umbră n-ar spune nimic.
-    grain: face.tone === "lateral" ? [] : grainLines(face.points),
+    // Fibra se vede pe fețele întoarse spre ochi; pe zid și în umbră n-are ce căuta.
+    grain: face.tone === "lateral" || face.kind === "perete" ? [] : grainLines(face.points),
   }));
   return { id, title, polygons, lines: [], texts: [] };
 }
@@ -456,12 +467,18 @@ function viewPane(
  * în afara desenului, niciodată peste el. Semnul lui `offset` iese din
  * convenția normalei: la o cotă trasă de jos în sus, afară înseamnă negativ.
  */
+/**
+ * Cele două cote de gabarit ale unei vederi.
+ *
+ * Se iau de pe scară, nu de pe zidărie: cota spune cât ține scara, iar dacă ar
+ * cuprinde și zidul, cifra de pe planșă n-ar mai fi cea pe care o tai.
+ */
 function frameDimensions(
   pane: Pane,
   across: string,
   down: string,
 ): void {
-  const box = extentOf(pane);
+  const box = extentOf(pane, true);
   if (!box) return;
   const style = styleFor(box);
   const gap = gapFor(box, 0);

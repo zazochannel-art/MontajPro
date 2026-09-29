@@ -382,16 +382,16 @@ test("nuanța blatului e statornică și mică", () => {
 test("umplerea albă a desenului tehnic nu se nuanțează", () => {
   // Albul de acolo are o treabă: acoperă treapta din spate. Orice nuanță încurcă.
   for (const variant of [-3, -1, 0, 1, 3]) {
-    assert.equal(fillOf(PALETTES.tehnic, "sus", variant), PALETTES.tehnic.fill.sus);
+    assert.equal(fillOf(PALETTES.tehnic, "treapta", "sus", variant), PALETTES.tehnic.fill.sus);
   }
 });
 
 test("pe lemn nuanța mișcă culoarea, dar nu oricât", () => {
-  const base = fillOf(PALETTES.lemn, "sus", 0);
+  const base = fillOf(PALETTES.lemn, "treapta", "sus", 0);
   assert.equal(base, PALETTES.lemn.fill.sus);
-  assert.notEqual(fillOf(PALETTES.lemn, "sus", 1), base);
+  assert.notEqual(fillOf(PALETTES.lemn, "treapta", "sus", 1), base);
   // Peste limită se oprește: o față nu are voie să iasă din paletă.
-  assert.equal(fillOf(PALETTES.lemn, "sus", 9), fillOf(PALETTES.lemn, "sus", 3));
+  assert.equal(fillOf(PALETTES.lemn, "treapta", "sus", 9), fillOf(PALETTES.lemn, "treapta", "sus", 3));
 });
 
 /*

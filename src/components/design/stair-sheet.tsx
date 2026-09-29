@@ -38,7 +38,7 @@ function drawPane(context: CanvasRenderingContext2D, placed: PlacedPane, ink: Pa
     });
     context.closePath();
     // Umplut în plin, ca treapta din față s-o acopere pe cea din spate.
-    context.fillStyle = fillOf(ink, polygon.tone, polygon.variant);
+    context.fillStyle = fillOf(ink, polygon.kind, polygon.tone, polygon.variant);
     context.fill();
     context.strokeStyle = ink.outline;
     context.lineWidth = strokeOf(ink, polygon.weight);

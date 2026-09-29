@@ -72,6 +72,14 @@ export interface StairSpec {
   turnAngle: number;
   /** Raza stâlpului din colț — de la el pornesc treptele în evantai. */
   newel: number;
+  /**
+   * Zidăria pe latura dinspre exterior.
+   *
+   * O scară se montează într-o casă de scară, iar zidul nu e podoabă: el dă
+   * colțul pătrat pe care se taie treptele în evantai și se vede în desen de
+   * ce treapta are forma pe care o are.
+   */
+  walls: boolean;
 }
 
 /**
@@ -97,6 +105,7 @@ export function defaultSpec(): StairSpec {
     winders: 3,
     turnAngle: 90,
     newel: 60,
+    walls: true,
   };
 }
 
@@ -142,6 +151,8 @@ export function normalizeSpec(spec: StairSpec): StairSpec {
     winders,
     turnAngle: clamp(num(spec.turnAngle), 15, 180),
     newel: clamp(num(spec.newel), 0, 400),
+    // Desenele salvate înainte n-au câmpul; acelea au fost făcute fără ziduri.
+    walls: spec.walls === true,
   };
 }
 
