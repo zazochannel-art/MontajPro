@@ -118,3 +118,47 @@ test("fiecare preț știe de pe ce lucrare vine", () => {
   );
   assert.deepEqual(trend?.points.map((point) => point.job_id), ["vechi", "nou"]);
 });
+
+/*
+ * Greșeala pe care o prinde testul ăsta: punctele se așezau după zi, nu după
+ * clipă. Două cumpărături din aceeași zi ieșeau la egalitate, iar ordinea lor
+ * rămânea cea în care se întâmplau să vină rândurile — după o reîncărcare de
+ * pagină, ordinea cheilor din baza locală, adică niște id-uri aleatoare. Așa
+ * că aceleași două prețuri arătau „+25%” sau „−20%”, după noroc.
+ */
+test("două cumpărări în aceeași zi se așază după ceas, nu după noroc", () => {
+  const dimineata = line("2026-05-04", 160, {
+    id: "zz-scris-primul",
+    created_at: "2026-05-04T08:00:00.000Z",
+  });
+  const seara = line("2026-05-04", 200, {
+    id: "aa-scris-al-doilea",
+    created_at: "2026-05-04T17:30:00.000Z",
+  });
+
+  // Cum vin din memorie, în ordinea scrierii; și cum vin din baza locală,
+  // unde cheia e un id aleator — aici, invers.
+  const dinMemorie = priceTrend([dimineata, seara], "parchet");
+  const dinBaza = priceTrend([seara, dimineata], "parchet");
+
+  assert.ok(dinMemorie && dinBaza);
+  assert.deepEqual(dinBaza, dinMemorie);
+
+  assert.equal(dinBaza.first, 160);
+  assert.equal(dinBaza.last, 200);
+  assert.equal(dinBaza.change, 25);
+  assert.equal(dinBaza.direction, "sus");
+});
+
+test("ziua rămâne pentru scris pe ecran, chiar dacă ordinea vine din clipă", () => {
+  const trend = priceTrend(
+    [
+      line("2026-05-04", 200, { created_at: "2026-05-04T17:30:00.000Z" }),
+      line("2026-05-04", 160, { created_at: "2026-05-04T08:00:00.000Z" }),
+    ],
+    "parchet",
+  );
+  assert.ok(trend);
+  // Pe ecran scrie ziua, nu ora: „+25% față de 4 mai”.
+  assert.equal(trend.points[0].day, "2026-05-04");
+});
