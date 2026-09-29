@@ -13,8 +13,10 @@ import { num } from "./utils";
 import type { JobMaterial } from "./types";
 
 export interface PricePoint {
-  /** ISO date — ziua în care s-a trecut pe lucrare. */
+  /** ISO date — ziua în care s-a trecut pe lucrare. Pentru scris pe ecran. */
   day: string;
+  /** Clipa întreagă. După ea se așază, nu după zi. */
+  at: string;
   price: number;
   job_id: string;
 }
@@ -52,10 +54,21 @@ export function priceTrend(
     )
     .map((row) => ({
       day: row.created_at.slice(0, 10),
+      at: row.created_at,
       price: num(row.unit_price),
       job_id: row.job_id,
     }))
-    .sort((a, b) => a.day.localeCompare(b.day));
+    /*
+     * După clipă, nu după zi.
+     *
+     * Cu ziua, două cumpărături din aceeași zi ies la egalitate, iar ordinea
+     * lor rămâne cea în care se întâmplă să vină rândurile. După o reîncărcare
+     * de pagină ele vin din ordinea cheilor din baza locală, adică din niște
+     * id-uri aleatoare — și atunci aceleași două prețuri arată „+25%” sau
+     * „−20%”, după noroc. Furnizorul nu s-a schimbat între timp; doar noi
+     * citeam istoricul invers.
+     */
+    .sort((a, b) => a.at.localeCompare(b.at));
 
   if (points.length < 2) return null;
 
