@@ -1472,6 +1472,83 @@ try {
     await page.getByRole("button", { name: "PDF" }).isEnabled(),
   );
 
+  /*
+   * Talpa de beton: scara turnată are sub trepte o placă înclinată, așa cum se
+   * vede în secțiunea unui constructor. Se verifică pe planșă, nu în formular.
+   */
+  const faraBeton = await page.locator("canvas").first().screenshot();
+  await page.getByText("Talpă de beton").locator("..").locator('button[role="switch"]').click();
+  await page.waitForTimeout(500);
+  check(
+    "talpa de beton se vede pe planșă",
+    !faraBeton.equals(await page.locator("canvas").first().screenshot()),
+  );
+  check("grosimea tălpii se poate schimba", await seen(page.getByText("Grosimea tălpii")));
+
+  /*
+   * Degetul pe planșă. Trei lucruri se pot strica separat, deci se verifică
+   * separat:
+   *
+   *  1. mijlocul desenului chiar e desenul. O bară lipită de marginea de jos se
+   *     ridică peste ce e înaintea ei în pagină, adică peste planșă, și înghite
+   *     atingerea fără să se vadă de ce: desenul se vede, dar nu-l poți mișca.
+   *  2. un deget îl mută;
+   *  3. două degete îl măresc.
+   *
+   * Atingerile se trimit prin CDP, fiindcă `mouse` nu naște `pointerdown` cu
+   * două degete și n-ar verifica tocmai ce s-a stricat pe telefon.
+   */
+  // Cum stă omul de fapt: cu panoul de cifre strîns, ca să vadă desenul mare.
+  // Cu panoul deschis pagina e lungă și orice bară lipită plutește peste
+  // formular, nu peste planșă — adică exact cazul în care greșeala nu se vede.
+  await page.getByRole("button", { name: "Ascunde cifrele" }).click();
+  await page.waitForTimeout(400);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(200);
+
+  const sheetBox = await page.locator("canvas").first().boundingBox();
+  const mx = sheetBox.x + sheetBox.width / 2;
+  const my = sheetBox.y + sheetBox.height / 2;
+  const subDeget = await page.evaluate(
+    ([x, y]) => document.elementFromPoint(x, y)?.tagName ?? "nimic",
+    [mx, my],
+  );
+  check("mijlocul planșei e planșa, nu altceva peste ea", subDeget === "CANVAS", `am găsit ${subDeget}`);
+
+  // Marginea de jos a planșei trebuie să rămână deasupra meniului fix.
+  const navTop = await page.evaluate(() => {
+    const nav = document.querySelector("nav.fixed, nav[class*='fixed']");
+    return nav ? nav.getBoundingClientRect().top : Number.POSITIVE_INFINITY;
+  });
+  check(
+    "planșa se termină deasupra meniului de jos",
+    sheetBox.y + sheetBox.height <= navTop,
+    `planșa ajunge la ${Math.round(sheetBox.y + sheetBox.height)}, meniul începe la ${Math.round(navTop)}`,
+  );
+
+  const touch = await page.context().newCDPSession(page);
+  const drawn = () => page.locator("canvas").first().screenshot();
+  const finger = (type, points) =>
+    touch.send("Input.dispatchTouchEvent", { type, touchPoints: points });
+
+  const inainteDeMutare = await drawn();
+  await finger("touchStart", [{ x: mx, y: my, id: 1 }]);
+  for (let i = 1; i <= 5; i++) await finger("touchMove", [{ x: mx + i * 10, y: my + i * 5, id: 1 }]);
+  await finger("touchEnd", []);
+  await page.waitForTimeout(400);
+  check("planșa se mută cu un deget", !inainteDeMutare.equals(await drawn()));
+
+  const inainteDeMarire = await drawn();
+  const pair = (gap) => [
+    { x: mx - gap, y: my, id: 1 },
+    { x: mx + gap, y: my, id: 2 },
+  ];
+  await finger("touchStart", pair(50));
+  for (let i = 1; i <= 5; i++) await finger("touchMove", pair(50 + i * 12));
+  await finger("touchEnd", []);
+  await page.waitForTimeout(400);
+  check("planșa se mărește cu două degete", !inainteDeMarire.equals(await drawn()));
+
   /* ----------------------------- zona sigură ----------------------- */
   section("Zona sigură (telefon cu aplicația instalată)");
 

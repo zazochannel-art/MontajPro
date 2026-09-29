@@ -195,6 +195,30 @@ export function StairForm({
         <Switch checked={spec.walls} onCheckedChange={(on) => set("walls", on)} />
       </label>
 
+      <label className="flex items-center justify-between rounded-lg border border-border p-3">
+        <span className="text-sm">
+          Talpă de beton
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            Scara turnată, îmbrăcată în lemn. Se vede pe ce se așază treptele.
+          </span>
+        </span>
+        <Switch checked={spec.concrete} onCheckedChange={(on) => set("concrete", on)} />
+      </label>
+
+      {spec.concrete && (
+        <Field label="Grosimea tălpii" hint="Măsurată perpendicular pe pantă, ca la turnare.">
+          <NumberInput
+            value={spec.slab}
+            onChange={(value) => set("slab", value)}
+            stepper={false}
+            step={10}
+            min={60}
+            max={400}
+            suffix="mm"
+          />
+        </Field>
+      )}
+
       <Field label="Cot">
         <Select value={spec.turn} onValueChange={(value) => set("turn", value as Turn)}>
           <SelectTrigger>

@@ -21,6 +21,7 @@ import {
 } from "../src/lib/design/stair-spec.ts";
 import { bestAzimuth, buildStair, footprint, outlineCenter } from "../src/lib/design/stair-solid.ts";
 import { boundsOf, faceSet, project, rotateY } from "../src/lib/design/solid.ts";
+import { buildSheet } from "../src/lib/design/sheet.ts";
 import type { DesignDetection } from "../src/lib/design/model.ts";
 
 test("scara implicită se urcă comod", () => {
@@ -353,5 +354,134 @@ test("zidăria se desenează în spatele scării, în toate vederile", () => {
     assert.ok(firstStair >= 0, `${view}: scara lipsește`);
     // Desenul e o secțiune: casa scării se taie ca să se vadă ce e înăuntru.
     assert.ok(lastWall < firstStair, `${view}: zidul acoperă scara`);
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* Talpa de beton și zidul în pantă                                    */
+/* ------------------------------------------------------------------ */
+
+const CONCRETE = { ...defaultSpec(), concrete: true, slab: 120, steps: 10, totalRise: 1750 };
+
+test("betonul apare doar când e cerut și nu intră în gabarit", () => {
+  const cu = buildStair(CONCRETE);
+  const fara = buildStair({ ...CONCRETE, concrete: false });
+  assert.ok(cu.solid.faces.some((face) => face.kind === "beton"));
+  assert.ok(!fara.solid.faces.some((face) => face.kind === "beton"));
+  // Cota e a scării; talpa o poartă, nu face parte din ea.
+  assert.deepEqual(footprint(cu), footprint(fara));
+});
+
+/*
+ * Greșeala pe care ar prinde-o testul ăsta: o talpă ridicată drept sub fiecare
+ * treaptă și tăiată pe urmă. Fundul i-ar ieși în trepte — o scară sub scară —
+ * în loc de panta continuă care se vede pe orice scară de beton din lateral.
+ */
+test("talpa coboară în pantă continuă, nu în trepte", () => {
+  const faces = buildStair(CONCRETE).solid.faces.filter((face) => face.kind === "beton");
+  const rise = CONCRETE.totalRise / CONCRETE.steps;
+
+  // Cotele la care stă fiecare placă, fără repetări.
+  const levels = new Map<number, number[]>();
+  for (const face of faces) {
+    const rows = levels.get(face.step) ?? [];
+    for (const point of face.points) {
+      const y = Math.round(point.y * 10) / 10;
+      if (!rows.includes(y)) rows.push(y);
+    }
+    levels.set(face.step, rows);
+  }
+
+  /*
+   * O placă în pantă are trei cote: fundul din față, fundul din spate și fața
+   * de sus. Cele două funduri sunt la exact o înălțime de treaptă unul de
+   * altul — de acolo se leagă placa următoare, fără prag.
+   *
+   * Ridicată drept și tăiată pe urmă, placa ar avea un singur fund, iar
+   * saltul până la fața de sus ar fi altă cifră. Testul se uită la primele
+   * două cote de jos, fiindcă acolo se vede deosebirea; suma sau adâncimea
+   * plăcii ies la fel în ambele cazuri și n-ar prinde nimic.
+   *
+   * Se începe de la a treia treaptă: sub primele, talpa dă de podea și se
+   * oprește acolo, deci fundul din față e tăiat.
+   */
+  for (let step = 3; step <= CONCRETE.steps; step += 1) {
+    const rows = (levels.get(step) ?? []).slice().sort((a, b) => a - b);
+    assert.ok(rows.length >= 3, `placa ${step} are o singură cotă de fund`);
+    assert.ok(
+      Math.abs(rows[1] - rows[0] - rise) < 1,
+      `placa ${step} are fundul în prag de ${Math.round(rows[1] - rows[0])} mm, nu în pantă`,
+    );
+  }
+});
+
+test("talpa se așază pe podea sub primele trepte", () => {
+  const faces = buildStair(CONCRETE).solid.faces.filter((face) => face.kind === "beton");
+  const floor = Math.min(...faces.flatMap((face) => face.points.map((p) => p.y)));
+  // Sub podea nu se coboară: acolo talpa se îngroașă și se reazemă.
+  assert.equal(floor, 0);
+});
+
+test("betonul stă sub blatul de lemn, nu peste el", () => {
+  const build = buildStair(CONCRETE);
+  const rise = CONCRETE.totalRise / CONCRETE.steps;
+  for (const face of build.solid.faces.filter((f) => f.kind === "beton")) {
+    const top = Math.max(...face.points.map((p) => p.y));
+    // Fața de sus a betonului e chiar fundul blatului treptei lui.
+    assert.ok(top <= face.step * rise - CONCRETE.thickness + 0.001);
+  }
+});
+
+/*
+ * Greșeala pe care o prinde testul ăsta: un zid ridicat drept pe toată
+ * înălțimea etajului. Iese un panou cât peretele unei camere, scara pare
+ * lipită pe el, iar în vederi acoperă tocmai ce era de arătat.
+ */
+test("zidul urcă odată cu scara, nu drept de la podea la tavan", () => {
+  const build = buildStair({ ...defaultSpec(), walls: true });
+  const walls = build.solid.faces.filter((face) => face.kind === "perete");
+  assert.ok(walls.length > 0);
+
+  /*
+   * Se numără cotele de deasupra podelei.
+   *
+   * Un zid drept are una singură — tavanul —, oricâte lespezi ar avea. Unul
+   * care urcă are cel puțin două, fiindcă muchia lui de sus e înclinată. Pe un
+   * braț drept lespedea e una singură, așa că ies exact două cote; pe o scară
+   * cotită, mai multe.
+   *
+   * Măsurat altfel, de pildă ca diferență între cel mai de jos și cel mai de
+   * sus punct, cifra iese aceeași în ambele cazuri: și zidul drept pleacă de la
+   * zero și ajunge la tavan.
+   */
+  const levels = new Set<number>();
+  for (const face of walls) {
+    for (const point of face.points) levels.add(Math.round(point.y));
+  }
+  const above = [...levels].filter((y) => y > 0);
+  assert.ok(
+    above.length > 1,
+    `muchia de sus a zidului e orizontală, la ${above[0]} mm: e un panou drept`,
+  );
+
+  // Și nu trece de etaj.
+  assert.ok(Math.max(...levels) <= defaultSpec().totalRise);
+});
+
+test("elevațiile sunt secțiuni: zidul nu apare în ele", () => {
+  const sheet = buildSheet({ ...defaultSpec(), walls: true, concrete: true }, "Scară");
+  for (const id of ["fata", "lateral"]) {
+    const pane = sheet.panes.find((row) => row.id === id);
+    assert.ok(pane);
+    assert.ok(
+      !pane.polygons.some((polygon) => polygon.kind === "perete"),
+      `${id}: zidul umple silueta și acoperă panta`,
+    );
+    // Dar betonul rămâne: el e chiar ce arată vederea.
+    assert.ok(pane.polygons.some((polygon) => polygon.kind === "beton"), `${id}: lipsește betonul`);
+  }
+  for (const id of ["plan", "izometric"]) {
+    const pane = sheet.panes.find((row) => row.id === id);
+    assert.ok(pane?.polygons.some((polygon) => polygon.kind === "perete"), `${id}: lipsește zidul`);
   }
 });

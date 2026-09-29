@@ -15,7 +15,7 @@
  */
 import type { StairSpec } from "./stair-spec";
 import { normalizeSpec } from "./stair-spec";
-import { prism, project, rotateY } from "./solid";
+import { prism, prismVar, project, rotateY } from "./solid";
 import type { Face, Solid, Vec2, Vec3 } from "./solid";
 
 /** Conturul unei trepte în plan, cu înălțimea la care stă. */
@@ -122,8 +122,19 @@ function between(from: number, to: number, value: number): boolean {
   return value > low + 1e-9 && value < high - 1e-9;
 }
 
-/** Grosimea zidului și cât îl ridicăm. */
+/** Grosimea zidului. */
 const WALL_THICKNESS = 100;
+
+/**
+ * Cât urcă zidul peste treapta din dreptul lui.
+ *
+ * Zidul nu se desenează pe toată înălțimea etajului: ridicat drept, iese un
+ * panou cât peretele unei camere, iar scara pare lipită pe el în loc să stea
+ * lângă el. Tăiat în pantă, la o statură de om peste treaptă, se citește ca un
+ * zid de casă a scării — ca în desenele de prezentare, unde zidăria e secționată
+ * anume ca să se vadă scara dinăuntru.
+ */
+const WALL_ABOVE = 500;
 
 /**
  * Scara întreagă: blaturi, contratrepte, conturul fiecărei trepte în plan și,
@@ -161,6 +172,18 @@ export function buildStair(input: StairSpec): StairBuild {
   const walls = delta !== 0 ? wallAngles(0, turnEnd, spin) : [0];
   const corners = cornerAngles(walls);
 
+  /*
+   * Talpa de beton: o placă în pantă, pe sub colțurile treptelor.
+   *
+   * `k` e cât coboară talpa sub colțul treptei, măsurat pe verticală. Grosimea
+   * se dă perpendicular pe pantă — așa se toarnă și așa se armează —, iar pe
+   * verticală iese mai mare cu cât panta e mai abruptă: de aia se înmulțește
+   * cu lungimea ipotenuzei unui pas.
+   */
+  const k = spec.slab * Math.hypot(1, rise / spec.tread);
+  // Sub podea nu se coboară: acolo talpa se îngroașă și se așază pe placă.
+  const soffit = (index: number) => Math.max(0, index * rise - k);
+
   const faces: Face[] = [];
   const treads: TreadOutline[] = [];
   /*
@@ -171,7 +194,7 @@ export function buildStair(input: StairSpec): StairBuild {
    * mijlocul unei linii drepte cade chiar pe ea, deci nu spune de care parte e
    * scara — și zidul fie dispare, fie se așază peste trepte.
    */
-  const outerPath: { p: Vec2; ref: Vec2 }[] = [];
+  const outerPath: { p: Vec2; ref: Vec2; top: number }[] = [];
 
   let pivot: Vec2 = { x: 0, y: 0 };
   let angle = 0;
@@ -184,6 +207,9 @@ export function buildStair(input: StairSpec): StairBuild {
 
     let outline: Vec2[];
     let riser: Vec2[];
+    // Conturul betonului e al treptei, fără nas: betonul nu iese în consolă.
+    let core: Vec2[];
+    let coreFront: number;
 
     if (winder) {
       const front = angle - spin * noseAngle;
@@ -199,6 +225,15 @@ export function buildStair(input: StairSpec): StairBuild {
 
       outline = [radial(pivot, front, side, inner), ...outerPoints, radial(pivot, back, side, inner)];
 
+      const coreEdge = [angle, ...corners.filter((c) => between(angle, back, c)), back];
+      core = [
+        radial(pivot, angle, side, inner),
+        ...coreEdge.map((a) => radial(pivot, a, side, reachOf(a, walls, outer))),
+        radial(pivot, back, side, inner),
+      ];
+      // Tot două: colțul de la stâlp și cel de la zid, ambele pe muchia din față.
+      coreFront = 2;
+
       const behind = angle + spin * riserAngle;
       riser = [
         radial(pivot, angle, side, inner),
@@ -206,7 +241,7 @@ export function buildStair(input: StairSpec): StairBuild {
         radial(pivot, behind, side, reachOf(behind, walls, outer)),
         radial(pivot, behind, side, inner),
       ];
-      outerPath.push(...outerPoints.map((p) => ({ p, ref: pivot })));
+      outerPath.push(...outerPoints.map((p) => ({ p, ref: pivot, top })));
     } else {
       const f = forward(angle);
       const a = radial(pivot, angle, side, inner);
@@ -218,7 +253,9 @@ export function buildStair(input: StairSpec): StairBuild {
         at(a, f, spec.tread),
       ];
       riser = [a, b, at(b, f, spec.riserThickness), at(a, f, spec.riserThickness)];
-      outerPath.push({ p: at(b, f, -spec.nosing), ref: pivot }, { p: at(b, f, spec.tread), ref: pivot });
+      core = [a, b, at(b, f, spec.tread), at(a, f, spec.tread)];
+      coreFront = 2;
+      outerPath.push({ p: at(b, f, -spec.nosing), ref: pivot, top }, { p: at(b, f, spec.tread), ref: pivot, top });
     }
 
     faces.push(...prism(outline, treadBottom, top, "treapta", step));
@@ -228,6 +265,18 @@ export function buildStair(input: StairSpec): StairBuild {
       if (treadBottom > bottom) {
         faces.push(...prism(riser, bottom, treadBottom, "contratreapta", step));
       }
+    }
+
+    if (spec.concrete) {
+      /*
+       * Fundul plăcii coboară de la o treaptă la alta, nu în trepte: punctele
+       * din față stau pe panta de sub colțul dinainte, cele din spate pe cea de
+       * sub colțul următor. Așa se leagă o placă de alta într-o pantă continuă,
+       * cum se vede pe orice scară de beton privită din lateral.
+       */
+      const bottoms = core.map((_, index) => soffit(index < coreFront ? i : i + 1));
+      const tops = core.map(() => treadBottom);
+      faces.push(...prismVar(core, bottoms, tops, "beton", step));
     }
 
     treads.push({ step, outline, top, winder });
@@ -253,9 +302,9 @@ export function buildStair(input: StairSpec): StairBuild {
  * ei — un zid cu dungi, desenat de patru ori mai lent. Rămân numai punctele
  * unde zidul chiar cotește.
  */
-function simplify(path: { p: Vec2; ref: Vec2 }[]): { p: Vec2; ref: Vec2 }[] {
+function simplify<T extends { p: Vec2 }>(path: T[]): T[] {
   if (path.length < 3) return path;
-  const out = [path[0]];
+  const out: T[] = [path[0]];
 
   for (let i = 1; i < path.length - 1; i += 1) {
     const from = out[out.length - 1].p;
@@ -283,7 +332,7 @@ function simplify(path: { p: Vec2; ref: Vec2 }[]): { p: Vec2; ref: Vec2 }[] {
  * sigur că e înăuntru. Pe un cot latura își schimbă direcția, deci o normală
  * aleasă o dată pentru totdeauna ar întoarce zidul peste trepte tocmai la colț.
  */
-function wallFaces(path: { p: Vec2; ref: Vec2 }[], height: number): Face[] {
+function wallFaces(path: { p: Vec2; ref: Vec2; top: number }[], ceiling: number): Face[] {
   if (path.length < 2) return [];
 
   const faces: Face[] = [];
@@ -301,19 +350,17 @@ function wallFaces(path: { p: Vec2; ref: Vec2 }[], height: number): Face[] {
     const away = { x: midpoint.x - inside.x, y: midpoint.y - inside.y };
     if (normal.x * away.x + normal.y * away.y < 0) normal = { x: -normal.x, y: -normal.y };
 
+    // Zidul urcă odată cu treapta din dreptul lui, dar nu trece de etaj.
+    const hereTop = Math.min(ceiling, path[i - 1].top + WALL_ABOVE);
+    const nextTop = Math.min(ceiling, path[i].top + WALL_ABOVE);
+    const outline = [
+      from,
+      to,
+      { x: to.x + normal.x * WALL_THICKNESS, y: to.y + normal.y * WALL_THICKNESS },
+      { x: from.x + normal.x * WALL_THICKNESS, y: from.y + normal.y * WALL_THICKNESS },
+    ];
     faces.push(
-      ...prism(
-        [
-          from,
-          to,
-          { x: to.x + normal.x * WALL_THICKNESS, y: to.y + normal.y * WALL_THICKNESS },
-          { x: from.x + normal.x * WALL_THICKNESS, y: from.y + normal.y * WALL_THICKNESS },
-        ],
-        0,
-        height,
-        "perete",
-        0,
-      ),
+      ...prismVar(outline, [0, 0, 0, 0], [hereTop, nextTop, nextTop, hereTop], "perete", 0),
     );
   }
 
@@ -358,8 +405,8 @@ export function footprint(build: StairBuild): Footprint {
   let maxY = -Infinity;
 
   for (const face of build.solid.faces) {
-    // Gabaritul e al scării. Zidul o înconjoară, nu face parte din ea.
-    if (face.kind === "perete") continue;
+    // Gabaritul e al scării. Zidul și betonul o poartă, nu fac parte din ea.
+    if (face.kind === "perete" || face.kind === "beton") continue;
     for (const p of face.points) {
       if (p.x < minX) minX = p.x;
       if (p.z < minZ) minZ = p.z;

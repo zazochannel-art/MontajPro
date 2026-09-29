@@ -25,7 +25,7 @@ export interface Vec2 {
 }
 
 /** La ce parte din scară ține o față. Desenul o folosește la grosimea liniei. */
-export type FaceKind = "treapta" | "contratreapta" | "podest" | "perete";
+export type FaceKind = "treapta" | "contratreapta" | "podest" | "perete" | "beton";
 
 /**
  * Încotro privește o față, după ce corpul a fost întors spre ochi.
@@ -93,6 +93,54 @@ export function prism(
     const b = outline[(i + 1) % outline.length];
     faces.push({
       points: [lift(a, bottom), lift(b, bottom), lift(b, top), lift(a, top)],
+      kind,
+      step,
+    });
+  }
+
+  return faces;
+}
+
+/**
+ * Corpul ridicat peste un contur, cu fiecare colț la înălțimea lui.
+ *
+ * `prism` ridică drept, între două cote. Aici fiecare punct al conturului are
+ * jos și sus ale lui, ceea ce dă fețe înclinate — și de asta e nevoie de două
+ * ori: pentru talpa de beton, care merge în pantă pe sub trepte, și pentru
+ * zidul care urcă odată cu scara. Ridicate drept și tăiate pe urmă, amândouă
+ * ar avea fundul în trepte, ca o scară sub scară.
+ */
+export function prismVar(
+  outline: Vec2[],
+  bottoms: number[],
+  tops: number[],
+  kind: FaceKind,
+  step: number,
+): Face[] {
+  if (outline.length < 3 || bottoms.length !== outline.length || tops.length !== outline.length) {
+    return [];
+  }
+
+  const lift = (p: Vec2, y: number): Vec3 => ({ x: p.x, y, z: p.y });
+  const faces: Face[] = [];
+
+  faces.push({ points: outline.map((p, i) => lift(p, tops[i])), kind, step });
+  // Fața de jos se scrie în ordine inversă, ca normala ei să iasă în jos.
+  faces.push({
+    points: outline.map((p, i) => lift(p, bottoms[i])).reverse(),
+    kind,
+    step,
+  });
+
+  for (let i = 0; i < outline.length; i += 1) {
+    const j = (i + 1) % outline.length;
+    faces.push({
+      points: [
+        lift(outline[i], bottoms[i]),
+        lift(outline[j], bottoms[j]),
+        lift(outline[j], tops[j]),
+        lift(outline[i], tops[i]),
+      ],
       kind,
       step,
     });
