@@ -14,10 +14,13 @@ import {
   FINISHES,
   PALETTES,
   buildSheet,
+  fillOf,
   grainLines,
   layoutSheet,
   mm,
   paneExtent,
+  strokeOf,
+  variantOf,
 } from "../src/lib/design/sheet.ts";
 import type { Pane, Sheet } from "../src/lib/design/sheet.ts";
 import { sheetToSvg } from "../src/lib/design/export.ts";
@@ -308,4 +311,117 @@ test("cerneala schimbă numai culorile, nu și geometria", () => {
   assert.ok(ink.includes(PALETTES.tehnic.paper));
   assert.ok(wood.includes(PALETTES.lemn.grain!.sus));
   assert.ok(!ink.includes(PALETTES.lemn.grain!.sus));
+});
+
+/* ------------------------------------------------------------------ */
+/* Lemnul: fir, nuanțe, umbră                                          */
+/* ------------------------------------------------------------------ */
+
+test("firul se îndesește după lățimea piesei", () => {
+  const thin = grainLines([
+    { x: 0, y: 0 },
+    { x: 400, y: 0 },
+    { x: 400, y: 40 },
+    { x: 0, y: 40 },
+  ]);
+  const wide = grainLines([
+    { x: 0, y: 0 },
+    { x: 900, y: 0 },
+    { x: 900, y: 280 },
+    { x: 0, y: 280 },
+  ]);
+  // Patru fire pe un blat de 4 cm arată ca un gard; pe unul de 28 cm arată rar.
+  assert.ok(wide.length > thin.length, `${wide.length} nu e mai mult ca ${thin.length}`);
+  assert.ok(thin.length >= 2 && wide.length <= 8);
+});
+
+test("firele nu stau la distanțe egale", () => {
+  const grain = grainLines([
+    { x: 0, y: 0 },
+    { x: 900, y: 0 },
+    { x: 900, y: 280 },
+    { x: 0, y: 280 },
+  ]);
+  const gaps: number[] = [];
+  for (let i = 1; i < grain.length; i += 1) {
+    gaps.push(Math.abs(grain[i].a.y - grain[i - 1].a.y));
+  }
+  const average = gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length;
+  // Lemnul crescut la riglă nu există, iar ochiul recunoaște imediat șirul perfect.
+  assert.ok(
+    gaps.some((gap) => Math.abs(gap - average) > average * 0.08),
+    "firele ies la linie, ca desenate de o mașină",
+  );
+});
+
+test("aceeași față are mereu același fir", () => {
+  const face = [
+    { x: 12, y: 7 },
+    { x: 912, y: 7 },
+    { x: 912, y: 287 },
+    { x: 12, y: 287 },
+  ];
+  assert.deepEqual(grainLines(face), grainLines(face));
+  // Dar o față așezată în alt loc are firul ei.
+  const moved = face.map((point) => ({ x: point.x + 500, y: point.y }));
+  assert.notDeepEqual(
+    grainLines(face).map((line) => line.a.y),
+    grainLines(moved).map((line) => line.a.y),
+  );
+});
+
+test("nuanța blatului e statornică și mică", () => {
+  for (let step = 1; step <= 20; step += 1) {
+    assert.equal(variantOf(step), variantOf(step));
+    assert.ok(Math.abs(variantOf(step)) <= 1);
+  }
+  // Blaturi diferite, scânduri diferite.
+  assert.notEqual(variantOf(3), variantOf(4));
+});
+
+test("umplerea albă a desenului tehnic nu se nuanțează", () => {
+  // Albul de acolo are o treabă: acoperă treapta din spate. Orice nuanță încurcă.
+  for (const variant of [-3, -1, 0, 1, 3]) {
+    assert.equal(fillOf(PALETTES.tehnic, "sus", variant), PALETTES.tehnic.fill.sus);
+  }
+});
+
+test("pe lemn nuanța mișcă culoarea, dar nu oricât", () => {
+  const base = fillOf(PALETTES.lemn, "sus", 0);
+  assert.equal(base, PALETTES.lemn.fill.sus);
+  assert.notEqual(fillOf(PALETTES.lemn, "sus", 1), base);
+  // Peste limită se oprește: o față nu are voie să iasă din paletă.
+  assert.equal(fillOf(PALETTES.lemn, "sus", 9), fillOf(PALETTES.lemn, "sus", 3));
+});
+
+/*
+ * Greșeala pe care o prinde testul ăsta: contratreapta ieșea exact în nuanța
+ * muchiei de blat de deasupra ei, cele două se lipeau într-o bandă lată, iar
+ * scara părea făcută din blaturi care plutesc. Contratreapta stă retrasă sub
+ * nas, deci primește mai puțină lumină — nu e alegere de culoare, e umbră.
+ */
+test("contratreapta stă în umbra nasului, deci e mai închisă", () => {
+  const iso = paneOf(buildSheet(STRAIGHT, "Scară"), "izometric");
+  const mean = (kind: string) => {
+    const rows = iso.polygons.filter((polygon) => polygon.kind === kind);
+    assert.ok(rows.length > 4, `prea puține fețe de fel „${kind}”`);
+    return rows.reduce((sum, polygon) => sum + polygon.variant, 0) / rows.length;
+  };
+
+  /*
+   * Media, nu împrăștierea: fiecare blat are deja abaterea lui de scândură, iar
+   * pe șaisprezece trepte abaterile alea singure acoperă un interval întreg.
+   * Un test care se uită la interval trece și fără umbră — a și trecut.
+   */
+  assert.ok(
+    mean("treapta") - mean("contratreapta") > 1.5,
+    "contratreapta iese în aceeași nuanță cu blatul de deasupra",
+  );
+});
+
+test("lemnul se desenează cu linie mai subțire decât cerneala", () => {
+  assert.ok(strokeOf(PALETTES.lemn, "main") < strokeOf(PALETTES.tehnic, "main"));
+  for (const finish of FINISHES) {
+    assert.ok(strokeOf(PALETTES[finish], "detail") < strokeOf(PALETTES[finish], "main"));
+  }
 });
