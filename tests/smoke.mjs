@@ -55,6 +55,10 @@ async function pickMaterial(page, dialog, optionName, quantity, price) {
   await dialog.getByRole("combobox").first().waitFor({ timeout: 10000 });
   await dialog.getByRole("combobox").first().click();
   await page.getByRole("option", { name: optionName }).click();
+  // Lista de opțiuni se închide cu o animație, iar cât e pe ecran înghite
+  // apăsările. Dacă mergem mai departe peste ea, clicul pe Salvează se poate
+  // pierde în ea fără să se vadă: dialogul rămâne deschis și linia nu se scrie.
+  await page.getByRole("listbox").waitFor({ state: "detached", timeout: 10000 });
 
   const nameInput = dialog.getByPlaceholder("Adeziv parchet");
   await nameInput.waitFor({ timeout: 10000 });
@@ -64,6 +68,20 @@ async function pickMaterial(page, dialog, optionName, quantity, price) {
   await numbers.nth(0).fill(quantity);
   await numbers.nth(1).fill(price);
   await expectValue(numbers.nth(1), new RegExp(`^${price}`), 5000);
+}
+
+/**
+ * Salvează un dialog și așteaptă să se închidă.
+ *
+ * Închiderea e singura dovadă că salvarea a trecut: formularul închide abia
+ * după ce scrierea s-a terminat. Așteptarea unui text în schimb nu dovedește
+ * nimic — numele materialului se vede și în dialogul rămas deschis, așa că un
+ * clic pierdut trecea nevăzut și lipsa liniei ieșea la iveală mult mai târziu,
+ * la istoricul de preț, unde nu se mai înțelegea de unde vine.
+ */
+async function saveDialog(dialog) {
+  await dialog.getByRole("button", { name: /^Salvează$/ }).click();
+  await dialog.waitFor({ state: "detached", timeout: 15000 });
 }
 
 /** Așteaptă ca un câmp să aibă valoarea cerută, fără pauze ghicite. */
@@ -759,7 +777,7 @@ try {
     "8",
     "160",
   );
-  await jobMaterialDialog.getByRole("button", { name: /^Salvează$/ }).click();
+  await saveDialog(jobMaterialDialog);
   await page.getByText("Parchet stejar (test)").first().waitFor({ timeout: 10000 });
 
   await page
@@ -1055,7 +1073,7 @@ try {
     "5",
     "200",
   );
-  await secondDialog.getByRole("button", { name: /^Salvează$/ }).click();
+  await saveDialog(secondDialog);
   await page.getByText("Parchet stejar (test)").first().waitFor({ timeout: 10000 });
 
   await page.goto(`${BASE}/materiale`, { waitUntil: "networkidle" });
