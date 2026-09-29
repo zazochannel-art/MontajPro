@@ -1060,9 +1060,48 @@ try {
 
   await page.goto(`${BASE}/materiale`, { waitUntil: "networkidle" });
   await page.getByText("Parchet stejar (test)").first().waitFor({ timeout: 15000 });
+  /*
+   * Verificarea asta a picat de trei ori în CI și niciodată local, iar din cod
+   * nu se vede de ce: cu două linii la prețuri diferite, „același preț” e
+   * imposibil, deci singura cale de a nu apărea tendința e ca una din linii să
+   * nu intre în socoteală — ștearsă, fără legătură cu inventarul, sau cu preț
+   * zero. Așa că atunci când pică, își citește singură datele din baza locală
+   * și spune care e. Un eșec care nu-și spune cauza se repetă.
+   */
+  const trendLine = page.getByText(/% față de|același preț ca în/).first();
+  const trendShown = await seen(trendLine, 15000);
+  const trendText = trendShown ? ((await trendLine.textContent()) ?? "").trim() : "";
+  let trendDetail = trendShown ? `scrie „${trendText}”` : "nu apare nicio tendință de preț";
+
+  if (!/% față de/.test(trendText)) {
+    const lines = await page.evaluate(async () => {
+      const request = indexedDB.open("montajpro");
+      const db = await new Promise((resolve) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => resolve(null);
+      });
+      if (!db || !db.objectStoreNames.contains("job_materials")) return "baza lipsește";
+      const store = db.transaction("job_materials").objectStore("job_materials");
+      const rows = await new Promise((resolve) => {
+        const all = store.getAll();
+        all.onsuccess = () => resolve(all.result);
+        all.onerror = () => resolve([]);
+      });
+      return rows.map((row) => ({
+        nume: row.name,
+        pret: row.unit_price,
+        material: row.material_id,
+        sters: row.deleted_at,
+        creat: row.created_at,
+      }));
+    });
+    trendDetail += ` | linii de material: ${JSON.stringify(lines)}`;
+  }
+
   check(
     "materialul cumpărat de două ori arată cât s-a schimbat prețul",
-    await seen(page.getByText(/% față de/), 15000),
+    /% față de/.test(trendText),
+    trendDetail,
   );
 
   /* ----------------------------- lucrarea de mai multe zile -------- */
