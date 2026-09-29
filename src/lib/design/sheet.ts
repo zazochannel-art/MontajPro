@@ -12,7 +12,7 @@
  * hârtie, din aceleași cifre. Nicăieri o captură de ecran.
  */
 import { faceSet } from "./solid";
-import type { Tone, Vec2, ViewName } from "./solid";
+import type { FaceKind, Tone, Vec2, ViewName } from "./solid";
 import { bestAzimuth, buildStair, footprint, outlineCenter } from "./stair-solid";
 import type { StairBuild } from "./stair-solid";
 import { derive, normalizeSpec } from "./stair-spec";
@@ -49,6 +49,8 @@ export interface Palette {
   fill: Record<Tone, string>;
   /** Firul lemnului. `null` pe desenul tehnic: acolo n-are ce căuta. */
   grain: Record<Tone, string> | null;
+  /** Grosimea liniilor. Lemnul se desenează mai subțire decât cerneala. */
+  weight: Record<Weight, number>;
 }
 
 export const PALETTES: Record<Finish, Palette> = {
@@ -62,6 +64,7 @@ export const PALETTES: Record<Finish, Palette> = {
     // Alb plin, nu transparent: treapta din față trebuie s-o acopere pe cea din spate.
     fill: { sus: "#ffffff", fata: "#ffffff", lateral: "#ffffff" },
     grain: null,
+    weight: { main: 2, detail: 0.6 },
   },
   lemn: {
     paper: "#f5f1e8",
@@ -78,14 +81,30 @@ export const PALETTES: Record<Finish, Palette> = {
      */
     fill: { sus: "#e3b887", fata: "#cd9a5d", lateral: "#a97a45" },
     grain: { sus: "#c9a06f", fata: "#b4834a", lateral: "#96693a" },
+    /*
+     * Contur subțire pe lemn, gros pe desenul tehnic.
+     * Aceeași linie care pe o planșă alb-negru se vede de la doi metri, pe un
+     * desen colorat îl face să arate ca un personaj de desen animat: culoarea
+     * duce deja forma, iar conturul n-are decât s-o așeze.
+     */
+    weight: { main: 1.1, detail: 0.55 },
   },
 };
 
 export interface SheetPolygon {
   points: Vec2[];
   weight: Weight;
+  /** La ce parte din scară ține fața. */
+  kind: FaceKind;
   /** Încotro privește fața. Din el iese umbra, în desenul cu lemn. */
   tone: Tone;
+  /**
+   * Cât de deschisă e fața asta față de tonul ei, cam între -3 și 3.
+   *
+   * Adună două lucruri: din ce scândură e tăiat blatul, și dacă stă sau nu în
+   * umbra cuiva.
+   */
+  variant: number;
   /** Firul lemnului, ca linii — ca să rămână vector și în PDF. */
   grain: { a: Vec2; b: Vec2 }[];
 }
@@ -220,8 +239,68 @@ export function dimension(
   return { lines, texts };
 }
 
-/** Cât de multe fire se trag peste o față. Destule cât să se citească lemn. */
-const GRAIN_LINES = 4;
+/** Cam un fir la fiecare atâția milimetri de lățime de piesă. */
+const GRAIN_EVERY = 32;
+const GRAIN_MIN = 2;
+const GRAIN_MAX = 8;
+
+/**
+ * Zgomot statornic: aceeași intrare, aceeași cifră, de fiecare dată.
+ *
+ * Fără „statornic” n-ar merge nimic din ce urmează: planșa s-ar redesena
+ * altfel la fiecare cadru, exportul n-ar semăna cu ecranul, iar testul care
+ * cere ca aceleași cifre să dea aceeași planșă ar pica pe bună dreptate.
+ */
+function noise(seed: number): number {
+  const value = Math.sin(seed * 12.9898) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+/** Un ton mutat spre deschis sau spre închis, cu `amount` între -1 și 1. */
+function shade(hex: string, amount: number): string {
+  const value = parseInt(hex.replace("#", ""), 16);
+  const parts = [(value >> 16) & 255, (value >> 8) & 255, value & 255].map((channel) =>
+    Math.max(0, Math.min(255, Math.round(channel * (1 + amount)))),
+  );
+  return `#${parts.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+}
+
+/**
+ * Culoarea unei fețe: tonul ei, plus abaterea blatului ăstuia.
+ *
+ * Într-o scară adevărată nu există două blaturi la fel — sunt tăiate din
+ * scânduri diferite, iar ochiul vede asta chiar când nu știe ce vede. O scară
+ * desenată cu o singură culoare pe fiecare orientare arată turnată dintr-o
+ * bucată de plastic. Abaterea e mică, cât să nu pară o greșeală de culoare.
+ *
+ * Pe desenul tehnic nu se întâmplă nimic: acolo umplerea albă are o treabă
+ * anume — să acopere treapta din spate — și orice nuanță i-ar sta în drum.
+ */
+export function fillOf(ink: Palette, tone: Tone, variant: number): string {
+  if (!ink.grain) return ink.fill[tone];
+  return shade(ink.fill[tone], Math.max(-3, Math.min(3, variant)) * 0.05);
+}
+
+/** Grosimea unei linii în cerneala dată. */
+export function strokeOf(ink: Palette, weight: Weight): number {
+  return ink.weight[weight];
+}
+
+/** Cât de deschis e blatul treptei a n-a. Statornic, ca desenul să nu tremure. */
+export function variantOf(step: number): number {
+  return (noise(step * 1.7 + 0.3) - 0.5) * 2;
+}
+
+/**
+ * Cât întunecă umbra o contratreaptă.
+ *
+ * Nu e o alegere de culoare, ci o umbră adevărată: contratreapta stă retrasă
+ * sub nasul treptei de deasupra, deci primește mai puțină lumină decât muchia
+ * care iese peste ea. Fără asta, muchia blatului și contratreapta ies în
+ * aceeași nuanță și se lipesc într-o singură bandă lată — de aceea scara părea
+ * făcută din blaturi care plutesc, în loc de trepte cu contratreaptă.
+ */
+const RISER_SHADOW = -2.4;
 
 /**
  * Firul lemnului peste o față, ca linii tăiate exact pe conturul ei.
@@ -230,10 +309,15 @@ const GRAIN_LINES = 4;
  * fibră, nu de-a curmezișul. Sunt linii adevărate, nu o umplutură cu poză — de
  * aceea PDF-ul rămâne vector și se poate mări fără să se îmbâcsească.
  *
+ * Câte sunt iese din lățimea piesei, nu dintr-o cifră fixă: patru fire pe o
+ * treaptă de 28 cm arată rar, iar patru pe un blat de 4 cm arată ca un gard.
+ * Și nu stau la distanțe egale — lemnul crescut la rigla nu există, iar ochiul
+ * recunoaște imediat șirul perfect ca fiind desenat de o mașină.
+ *
  * Tăierea se face pe fiecare latură: fața e un patrulater convex, deci o
  * dreaptă o taie în exact două puncte, iar între ele stă firul.
  */
-export function grainLines(points: Vec2[], count = GRAIN_LINES): { a: Vec2; b: Vec2 }[] {
+export function grainLines(points: Vec2[], count?: number): { a: Vec2; b: Vec2 }[] {
   if (points.length < 3) return [];
 
   // Latura cea mai lungă dă direcția fibrei.
@@ -258,11 +342,20 @@ export function grainLines(points: Vec2[], count = GRAIN_LINES): { a: Vec2; b: V
     if (along < low) low = along;
     if (along > high) high = along;
   }
-  if (high - low < 1e-6) return [];
+  const span = high - low;
+  if (span < 1e-6) return [];
+
+  const lines =
+    count ?? Math.max(GRAIN_MIN, Math.min(GRAIN_MAX, Math.round(span / GRAIN_EVERY)));
+  // Sămânța iese din locul feței, ca aceeași față să aibă mereu același fir.
+  const seed = points[0].x * 0.37 + points[0].y * 0.71;
+  const gap = span / (lines + 1);
 
   const out: { a: Vec2; b: Vec2 }[] = [];
-  for (let i = 1; i <= count; i += 1) {
-    const offset = low + ((high - low) * i) / (count + 1);
+  for (let i = 1; i <= lines; i += 1) {
+    // Abaterea nu trece de o treime din pas: altfel firele se suprapun.
+    const wobble = (noise(seed + i * 7.13) - 0.5) * gap * 0.66;
+    const offset = low + gap * i + wobble;
     const hits: Vec2[] = [];
 
     for (let e = 0; e < points.length; e += 1) {
@@ -280,18 +373,18 @@ export function grainLines(points: Vec2[], count = GRAIN_LINES): { a: Vec2; b: V
     // Capetele firului: cele două tăieturi cele mai depărtate una de alta.
     let a = hits[0];
     let b = hits[1];
-    let span = -1;
+    let widest = -1;
     for (let i0 = 0; i0 < hits.length; i0 += 1) {
       for (let i1 = i0 + 1; i1 < hits.length; i1 += 1) {
         const length = Math.hypot(hits[i1].x - hits[i0].x, hits[i1].y - hits[i0].y);
-        if (length > span) {
-          span = length;
+        if (length > widest) {
+          widest = length;
           a = hits[i0];
           b = hits[i1];
         }
       }
     }
-    if (span > 1e-6) out.push({ a, b });
+    if (widest > 1e-6) out.push({ a, b });
   }
 
   return out;
@@ -347,7 +440,9 @@ function viewPane(
   const polygons: SheetPolygon[] = faceSet(build.solid, view, azimuth).map((face) => ({
     points: face.points,
     weight: "main",
+    kind: face.kind,
     tone: face.tone,
+    variant: variantOf(face.step) + (face.kind === "contratreapta" ? RISER_SHADOW : 0),
     // Fibra se vede pe fețele întoarse spre ochi; pe cele din umbră n-ar spune nimic.
     grain: face.tone === "lateral" ? [] : grainLines(face.points),
   }));
@@ -406,23 +501,42 @@ function detailPane(spec: StairSpec, rise: number): Pane {
   const { tread, thickness, nosing, riserThickness } = spec;
 
   // Piesele din detaliu sunt secțiuni prin lemn: se văd în plin, cu fibra pe lung.
-  const rect = (x0: number, y0: number, x1: number, y1: number): SheetPolygon => {
+  let piece = 0;
+  const rect = (
+    kind: FaceKind,
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+  ): SheetPolygon => {
+    piece += 1;
     const points = [
       { x: x0, y: y0 },
       { x: x1, y: y0 },
       { x: x1, y: y1 },
       { x: x0, y: y1 },
     ];
-    return { points, weight: "main", tone: "fata", grain: grainLines(points, 3) };
+    /*
+     * Secțiunea nu primește umbra contratreptei: e o tăietură prin lemn, nu o
+     * față luminată. Singura abatere e din ce scândură vine piesa.
+     */
+    return {
+      points,
+      weight: "main",
+      kind,
+      tone: "fata",
+      variant: variantOf(piece),
+      grain: grainLines(points),
+    };
   };
 
   const polygons: SheetPolygon[] = [
     // Blatul de sus, cu nasul ieșit în stânga.
-    rect(-nosing, 0, tread, thickness),
+    rect("treapta", -nosing, 0, tread, thickness),
     // Contratreapta care coboară din spatele lui.
-    rect(0, thickness, riserThickness, rise),
+    rect("contratreapta", 0, thickness, riserThickness, rise),
     // Treapta de dedesubt, ca să se vadă peste ce iese nasul.
-    rect(-tread - nosing, rise, 0, rise + thickness),
+    rect("treapta", -tread - nosing, rise, 0, rise + thickness),
   ];
 
   const box: Box2 = {

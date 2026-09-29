@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PALETTES, layoutSheet, place } from "@/lib/design/sheet";
-import type { Finish, Palette, PlacedPane, Sheet, TextRole, Weight } from "@/lib/design/sheet";
+import { PALETTES, fillOf, layoutSheet, place, strokeOf } from "@/lib/design/sheet";
+import type { Finish, Palette, PlacedPane, Sheet, TextRole } from "@/lib/design/sheet";
 
 /**
  * Planșa pe ecran.
@@ -14,10 +14,6 @@ import type { Finish, Palette, PlacedPane, Sheet, TextRole, Weight } from "@/lib
  * înceapă să se depărteze una de alta.
  */
 const TEXT_SIZE: Record<TextRole, number> = { cota: 15, numar: 13, titlu: 19 };
-
-function strokeOf(weight: Weight): number {
-  return weight === "main" ? 2 : 0.6;
-}
 
 function drawPane(context: CanvasRenderingContext2D, placed: PlacedPane, ink: Palette) {
   const { frame, pane } = placed;
@@ -42,10 +38,10 @@ function drawPane(context: CanvasRenderingContext2D, placed: PlacedPane, ink: Pa
     });
     context.closePath();
     // Umplut în plin, ca treapta din față s-o acopere pe cea din spate.
-    context.fillStyle = ink.fill[polygon.tone];
+    context.fillStyle = fillOf(ink, polygon.tone, polygon.variant);
     context.fill();
     context.strokeStyle = ink.outline;
-    context.lineWidth = strokeOf(polygon.weight);
+    context.lineWidth = strokeOf(ink, polygon.weight);
     context.lineJoin = "round";
     context.stroke();
 
@@ -71,7 +67,7 @@ function drawPane(context: CanvasRenderingContext2D, placed: PlacedPane, ink: Pa
     context.beginPath();
     context.moveTo(a.x, a.y);
     context.lineTo(b.x, b.y);
-    context.lineWidth = strokeOf(line.weight);
+    context.lineWidth = strokeOf(ink, line.weight);
     context.stroke();
   }
 

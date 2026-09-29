@@ -12,8 +12,8 @@
 import { formatMeasure, distance } from "./measure";
 import { bounds, stepPoints } from "./model";
 import type { DesignDoc } from "./model";
-import { PALETTES, layoutSheet, place } from "./sheet";
-import type { Finish, Sheet, TextRole, Weight } from "./sheet";
+import { PALETTES, fillOf, layoutSheet, place, strokeOf } from "./sheet";
+import type { Finish, Sheet, TextRole } from "./sheet";
 
 /** Grosimile: conturul se vede de la distanță, detaliile nu-l încarcă. */
 const MAIN_WIDTH = 2;
@@ -265,10 +265,6 @@ export async function downloadPdf(doc: DesignDoc, title: string) {
 /** Mărimile de scris, în puncte de pagină. Nu se scalează cu desenul. */
 const TEXT_SIZE: Record<TextRole, number> = { cota: 15, numar: 13, titlu: 19 };
 
-function strokeOf(weight: Weight): number {
-  return weight === "main" ? MAIN_WIDTH : DETAIL_WIDTH;
-}
-
 /** `#rrggbb` în cele trei numere pe care le vrea jsPDF. */
 function rgb(hex: string): [number, number, number] {
   const value = parseInt(hex.replace("#", ""), 16);
@@ -310,7 +306,7 @@ export function sheetToSvg(sheet: Sheet, tall = false, finish: Finish = "tehnic"
         })
         .join(" ");
       parts.push(
-        `<polygon points="${points}" fill="${ink.fill[polygon.tone]}" stroke="${ink.outline}" stroke-width="${strokeOf(polygon.weight)}" stroke-linejoin="round"/>`,
+        `<polygon points="${points}" fill="${fillOf(ink, polygon.tone, polygon.variant)}" stroke="${ink.outline}" stroke-width="${strokeOf(ink, polygon.weight)}" stroke-linejoin="round"/>`,
       );
 
       // Firul se scrie imediat după fața lui, altfel îl acoperă următoarea față.
@@ -329,7 +325,7 @@ export function sheetToSvg(sheet: Sheet, tall = false, finish: Finish = "tehnic"
       const a = place(placed, line.a);
       const b = place(placed, line.b);
       parts.push(
-        `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${ink.thin}" stroke-width="${strokeOf(line.weight)}"/>`,
+        `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${ink.thin}" stroke-width="${strokeOf(ink, line.weight)}"/>`,
       );
     }
 
@@ -419,10 +415,11 @@ export async function downloadSheetPdf(sheet: Sheet, title: string, finish: Fini
       if (polygon.points.length < 3) continue;
       const points = polygon.points.map((p) => toPage(place(placed, p)));
 
-      const [pr, pg, pb] = rgb(ink.fill[polygon.tone]);
+      const [pr, pg, pb] = rgb(fillOf(ink, polygon.tone, polygon.variant));
       pdf.setFillColor(pr, pg, pb);
       pdf.setDrawColor(or_, og, ob);
-      pdf.setLineWidth(polygon.weight === "main" ? 0.25 : 0.1);
+      // Grosimile planșei, aduse la milimetrii hârtiei.
+      pdf.setLineWidth(strokeOf(ink, polygon.weight) * 0.125);
       // `lines` primește pași de la un punct la altul, nu puncte absolute.
       const steps: [number, number][] = [];
       for (let i = 1; i < points.length; i += 1) {
