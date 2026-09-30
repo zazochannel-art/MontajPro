@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   Camera,
+  FileCode2,
   FileDown,
   ImageDown,
   Loader2,
@@ -356,7 +357,19 @@ export default function DesignPage() {
             peste marginea de jos a planșei: acolo desenul s-ar vedea acoperit
             și n-ar primi atingerea. Planșa se oprește deasupra lor.
           */}
-          <div className="aspect-[9/12.5] max-h-[45vh] w-full min-w-0 lg:aspect-[8/5] lg:max-h-none">
+          {/*
+            Pe telefon planșa, butoanele ei și meniul de jos se bat pe aceeași
+            înălțime. Planșa se oprește unde încep butoanele, ca ele să rămână
+            la vedere fără să cauți: desenul se poate mări cu două degete, dar
+            un buton ascuns sub meniu nu se poate apăsa deloc.
+          */}
+          <div
+            className={cn(
+              "aspect-[9/12.5] w-full min-w-0",
+              "max-h-[calc(100svh-var(--bottom-nav-h)-25rem)]",
+              "lg:aspect-[8/5] lg:max-h-none",
+            )}
+          >
             <StairSheet sheet={sheet} tall={narrow} finish={finish} />
           </div>
 
@@ -517,17 +530,20 @@ export default function DesignPage() {
             size="sm"
             onClick={() => setAzimuth((value) => ((value ?? sheet.azimuth) + Math.PI / 12) % (Math.PI * 2))}
           >
-            <RotateCw /> Rotește
+            <RotateCw /> <span className="sr-only sm:not-sr-only">Rotește</span>
           </Button>
           <Button variant="outline" size="sm" onClick={() => setAzimuth(null)} disabled={azimuth === null}>
-            <Scan /> Unghi automat
+            <Scan /> <span className="sr-only sm:not-sr-only">Unghi automat</span>
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => setFinish((value) => (value === "lemn" ? "tehnic" : "lemn"))}
           >
-            <Palette /> {finish === "lemn" ? "Desen tehnic" : "Lemn"}
+            <Palette />
+            <span className="sr-only sm:not-sr-only">
+              {finish === "lemn" ? "Desen tehnic" : "Lemn"}
+            </span>
           </Button>
           <Button
             variant="outline"
@@ -535,20 +551,24 @@ export default function DesignPage() {
             className="lg:hidden"
             onClick={() => setSheetOpen((open) => !open)}
           >
-            <SlidersHorizontal /> {sheetOpen ? "Ascunde cifrele" : "Cifrele scării"}
+            <SlidersHorizontal />
+            <span className="sr-only sm:not-sr-only">
+              {sheetOpen ? "Ascunde cifrele" : "Cifrele scării"}
+            </span>
           </Button>
           <div className="flex-1" />
           <Button variant="outline" size="sm" onClick={() => downloadSheetSvg(sheet, title, finish)}>
-            SVG
+            <FileCode2 /> <span className="sr-only sm:not-sr-only">SVG</span>
           </Button>
           <Button variant="outline" size="sm" onClick={() => void downloadSheetPng(sheet, title, finish)}>
-            <ImageDown /> PNG
+            <ImageDown /> <span className="sr-only sm:not-sr-only">PNG</span>
           </Button>
           <Button variant="outline" size="sm" onClick={() => void downloadSheetPdf(sheet, title, finish)}>
-            <FileDown /> PDF
+            <FileDown /> <span className="sr-only sm:not-sr-only">PDF</span>
           </Button>
-          <Button size="sm" onClick={() => void save()}>
-            <Save /> Salvează
+          {/* Singur pe rândul lui, se întinde: e butonul principal. */}
+          <Button size="sm" className="flex-1 sm:flex-none" onClick={() => void save()}>
+            <Save /> <span className="sr-only sm:not-sr-only">Salvează</span>
           </Button>
         </div>
       )}
@@ -557,16 +577,17 @@ export default function DesignPage() {
       {stage === "foto" && photo && (
         <div className="flex flex-wrap gap-2 rounded-2xl surface p-2">
           <Button variant="outline" size="sm" onClick={() => void generate()} loading={busy === "detecting"}>
-            {busy === "detecting" ? <Loader2 className="animate-spin" /> : <Sparkles />} Regenerare
+            {busy === "detecting" ? <Loader2 className="animate-spin" /> : <Sparkles />}{" "}
+            <span className="sr-only sm:not-sr-only">Regenerare</span>
           </Button>
           <Button variant="outline" size="sm" onClick={undo} disabled={!history.length}>
-            <Undo2 /> Înapoi
+            <Undo2 /> <span className="sr-only sm:not-sr-only">Înapoi</span>
           </Button>
           <Button variant="outline" size="sm" onClick={() => setTool("cota")} disabled={!hasDrawing}>
-            <Plus /> Adaugă cotă
+            <Plus /> <span className="sr-only sm:not-sr-only">Adaugă cotă</span>
           </Button>
           <Button variant="outline" size="sm" onClick={() => setTool("calibrare")} disabled={!hasDrawing}>
-            <Ruler /> Calibrează
+            <Ruler /> <span className="sr-only sm:not-sr-only">Calibrează</span>
           </Button>
           <Button
             variant="outline"
@@ -574,20 +595,28 @@ export default function DesignPage() {
             className="lg:hidden"
             onClick={() => setSheetOpen((open) => !open)}
           >
-            <SlidersHorizontal /> {sheetOpen ? "Ascunde uneltele" : "Unelte"}
+            <SlidersHorizontal />
+            <span className="sr-only sm:not-sr-only">
+              {sheetOpen ? "Ascunde uneltele" : "Unelte"}
+            </span>
           </Button>
           <div className="flex-1" />
           <Button variant="outline" size="sm" onClick={() => downloadSvg(doc, title)} disabled={!hasDrawing}>
-            SVG
+            <FileCode2 /> <span className="sr-only sm:not-sr-only">SVG</span>
           </Button>
           <Button variant="outline" size="sm" onClick={() => void downloadPng(doc, title)} disabled={!hasDrawing}>
-            <ImageDown /> PNG
+            <ImageDown /> <span className="sr-only sm:not-sr-only">PNG</span>
           </Button>
           <Button variant="outline" size="sm" onClick={() => void downloadPdf(doc, title)} disabled={!hasDrawing}>
-            <FileDown /> PDF
+            <FileDown /> <span className="sr-only sm:not-sr-only">PDF</span>
           </Button>
-          <Button size="sm" onClick={() => void save()} disabled={!hasDrawing}>
-            <Save /> Salvează
+          <Button
+            size="sm"
+            className="flex-1 sm:flex-none"
+            onClick={() => void save()}
+            disabled={!hasDrawing}
+          >
+            <Save /> <span className="sr-only sm:not-sr-only">Salvează</span>
           </Button>
         </div>
       )}
