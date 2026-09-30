@@ -95,12 +95,38 @@ export function accumulate(
  * liniile din jurul ei, treptele ies și dintr-o poză strâmbă — iar tocul ușii
  * și pervazul, care merg pe alt unghi, nu se amestecă printre ele.
  */
-export function dominantTheta(accumulator: Accumulator): number {
+/**
+ * Cât de departe sunt două direcții una de alta.
+ *
+ * Unghiurile se învârt cu perioada π, nu 2π: o dreaptă înclinată cu 179° e la
+ * un grad de una orizontală, nu la 179.
+ */
+function angleGap(a: number, b: number): number {
+  const d = Math.abs(a - b) % Math.PI;
+  return Math.min(d, Math.PI - d);
+}
+
+export function dominantTheta(
+  accumulator: Accumulator,
+  /**
+   * Doar direcțiile din jurul acesteia intră în cursă.
+   *
+   * Fără ea, câștigă pur și simplu direcția cu cele mai multe voturi — iar
+   * într-o poză de scară aia e de multe ori verticala: balustri, tocul ușii,
+   * colțul peretelui, liniile de cotă dintr-un desen. Sunt lungi și multe, iar
+   * scorul crește cu pătratul lungimii, așa că bat muchiile scurte ale
+   * treptelor. Cine o cheamă știe ce caută; Hough nu are de unde ști.
+   */
+  band?: { around: number; spread: number },
+): number {
   const { data, thetaSteps, rhoSteps } = accumulator;
-  let best = 0;
+  let best = -1;
   let bestScore = -1;
 
   for (let t = 0; t < thetaSteps; t += 1) {
+    if (band && angleGap((t * Math.PI) / thetaSteps, band.around) > band.spread) {
+      continue;
+    }
     let score = 0;
     for (let r = 0; r < rhoSteps; r += 1) {
       const votes = data[t * rhoSteps + r];
@@ -114,6 +140,9 @@ export function dominantTheta(accumulator: Accumulator): number {
     }
   }
 
+  // Nicio direcție în bandă: întoarcem mijlocul ei, ca apelantul să primească
+  // un unghi valid și să cadă singur pe „n-am găsit destule muchii”.
+  if (best < 0) return band ? band.around : 0;
   return (best * Math.PI) / thetaSteps;
 }
 
