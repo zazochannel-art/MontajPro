@@ -284,7 +284,14 @@ export function detectStairs(
     return { doc: { ...empty, detection }, detection, width, height };
   }
 
-  const spacing = spacingScore(lines.map((line) => (line.y1 + line.y2) / 2));
+  /*
+   * Distanța dintre două drepte paralele se măsoară pe perpendiculara lor, nu
+   * pe verticală — iar `rho` e tocmai asta. Măsurată pe mijlocul vertical al
+   * muchiei, aceeași scară, identic de regulată, ieșea tot mai neregulată cu
+   * cât poza era mai strâmbă: la 30° de înclinare, 0,55 în loc de 0,93. Așa
+   * încrederea pedepsea fotograful, nu scara.
+   */
+  const spacing = spacingScore(lines.map((line) => line.rho));
   const built = buildSteps(lines);
 
   // Înapoi în coordonatele fotografiei date.
