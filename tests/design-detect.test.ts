@@ -170,6 +170,27 @@ test("desenul iese în coordonatele fotografiei, nu ale copiei micșorate", () =
   assert.equal(result.height, inalt);
 });
 
+test("o poză strâmbă nu scade încrederea ca și cum scara ar fi neregulată", () => {
+  /*
+   * Aceeași scară, la fel de regulată, fotografiată drept și strâmb. Încrederea
+   * spune cât de sigură e citirea scării, nu cât de drept a ținut omul
+   * telefonul, deci n-are voie să se prăbușească doar fiindcă poza e înclinată.
+   *
+   * Greșeala era în ce se măsura: distanța dintre două drepte paralele se ia pe
+   * perpendiculara lor, nu pe verticală. Pe verticală, muchiile înclinate par
+   * să se înghesuie, iar regularitatea iese mică fără ca scara să se fi
+   * schimbat — la 30° de înclinare, 0,55 în loc de 0,93.
+   */
+  const drept = stairs({ count: 8, gap: 30 });
+  const stramba = stairs({ count: 8, gap: 30, tilt: Math.tan((30 * Math.PI) / 180) });
+
+  const a = detectStairs(drept.rgba, drept.width, drept.height).detection.confidence;
+  const b = detectStairs(stramba.rgba, stramba.width, stramba.height).detection.confidence;
+
+  assert.ok(a > 0.5, `poza dreaptă dă ${a}`);
+  assert.ok(b >= a * 0.85, `dreaptă ${a}, strâmbă ${b}`);
+});
+
 test("o scară cu opt muchii dă șapte trepte", () => {
   // Șapte: între opt muchii sunt șapte trepte. A opta muchie e spatele
   // ultimei trepte, nu o treaptă în plus.

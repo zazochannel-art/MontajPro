@@ -240,10 +240,18 @@ export default function DesignPage() {
       setSelection({ stepId: null, pointId: null });
       setMode("comparare");
 
-      if (result.detection.steps > 0) {
-        toast.success(`${result.detection.steps} trepte detectate`);
-      } else {
+      /*
+       * Mesajul spune și cât de sigură e citirea. Un „gata!" verde peste o
+       * detecție în care aplicația însăși nu crede — avertismentul e chiar
+       * lângă el — l-ar face pe om să taie lemn după niște cifre pe care
+       * scrie, două rânduri mai jos, că sunt o părere.
+       */
+      if (result.detection.steps === 0) {
         toast.warning("Nu s-au găsit trepte în fotografie");
+      } else if (result.detection.warning) {
+        toast.warning(`${result.detection.steps} trepte detectate, dar verifică-le`);
+      } else {
+        toast.success(`${result.detection.steps} trepte detectate`);
       }
     } finally {
       setBusy("none");
