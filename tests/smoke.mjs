@@ -84,6 +84,21 @@ async function saveDialog(dialog) {
   await dialog.waitFor({ state: "detached", timeout: 15000 });
 }
 
+/**
+ * Unde începe meniul fix de jos.
+ *
+ * Tot ce cade sub linia asta e acoperit de meniu și nu se mai poate apăsa, deci
+ * e reperul după care se verifică dacă desenul a împins butoanele afară.
+ */
+async function navTop(page) {
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(200);
+  return page.evaluate(() => {
+    const nav = document.querySelector("nav.fixed, nav[class*='fixed']");
+    return nav ? nav.getBoundingClientRect().top : Number.POSITIVE_INFINITY;
+  });
+}
+
 /** Așteaptă ca un câmp să aibă valoarea cerută, fără pauze ghicite. */
 async function expectValue(locator, expected, timeout) {
   const deadline = Date.now() + timeout;
@@ -1414,6 +1429,28 @@ try {
     await page.getByRole("button", { name: "SVG", exact: true }).isEnabled(),
   );
 
+  /*
+   * Aici pânza e masă de lucru — pe ea tragi muchiile treptelor — deci n-o pot
+   * strînge cât să încapă tot pe un ecran fără s-o fac nefolosibilă. Butoanele
+   * ei stau sub desen și ajungi la ele derulând, ceea ce e în regulă. Ce nu e
+   * în regulă e să rămână sub meniul fix și după ce ai derulat până la capăt:
+   * atunci se văd, dar nu se mai pot apăsa.
+   */
+  await page.getByRole("button", { name: /^Ascunde uneltele$/ }).click();
+  await page.waitForTimeout(400);
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.waitForTimeout(400);
+  const navFoto = await page.evaluate(() => {
+    const nav = document.querySelector("nav.fixed, nav[class*='fixed']");
+    return nav ? nav.getBoundingClientRect().top : Number.POSITIVE_INFINITY;
+  });
+  const salvFoto = await page.getByRole("button", { name: "Salvează" }).first().boundingBox();
+  check(
+    "butoanele desenului din fotografie se pot apăsa după ce derulezi",
+    salvFoto.y >= 0 && salvFoto.y + salvFoto.height <= navFoto,
+    `butonul stă între ${Math.round(salvFoto.y)} și ${Math.round(salvFoto.y + salvFoto.height)}, meniul începe la ${Math.round(navFoto)}`,
+  );
+
   /* --------------------- scara desenată din cifre ------------------- */
   section("Scara desenată din cifre");
 
@@ -1534,14 +1571,35 @@ try {
   check("mijlocul planșei e planșa, nu altceva peste ea", subDeget === "CANVAS", `am găsit ${subDeget}`);
 
   // Marginea de jos a planșei trebuie să rămână deasupra meniului fix.
-  const navTop = await page.evaluate(() => {
-    const nav = document.querySelector("nav.fixed, nav[class*='fixed']");
-    return nav ? nav.getBoundingClientRect().top : Number.POSITIVE_INFINITY;
-  });
+  const navSus = await navTop(page);
   check(
     "planșa se termină deasupra meniului de jos",
-    sheetBox.y + sheetBox.height <= navTop,
-    `planșa ajunge la ${Math.round(sheetBox.y + sheetBox.height)}, meniul începe la ${Math.round(navTop)}`,
+    sheetBox.y + sheetBox.height <= navSus,
+    `planșa ajunge la ${Math.round(sheetBox.y + sheetBox.height)}, meniul începe la ${Math.round(navSus)}`,
+  );
+
+  /*
+   * Butoanele planșei trebuie să rămână deasupra meniului fix. Altfel planșa le
+   * împinge sub el și nu se mai pot apăsa: desenul se vede, dar nu-l mai poți
+   * roti, schimba ori salva. Se verifică ultimul buton, cel mai de jos.
+   */
+  const salveaza = await page.getByRole("button", { name: "Salvează" }).first().boundingBox();
+  check(
+    "butoanele planșei rămân deasupra meniului de jos",
+    salveaza.y + salveaza.height <= navSus,
+    `butonul ajunge la ${Math.round(salveaza.y + salveaza.height)}, meniul începe la ${Math.round(navSus)}`,
+  );
+
+  // Butonul rotund de adăugare plutește fix deasupra meniului, aproape de
+  // Salvează. Dacă ajunge peste el, apăsarea deschide altceva.
+  const subSalveaza = await page.evaluate(
+    ([x, y]) => document.elementFromPoint(x, y)?.textContent?.trim() ?? "nimic",
+    [salveaza.x + salveaza.width / 2, salveaza.y + salveaza.height / 2],
+  );
+  check(
+    "mijlocul butonului Salvează e chiar el",
+    subSalveaza === "Salvează",
+    `sub deget am găsit „${subSalveaza}”`,
   );
 
   const touch = await page.context().newCDPSession(page);
