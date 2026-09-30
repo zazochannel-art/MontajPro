@@ -1686,6 +1686,30 @@ try {
       navBottom <= viewportHeight - INSET_BOTTOM,
       `text până la y=${navBottom}, ecranul are ${viewportHeight}px, bara ${INSET_BOTTOM}px`,
     );
+
+    /*
+     * Aici se vede greșeala pe care ecranul obișnuit n-o arată: `--bottom-nav-h`
+     * e o cifră fixă, dar meniul de jos crește cu bara de gesturi a telefonului.
+     * Cine socotește doar cu cifra fixă lasă butoanele planșei să cadă sub
+     * meniu — pe telefonul de test, unde bara de gesturi e 0, totul pare bine.
+     */
+    await safePage.goto(`${BASE}/design`, { waitUntil: "networkidle" });
+    await safePage.getByRole("tab", { name: "Din cifre" }).click();
+    await safePage.locator("canvas").first().waitFor({ timeout: 10000 });
+    await safePage.waitForTimeout(900);
+    const navSigur = await safePage.evaluate(() => {
+      const n = document.querySelector("nav.fixed, nav[class*='fixed']");
+      return n ? n.getBoundingClientRect().top : Number.POSITIVE_INFINITY;
+    });
+    const salvSigur = await safePage
+      .getByRole("button", { name: "Salvează" })
+      .first()
+      .boundingBox();
+    check(
+      "butoanele planșei se văd și cu bara de gesturi pe ecran",
+      salvSigur.y + salvSigur.height <= navSigur,
+      `butonul ajunge la ${Math.round(salvSigur.y + salvSigur.height)}, meniul începe la ${Math.round(navSigur)}`,
+    );
   }
   await safeContext.close();
 
