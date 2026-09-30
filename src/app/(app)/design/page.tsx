@@ -366,7 +366,7 @@ export default function DesignPage() {
           <div
             className={cn(
               "aspect-[9/12.5] w-full min-w-0",
-              "max-h-[calc(100svh-var(--bottom-nav-h)-25rem)]",
+              "max-h-[calc(100svh-var(--bottom-nav-h)-env(safe-area-inset-bottom,0px)-25rem)]",
               "lg:aspect-[8/5] lg:max-h-none",
             )}
           >
@@ -518,13 +518,19 @@ export default function DesignPage() {
       {/* ----- jos: acțiunile planșei ----- */}
       {stage === "cifre" && (
         /*
-         * Bara stă în pagină, nu lipită de jos. Lipită, se ridica peste ce e
-         * înaintea ei — adică peste planșă — și îi acoperea partea de jos:
-         * degetul nimerea în bară, nu în desen, așa că mutarea cu degetul și
-         * mărirea păreau moarte pe telefon. Mai bine cobori puțin după butoane
-         * decât să pierzi jumătate din desen.
+         * Bara e lipită de jos, dar planșa de deasupra se oprește exact unde
+         * începe ea, așa că n-are de ce să se ridice peste desen — asta o
+         * făcea odată să înghită atingerea. Lipită rămâne fiindcă înălțimea
+         * meniului de jos nu e o cifră fixă: creește cu bara de gesturi a
+         * telefonului. Dacă socoteala dă greș undeva, butoanele rămân pe
+         * ecran în loc să cadă sub meniu, unde nu se mai pot apăsa.
          */
-        <div className="flex flex-wrap gap-2 rounded-2xl surface p-2">
+        <div
+          className={cn(
+            "sticky bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom,0px)+0.75rem)] z-10",
+            "flex flex-wrap gap-2 rounded-2xl surface p-2 lg:static",
+          )}
+        >
           <Button
             variant="outline"
             size="sm"
