@@ -74,6 +74,102 @@ function stairs(options: {
   return { rgba, width, height };
 }
 
+/**
+ * O scară care ocupă o parte din cadru, cu linii verticale lungi în jur.
+ *
+ * Așa arată realitatea: muchiile treptelor sunt scurte, fiindcă scara nu umple
+ * poza, iar în jur sunt balustri, tocuri de ușă, colțuri de perete — sau, într-un
+ * desen tehnic, linii de cotă — care străbat cadrul de sus până jos. Lungimea
+ * contează: detecția cântărește direcțiile cu pătratul voturilor, așa că puține
+ * linii lungi bat multe muchii scurte.
+ */
+function stairsAmongUprights(options: {
+  count: number;
+  uprights: number;
+}): { rgba: Uint8ClampedArray; width: number; height: number } {
+  const rgba = blank(40);
+  const put = (x: number, y: number) => {
+    if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) return;
+    const p = (y * WIDTH + x) * 4;
+    rgba[p] = 230;
+    rgba[p + 1] = 230;
+    rgba[p + 2] = 230;
+  };
+
+  // Muchiile treptelor: scurte, la mijlocul cadrului.
+  for (let step = 0; step < options.count; step += 1) {
+    const y = 40 + step * 22;
+    for (let x = 90; x < 230; x += 1) {
+      put(x, y);
+      put(x, y + 1);
+    }
+  }
+
+  // Verticalele: de sus până jos.
+  const gap = Math.floor(WIDTH / (options.uprights + 1));
+  for (let bar = 1; bar <= options.uprights; bar += 1) {
+    for (let y = 0; y < HEIGHT; y += 1) {
+      put(bar * gap, y);
+      put(bar * gap + 1, y);
+    }
+  }
+
+  return { rgba, width: WIDTH, height: HEIGHT };
+}
+
+/**
+ * O treaptă e lată și scundă, niciodată o fâșie verticală.
+ *
+ * Verificarea asta prinde greșeala care se vede cu ochiul liber pe ecran: cînd
+ * detecția se agață de direcția greșită, „treptele” ies dungi de sus până jos.
+ */
+function latăȘiScundă(
+  doc: { points: Record<string, { x: number; y: number }>; steps: { points: string[] }[] },
+): boolean {
+  return doc.steps.every((step) => {
+    const xs = step.points.map((id) => doc.points[id].x);
+    const ys = step.points.map((id) => doc.points[id].y);
+    return Math.max(...xs) - Math.min(...xs) > Math.max(...ys) - Math.min(...ys);
+  });
+}
+
+test("balustrada nu fură direcția treptelor", () => {
+  /*
+   * O scară adevărată are mereu în poză și linii verticale — balustri, tocul
+   * ușii, colțul peretelui — iar într-un desen tehnic sunt cu duiumul: liniile
+   * de cotă. Dacă detecția ia pur și simplu direcția cu cele mai multe voturi,
+   * se agață de ele și scoate fâșii verticale numerotate ca trepte.
+   */
+  const image = stairsAmongUprights({ count: 8, uprights: 9 });
+  const result = detectStairs(image.rgba, image.width, image.height);
+
+  assert.ok(result.doc.steps.length >= 5, `a găsit ${result.doc.steps.length} trepte`);
+  assert.ok(latăȘiScundă(result.doc), "treptele au ieșit fâșii verticale");
+});
+
+test("desenul iese în coordonatele fotografiei, nu ale copiei micșorate", () => {
+  /*
+   * Detecția lucrează pe o copie micșorată, ca să meargă pe un telefon. Dar ce
+   * întoarce se desenează peste fotografia întreagă, așa că trebuie să vină în
+   * coordonatele ei. Altfel treptele se înghesuie într-un colț și nu mai stau
+   * peste scara din poză — greșeală pe care o poză mică n-o arată, fiindcă sub
+   * pragul de micșorare cele două sisteme coincid.
+   */
+  const larg = 1280;
+  const inalt = 960;
+  const image = stairs({ count: 8, width: larg, height: inalt, gap: 96, margin: 80 });
+  const result = detectStairs(image.rgba, image.width, image.height);
+
+  assert.ok(result.doc.steps.length >= 5, `a găsit ${result.doc.steps.length} trepte`);
+  const xs = Object.values(result.doc.points).map((p) => p.x);
+  assert.ok(
+    Math.max(...xs) > larg * 0.8,
+    `cel mai depărtat punct e la x=${Math.round(Math.max(...xs))}, poza are ${larg}`,
+  );
+  assert.equal(result.width, larg);
+  assert.equal(result.height, inalt);
+});
+
 test("o scară cu opt muchii dă șapte trepte", () => {
   // Șapte: între opt muchii sunt șapte trepte. A opta muchie e spatele
   // ultimei trepte, nu o treaptă în plus.

@@ -27,6 +27,20 @@ const WORK_SIZE = 640;
 /** Cât de departe de unghiul dominant mai e socotită o dreaptă „la fel”. */
 const ANGLE_SPREAD = (7 * Math.PI) / 180;
 
+/**
+ * Cât de strâmbă poate fi muchia unei trepte față de orizontală.
+ *
+ * O treaptă se vede lată și culcată, oricât de pieziș ai ține telefonul. Ce e
+ * vertical în poză e altceva: balustru, toc de ușă, colț de perete — sau, dacă
+ * fotografiezi un desen tehnic, liniile de cotă. Fără hotarul ăsta, detecția
+ * lua direcția cu cele mai multe voturi și se agăța tocmai de ele, scoțând
+ * fâșii de sus până jos numerotate ca trepte.
+ *
+ * 40° e larg cu bună știință: mai bine las să treacă o poză strâmbă decât să
+ * tai o scară fotografiată dintr-un unghi neobișnuit.
+ */
+const TREAD_TILT = (40 * Math.PI) / 180;
+
 /** Sub atâtea muchii găsite, fotografia nu spune nimic despre o scară. */
 const MIN_LINES = 3;
 
@@ -36,7 +50,15 @@ const MIN_LENGTH_RATIO = 0.18;
 export interface DetectionResult {
   doc: DesignDoc;
   detection: DesignDetection;
-  /** Mărimea la care s-a lucrat; desenul e în coordonatele astea. */
+  /**
+   * Mărimea fotografiei date, fiindcă desenul vine în coordonatele ei.
+   *
+   * Socoteala se face pe o copie micșorată, ca să meargă pe un telefon, dar
+   * asta rămâne treaba detecției: ce iese de aici se așază peste fotografia
+   * întreagă, așa că vine gata potrivit. Altfel fiecare apelant ar trebui să-și
+   * amintească să înmulțească, iar cine uită vede treptele înghesuite într-un
+   * colț — fără nicio eroare, doar un desen care nu stă peste scară.
+   */
   width: number;
   height: number;
 }
@@ -217,7 +239,12 @@ export function detectStairs(
   const strength = edgeStrength(edges, mask);
 
   const accumulator = accumulate(mask, gray.width, gray.height);
-  const theta = dominantTheta(accumulator);
+  // Normala unei drepte orizontale e verticală, deci muchiile culcate stau în
+  // jurul lui π/2; cu cât treapta e mai strâmbă în poză, cu atât se depărtează.
+  const theta = dominantTheta(accumulator, {
+    around: Math.PI / 2,
+    spread: TREAD_TILT,
+  });
 
   // Pragul de voturi ține de mărimea imaginii: o muchie care traversează un
   // sfert din lățime e o muchie, oricât de mare ar fi poza.
@@ -254,11 +281,19 @@ export function detectStairs(
       confidence: scoreOf({ strength, spacing: 0, lines: lines.length }),
       warning: NOT_ENOUGH,
     };
-    return { doc: { ...empty, detection }, detection, width: gray.width, height: gray.height };
+    return { doc: { ...empty, detection }, detection, width, height };
   }
 
   const spacing = spacingScore(lines.map((line) => (line.y1 + line.y2) / 2));
   const built = buildSteps(lines);
+
+  // Înapoi în coordonatele fotografiei date.
+  const kx = width / gray.width;
+  const ky = height / gray.height;
+  for (const point of Object.values(built.points)) {
+    point.x *= kx;
+    point.y *= ky;
+  }
   const confidence = scoreOf({ strength, spacing, lines: lines.length });
 
   const detection: DesignDetection = {
@@ -273,7 +308,7 @@ export function detectStairs(
   return {
     doc: { ...empty, points: built.points, steps: built.steps, detection },
     detection,
-    width: gray.width,
-    height: gray.height,
+    width,
+    height,
   };
 }
